@@ -1,0 +1,469 @@
+[
+  {
+    "id": "p-mtepyznh7of3",
+    "slug": "5pcs-korkmaz-cookware",
+    "name": "5pcs korkmaz cookware",
+    "price": 129976,
+    "category": "cookware-utensils",
+    "featured": false,
+    "bestseller": false,
+    "stock": 0,
+    "images": [
+      "/images/products/f-img-1788028446203.jpg"
+    ],
+    "short": "",
+    "description": "",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-ladder",
+    "slug": "multipurpose-folding-ladder",
+    "name": "Multipurpose Folding Ladder",
+    "price": 40000,
+    "category": "household-essentials",
+    "featured": true,
+    "bestseller": true,
+    "stock": 16,
+    "images": [
+      "/images/products/ladder.jpg"
+    ],
+    "short": "Sturdy aluminium ladder for home, pantry, office and store — 3 to 6 steps.",
+    "description": "make life easier with this multipurpose ladder. Sturdy, durable, and useful in stores, offices, pantries and the home. Choose your height at checkout.\n\n3 steps — ₦40,000 · 4 steps — ₦47,000 · 5 steps — ₦55,000 · 6 steps — ₦60,000",
+    "variants": [
+      {
+        "id": "3-step",
+        "name": "3 steps",
+        "price": 40000,
+        "stock": 6
+      },
+      {
+        "id": "4-step",
+        "name": "4 steps",
+        "price": 47000,
+        "stock": 4
+      },
+      {
+        "id": "5-step",
+        "name": "5 steps",
+        "price": 55000,
+        "stock": 4
+      },
+      {
+        "id": "6-step",
+        "name": "6 steps",
+        "price": 60000,
+        "stock": 2
+      }
+    ],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days. Large item — please confirm access."
+  },
+  {
+    "id": "p-drainer",
+    "slug": "2-in-1-colander-wash-basin",
+    "name": "2-in-1 Colander & Wash Basin",
+    "price": 10500,
+    "category": "cookware-utensils",
+    "featured": true,
+    "bestseller": true,
+    "stock": 24,
+    "images": [
+      "/images/products/acrylic-drainer-instagram.jpg",
+      "/images/products/acrylic-drainer.jpg"
+    ],
+    "short": "Wash, drain and serve in one set — ₦10,500 as listed on our page.",
+    "description": "Posted as Acrylic 2-in-1 drainer 🏷️10,500. Nested colander plus basin for washing vegetables, draining pasta and serving. White and teal finishes as shown.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-cutlery",
+    "slug": "acrylic-cutlery-organiser",
+    "name": "Acrylic Cutlery Organiser",
+    "price": 10500,
+    "category": "cookware-utensils",
+    "featured": true,
+    "bestseller": true,
+    "stock": 20,
+    "images": [
+      "/images/products/cutlery-organiser.jpg"
+    ],
+    "short": "Clear drawer organiser for spoons, forks and knives — ₦10,500.",
+    "description": "Posted as Acrylic cutlery organizer 🏷️10,500. Keeps cutlery in neat rows so the drawer stays tidy. Clear acrylic, easy to wipe clean.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-rice",
+    "slug": "airtight-rice-storage-canisters",
+    "name": "Airtight Rice Storage Canisters",
+    "price": 17000,
+    "category": "home-organisation",
+    "featured": true,
+    "bestseller": true,
+    "stock": 18,
+    "images": [
+      "/images/products/cereal-dispenser.jpg"
+    ],
+    "short": "Lock-lid rice jars — 5 kg ₦17,000 · 10 kg ₦22,000 · 15 kg ₦30,500.",
+    "description": "From the store caption: 5kg ✅ ₦17,000 · 10kg ✅ ₦22,000 · 15kg ✅ ₦30,500. Airtight lids to keep rice, beans and grains fresh. Choose capacity at checkout.",
+    "variants": [
+      {
+        "id": "5kg",
+        "name": "5 kg",
+        "price": 17000,
+        "stock": 8
+      },
+      {
+        "id": "10kg",
+        "name": "10 kg",
+        "price": 22000,
+        "stock": 6
+      },
+      {
+        "id": "15kg",
+        "name": "15 kg",
+        "price": 30500,
+        "stock": 4
+      }
+    ],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-tubs",
+    "slug": "stackable-pantry-storage-tubs",
+    "name": "Stackable Pantry Storage Tubs",
+    "price": 16500,
+    "category": "home-organisation",
+    "featured": true,
+    "bestseller": false,
+    "stock": 16,
+    "images": [
+      "/images/products/pantry-organiser.jpg"
+    ],
+    "short": "Gold-accent tubs for flour, rice and grains — 10 kg ₦16,500 · 20 kg ₦20,500.",
+    "description": "From the store caption: 10kg ✅ ₦16,500 · 20kg ✅ ₦20,500. Clear stackable tubs with gold-knob lids for flour, rice, beans and cereal.",
+    "variants": [
+      {
+        "id": "10kg",
+        "name": "10 kg",
+        "price": 16500,
+        "stock": 10
+      },
+      {
+        "id": "20kg",
+        "name": "20 kg",
+        "price": 20500,
+        "stock": 6
+      }
+    ],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-lazy",
+    "slug": "2-tier-rotating-organiser",
+    "name": "2-Tier Rotating Organiser",
+    "price": 20000,
+    "category": "home-organisation",
+    "featured": true,
+    "bestseller": false,
+    "stock": 12,
+    "images": [
+      "/images/products/spice-rack.jpg"
+    ],
+    "short": "Clear two-level turntable for spices, oils and bathroom bottles — ₦20,000.",
+    "description": "Posted at 🏷️20,000. Spin to reach every bottle. Use in the pantry, fridge or on a vanity.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-iron-big",
+    "slug": "big-ironing-board",
+    "name": "Big Ironing Board",
+    "price": 65000,
+    "category": "household-essentials",
+    "featured": true,
+    "bestseller": true,
+    "stock": 6,
+    "images": [
+      "/images/products/ironing-board-instagram.jpg",
+      "/images/products/ironing-board.jpg"
+    ],
+    "short": "Full-size board as listed on our page — ₦65,000.",
+    "description": "Posted as Big ironing board 🏷️65,000. Wide padded surface, stable legs, folds for storage.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days. Large item."
+  },
+  {
+    "id": "p-iron-small",
+    "slug": "small-ironing-board",
+    "name": "Small Ironing Board",
+    "price": 55000,
+    "category": "household-essentials",
+    "featured": false,
+    "bestseller": false,
+    "stock": 8,
+    "images": [
+      "/images/products/ironing-board.jpg"
+    ],
+    "short": "Compact ironing board — ₦55,000.",
+    "description": "Posted as Small ironing board 🏷️55,000. Same store quality in a smaller footprint for tight Lagos rooms.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-mat",
+    "slug": "sunflower-runner-mat",
+    "name": "Sunflower Kitchen Runner Mat",
+    "price": 25000,
+    "category": "household-essentials",
+    "featured": true,
+    "bestseller": true,
+    "stock": 10,
+    "images": [
+      "/images/products/runner-mat.jpg"
+    ],
+    "short": "Mingyang runner mat, photographed in our Anthony Village store — ₦25,000.",
+    "description": "Posted as Runner mat 🏷️25,000. Anti-fatigue kitchen/hallway mat. Design as shown (sunflower on wood print). Come in to see other prints on the floor.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-laptop",
+    "slug": "foldable-laptop-bed-table",
+    "name": "Foldable Laptop / Bed Table",
+    "price": 15000,
+    "category": "household-essentials",
+    "featured": true,
+    "bestseller": false,
+    "stock": 14,
+    "images": [
+      "/images/products/desk-organiser.jpg"
+    ],
+    "short": "Lap desk with cup holder, tablet slot and drawer — ₦15,000.",
+    "description": "Posted as Laptop stand 🏷️15,000. Folding legs, phone/tablet groove, cup rest and a small drawer. Work or eat in bed or on the sofa.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-kettle-5",
+    "slug": "5-litre-whistling-kettle",
+    "name": "5 Litre Whistling Kettle",
+    "price": 40000,
+    "category": "kitchen-appliances",
+    "featured": true,
+    "bestseller": true,
+    "stock": 10,
+    "images": [
+      "/images/products/kettle.jpg"
+    ],
+    "short": "Large stovetop whistling kettle — ₦40,000.",
+    "description": "Posted as 5L whistling kettle 🏷️40,000. For family tea, pap and cooking water. Whistles when it boils.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-kettle-45",
+    "slug": "4-5-litre-whistling-kettle",
+    "name": "4.5 Litre Whistling Kettle",
+    "price": 35000,
+    "category": "kitchen-appliances",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/kettle.jpg"
+    ],
+    "short": "4.5L whistling kettle — ₦35,000.",
+    "description": "Posted as 4.5L whistling kettle 🏷️35,000. Same whistling stovetop style in the slightly smaller size.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-10kg-grain-bucket",
+    "slug": "10kg-grain-bucket",
+    "name": "10 kg Grain Bucket",
+    "price": 25000,
+    "category": "home-organisation",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/10kg-grain-bucket.jpg"
+    ],
+    "short": "Kitchen grain storage bucket for pantry organization — ₦25,000.",
+    "description": "10kg grain bucket 🏷️25,000. Storage bucket for rice, grains and other pantry ingredients.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-acrylic-egg-storage-rack",
+    "slug": "acrylic-egg-storage-rack",
+    "name": "Acrylic Egg Storage Rack",
+    "price": 18000,
+    "category": "home-organisation",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/acrylic-egg-storage-rack.jpg"
+    ],
+    "short": "Acrylic rack for organizing eggs in the kitchen — ₦18,000.",
+    "description": "Acrylic egg storage rack 🏷️18,000. Keep eggs organized and easy to access.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-3in1-professional-blender",
+    "slug": "3-in-1-professional-blender",
+    "name": "3-in-1 Professional Blender",
+    "price": 110000,
+    "category": "kitchen-appliances",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/3in1-professional-blender.jpg"
+    ],
+    "short": "Professional 3-in-1 kitchen blender — ₦110,000.",
+    "description": "3in1 professional blender 🏷️110,000. Multi-purpose blender for kitchen preparation.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-toilet-brush",
+    "slug": "toilet-brush",
+    "name": "Toilet Brush",
+    "price": 7500,
+    "category": "bathroom",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/toilet-brush-instagram.jpg"
+    ],
+    "short": "Bathroom toilet brush for everyday cleaning — ₦7,500.",
+    "description": "Toilet brush 🏷️7,500. Practical bathroom cleaning brush.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-toilet-rack",
+    "slug": "toilet-rack",
+    "name": "Toilet Rack",
+    "price": 25000,
+    "category": "bathroom",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/toilet-rack.jpg"
+    ],
+    "short": "Bathroom storage rack for organizing essentials — ₦25,000.",
+    "description": "Toilet rack 🏷️25,000. Storage rack for keeping bathroom essentials organized.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-2tier-fruit-platter",
+    "slug": "2-tier-fruit-platter",
+    "name": "2-Tier Fruit Platter",
+    "price": 17500,
+    "category": "cookware-utensils",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/2tier-fruit-platter.jpg"
+    ],
+    "short": "Two-tier kitchen basket for fruit and vegetables — ₦17,500.",
+    "description": "2tire fruit platter 🏷️17,500. Two-tier basket for organizing and displaying fruit and vegetables.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-storage-container",
+    "slug": "storage-container",
+    "name": "Storage Container",
+    "price": 12000,
+    "category": "home-organisation",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/storage-container.jpg"
+    ],
+    "short": "Measuring storage container for pantry organization — ₦12,000.",
+    "description": "Storage container 🏷️12,000. Practical container for organizing pantry items.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-7in1-storage-container",
+    "slug": "7-in-1-storage-container",
+    "name": "7-in-1 Storage Container",
+    "price": 17000,
+    "category": "home-organisation",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/7in1-storage-container.jpg"
+    ],
+    "short": "Seven-piece kitchen storage container set — ₦17,000.",
+    "description": "7in1 storage container 🏷️17,000. Multi-piece container set for keeping kitchen ingredients organized.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-refrigerator-storage-container",
+    "slug": "refrigerator-storage-container",
+    "name": "Refrigerator Storage Container",
+    "price": 15000,
+    "category": "home-organisation",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/refrigerator-storage-container.jpg"
+    ],
+    "short": "Kitchen container for neat refrigerator storage — ₦15,000.",
+    "description": "Refrigerator storage container 🏷️15,000. Keep refrigerator contents neat and easy to reach.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-rotating-lazy-susan",
+    "slug": "rotating-lazy-susan",
+    "name": "Rotating Lazy Susan",
+    "price": 18000,
+    "category": "home-organisation",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/rotating-lazy-susan.jpg"
+    ],
+    "short": "Rotating organizer for kitchen and home storage — ₦18,000.",
+    "description": "Rotating lazy Susan 🏷️18,000. Turntable organizer for keeping kitchen and household items accessible.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  },
+  {
+    "id": "p-3tier-fruit-platter",
+    "slug": "3-tier-fruit-platter",
+    "name": "3-Tier Fruit Platter",
+    "price": 22500,
+    "category": "cookware-utensils",
+    "featured": false,
+    "bestseller": false,
+    "stock": 10,
+    "images": [
+      "/images/products/3tier-fruit-platter.jpg"
+    ],
+    "short": "Three-tier kitchen basket for fruit, bread and vegetables — ₦22,500.",
+    "description": "3tire fruit platter 🏷️22,500. Three-tier basket for displaying and organizing fruit, bread and vegetables.",
+    "variants": [],
+    "deliveryNote": "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days."
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "storeName": "Fluffy'n'Yummy Mall",
+  "tagline": "Your one-stop store for everything home, kitchen & gifting",
+  "address": "30A Oseni Street, Anthony Village, opposite GTBank, Lagos",
+  "hours": "Mon–Sat 9:00am–7:00pm",
+  "phones": ["08133630563", "08147081420", "09167013447"],
+  "instagram": "fluffy_nyummy_mall",
+  "tiktok": "fluffy_nyummy_mall",
+  "email": "hello@fluffynyummy.com",
+  "lagosDeliveryFee": 3500,
+  "outsideDeliveryFee": 7500,
+  "lagosFreeThreshold": 70000,
+  "outsideFreeThreshold": 150000,
+  "pickupDiscountPercent": 5,
+  "pickupDiscountMin": 2,
+  "pickupDiscountMax": 5,
+  "bankAccounts": [
+    { "bank": "Parallex Bank", "number": "1000250120", "name": "Fluffy'n'Yummy Concepts" },
+    { "bank": "Providus Bank", "number": "1306355850", "name": "Fluffy'n'Yummy Concepts" }
+  ],
+  "antiFraudNote": "Please do not make payment to any account other than the company accounts: Fluffy'n'Yummy Concepts — Parallex Bank 1000250120 or Providus Bank 1306355850. We will never ask you to pay a personal account.",
+  "openingHours": [
+    { "day": "Monday – Friday", "hours": "9:00am – 7:00pm" },
+    { "day": "Saturday", "hours": "9:00am – 7:00pm" }
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "email": "oluwaseyiabayomi305@gmail.com",
+    "passwordHash": "d433196bcc38b2a0dffaef9f0b449a3f:6b4601d8a5675a38aa2bf84cf59aeca69a25058efa1bbcce79c018356ddf477a41445cd41cba4afd1e9857d5ded82dec1b15af9e8551a0f5819478e532d5ed3e",
+    "createdAt": "2026-08-28T01:52:31.687Z"
+  },
+  {
+    "email": "davidsegun044@gmail.com",
+    "passwordHash": "c8c28f2b4df0b1c4b0f1cac6e70f3f73:583d7ec9e39e40f9a7da0f4396f64da274952cc35451af9e163b0c9c053f85f6119177eefb29d925911c1c97f8a6a54dd9ba23649d1d4d25af0e13e9604739b0",
+    "createdAt": "2026-09-01T12:57:39.386Z"
+  }
+]

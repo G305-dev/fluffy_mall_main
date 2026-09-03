@@ -1,0 +1,372 @@
+[
+  {
+    "id": "FNY-20260901-VJPK",
+    "createdAt": "2026-09-01T12:59:17.901Z",
+    "updatedAt": "2026-09-01T13:00:52.840Z",
+    "customer": {
+      "name": "David Segun",
+      "phone": "09169340927",
+      "email": "davidsegun044@gmail.com",
+      "address": "House 54, 2nd Avenue",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-drainer",
+        "name": "2-in-1 Colander & Wash Basin",
+        "unitPrice": 10500,
+        "qty": 13,
+        "image": "/images/products/acrylic-drainer-instagram.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 136500,
+    "deliveryFee": 0,
+    "pickupDiscount": 0,
+    "total": 136500,
+    "status": "paid",
+    "payment": {
+      "method": "paystack",
+      "status": "paid",
+      "amount": 136500,
+      "reference": "PSK-FNY-20260901-VJPK-39602",
+      "paidAt": "2026-09-01T13:00:52.840Z"
+    },
+    "customerNotified": false
+  },
+  {
+    "id": "FNY-20260901-BPO2",
+    "createdAt": "2026-09-01T12:58:17.860Z",
+    "updatedAt": "2026-09-01T12:58:17.860Z",
+    "customer": {
+      "name": "David Segun",
+      "phone": "09169340927",
+      "email": "davidsegun044@gmail.com",
+      "address": "House 54 2nd Avenue",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-drainer",
+        "name": "2-in-1 Colander & Wash Basin",
+        "unitPrice": 10500,
+        "qty": 6,
+        "image": "/images/products/acrylic-drainer-instagram.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 63000,
+    "deliveryFee": 3500,
+    "pickupDiscount": 0,
+    "total": 66500,
+    "status": "pending_payment",
+    "payment": {
+      "method": "paystack",
+      "status": "pending",
+      "amount": 66500,
+      "reference": "FNY-20260901-BPO2"
+    }
+  },
+  {
+    "id": "FNY-20260830-TBP4",
+    "createdAt": "2026-08-30T00:25:56.045Z",
+    "updatedAt": "2026-08-30T00:39:56.724Z",
+    "customer": {
+      "name": "Emmanuel Abayomi",
+      "phone": "08021317661",
+      "email": "oluwaseyiabayomi305@gmail.com",
+      "address": "somolu",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-ladder",
+        "name": "Multipurpose Folding Ladder",
+        "variantName": "3 steps",
+        "unitPrice": 40000,
+        "qty": 1,
+        "image": "/images/products/ladder.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 40000,
+    "deliveryFee": 3500,
+    "pickupDiscount": 0,
+    "total": 43500,
+    "status": "paid",
+    "payment": {
+      "method": "paystack",
+      "status": "paid",
+      "amount": 43500,
+      "reference": "PSK-FNY-20260830-TBP4",
+      "paidAt": "2026-08-30T00:39:56.724Z"
+    },
+    "customerNotified": true
+  },
+  {
+    "id": "FNY-20260830-GIEJ",
+    "createdAt": "2026-08-30T00:21:18.159Z",
+    "updatedAt": "2026-08-30T00:21:18.159Z",
+    "customer": {
+      "name": "Emmanuel Abayomi",
+      "phone": "08021317661",
+      "email": "oluwaseyiabayomi305@gmail.com",
+      "address": "somolu",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-tubs",
+        "name": "Stackable Pantry Storage Tubs",
+        "variantName": "10 kg",
+        "unitPrice": 16500,
+        "qty": 1,
+        "image": "/images/products/pantry-organiser.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 16500,
+    "deliveryFee": 3500,
+    "pickupDiscount": 0,
+    "total": 20000,
+    "status": "pending_payment",
+    "payment": {
+      "method": "paystack",
+      "status": "pending",
+      "amount": 20000,
+      "reference": "FNY-20260830-GIEJ"
+    }
+  },
+  {
+    "id": "FNY-20260828-9THI",
+    "createdAt": "2026-08-28T02:31:26.873Z",
+    "updatedAt": "2026-08-28T02:32:09.853Z",
+    "customer": {
+      "name": "Emmanuel Abayomi",
+      "phone": "08021317661",
+      "email": "oluwaseyiabayomi305@gmail.com",
+      "address": "Jk Randle Lasu",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-ladder",
+        "name": "Multipurpose Folding Ladder",
+        "variantName": "3 steps",
+        "unitPrice": 40000,
+        "qty": 1,
+        "image": "/images/products/ladder.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 40000,
+    "deliveryFee": 3500,
+    "pickupDiscount": 0,
+    "total": 43500,
+    "status": "paid",
+    "payment": {
+      "method": "paystack",
+      "status": "paid",
+      "amount": 43500,
+      "reference": "PSK-FNY-20260828-9THI",
+      "paidAt": "2026-08-28T02:32:09.853Z"
+    },
+    "customerNotified": true
+  },
+  {
+    "id": "FNY-20260828-CAVJ",
+    "createdAt": "2026-08-28T01:54:21.840Z",
+    "updatedAt": "2026-08-28T02:23:43.414Z",
+    "customer": {
+      "name": "Emmanuel Abayomi",
+      "phone": "08021317661",
+      "email": "oluwaseyiabayomi305@gmail.com",
+      "address": "Jk Randle Lasu",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-rice",
+        "name": "Airtight Rice Storage Canisters",
+        "variantName": "15 kg",
+        "unitPrice": 30500,
+        "qty": 1,
+        "image": "/images/products/cereal-dispenser.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 30500,
+    "deliveryFee": 3500,
+    "pickupDiscount": 0,
+    "total": 34000,
+    "status": "paid",
+    "payment": {
+      "method": "bank_transfer",
+      "status": "paid",
+      "amount": 34000,
+      "reference": "FNY-20260828-CAVJ",
+      "paidAt": "2026-08-28T02:23:43.414Z"
+    }
+  },
+  {
+    "id": "FNY-20260828-1GXD",
+    "createdAt": "2026-08-28T01:37:27.762Z",
+    "updatedAt": "2026-08-30T00:08:57.347Z",
+    "customer": {
+      "name": "Emmanuel Abayomi",
+      "phone": "0903456789",
+      "email": "oluwaseyiabayomi305@gmail.com",
+      "address": "Jk Randle Lasu",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-cutlery",
+        "name": "Acrylic Cutlery Organiser",
+        "unitPrice": 10500,
+        "qty": 1,
+        "image": "/images/products/cutlery-organiser.jpg"
+      },
+      {
+        "productId": "p-kettle-5",
+        "name": "5 Litre Whistling Kettle",
+        "unitPrice": 40000,
+        "qty": 1,
+        "image": "/images/products/kettle.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 50500,
+    "deliveryFee": 3500,
+    "pickupDiscount": 0,
+    "total": 54000,
+    "status": "awaiting_pickup",
+    "payment": {
+      "method": "paystack",
+      "status": "paid",
+      "amount": 54000,
+      "reference": "PSK-FNY-20260828-1GXD",
+      "paidAt": "2026-08-28T01:37:54.143Z"
+    }
+  },
+  {
+    "id": "FNY-20260827-QPCO",
+    "createdAt": "2026-08-27T15:51:33.318Z",
+    "updatedAt": "2026-08-27T15:51:33.318Z",
+    "customer": {
+      "name": "Emmanuel Abayomi",
+      "phone": "08021314991",
+      "email": "oluwaseyiabayomi305@gmail.com",
+      "address": "Jk Randle Lasu",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-hamper",
+        "name": "Corporate Kitchen Gift Hamper",
+        "unitPrice": 45000,
+        "qty": 2,
+        "image": "/images/products/gift-hamper.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 90000,
+    "deliveryFee": 0,
+    "pickupDiscount": 0,
+    "total": 90000,
+    "status": "pending_payment",
+    "payment": {
+      "method": "paystack",
+      "status": "pending",
+      "amount": 90000,
+      "reference": "FNY-20260827-QPCO"
+    }
+  },
+  {
+    "id": "FNY-20260827-NWTN",
+    "createdAt": "2026-08-27T15:26:05.501Z",
+    "updatedAt": "2026-08-27T15:26:41.796Z",
+    "customer": {
+      "name": "Emmanuel Abayomi",
+      "phone": "08021317661",
+      "email": "oluwaseyiabayomi305@gmail.com",
+      "address": "Jk Randle Lasu",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-blender",
+        "name": "Heavy-Duty Countertop Blender 2L",
+        "unitPrice": 38500,
+        "qty": 1,
+        "image": "/images/products/blender.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 38500,
+    "deliveryFee": 3500,
+    "pickupDiscount": 0,
+    "total": 42000,
+    "status": "awaiting_verification",
+    "payment": {
+      "method": "bank_transfer",
+      "status": "awaiting_verification",
+      "amount": 42000,
+      "reference": "FNY-20260827-NWTN"
+    }
+  },
+  {
+    "id": "FNY-20260827-9PRR",
+    "createdAt": "2026-08-27T15:23:16.084Z",
+    "updatedAt": "2026-08-27T15:23:54.843Z",
+    "customer": {
+      "name": "Emmanuel Abayomi",
+      "phone": "08021317661",
+      "email": "oluwaseyiabayomi305@gmail.com",
+      "address": "Jk Randle Lasu",
+      "state": "Lagos",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "p-blender",
+        "name": "Heavy-Duty Countertop Blender 2L",
+        "unitPrice": 38500,
+        "qty": 1,
+        "image": "/images/products/blender.jpg"
+      }
+    ],
+    "fulfilment": "delivery",
+    "zone": "lagos",
+    "subtotal": 38500,
+    "deliveryFee": 3500,
+    "pickupDiscount": 0,
+    "total": 42000,
+    "status": "paid",
+    "payment": {
+      "method": "paystack",
+      "status": "paid",
+      "amount": 42000,
+      "reference": "PSK-FNY-20260827-9PRR",
+      "paidAt": "2026-08-27T15:23:54.843Z"
+    }
+  }
+]

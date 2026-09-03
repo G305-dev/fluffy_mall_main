@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: #fff9f2;
+  color: #111111;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+body {
+  font-feature-settings: "ss01" on, "cv11" on;
+}
+
+/* Long product names, order IDs and email addresses must never widen a page. */
+main,
+main > *,
+.min-w-safe {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  /* Prevent iOS Safari from zooming the viewport when a field is focused. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+
+::selection {
+  background: #f97316;
+  color: #fff9f2;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+
+/* ---------- Entrance animations (hero) ---------- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-slow {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.animate-hero {
+  opacity: 0;
+  animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-hero-1 { animation-delay: 0.05s; }
+.animate-hero-2 { animation-delay: 0.18s; }
+.animate-hero-3 { animation-delay: 0.32s; }
+.animate-hero-4 { animation-delay: 0.46s; }
+
+.animate-hero-bg {
+  animation: zoom-slow 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ---------- Scroll-reveal ---------- */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- Hover polish ---------- */
+
+.hover-lift {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-6px);
+}
+
+.btn-pop {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+.btn-pop:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+.btn-pop:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Accessibility: respect reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-hero,
+  .animate-hero-bg {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .hover-lift,
+  .btn-pop {
+    transition: none;
+  }
+}
