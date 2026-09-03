@@ -150,11 +150,6 @@ export default function Footer() {
                 Sign in
               </Link>
             </li>
-            <li>
-              <Link href="/admin" className="text-cream-200/50 transition hover:text-white">
-                Staff login
-              </Link>
-            </li>
           </ul>
         </div>
         <div>

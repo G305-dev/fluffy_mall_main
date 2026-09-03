@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   ADMIN_COOKIE,
-  ADMIN_PASSWORD,
   ADMIN_SESSION_MAX_AGE,
+  isAdminBypassed,
 } from "@/lib/auth";
 import { sessionCookieOptions } from "@/lib/cookies";
 
 export async function POST(req: NextRequest) {
-  const { password } = await req.json();
+  const hasValidCookie =
+    req.cookies.get(ADMIN_COOKIE)?.value === "ok";
 
-  if (password !== ADMIN_PASSWORD) {
-    return NextResponse.json({ error: "Invalid" }, { status: 401 });
+  if (!hasValidCookie && !isAdminBypassed()) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
   }
 
   const res = NextResponse.json({ ok: true });

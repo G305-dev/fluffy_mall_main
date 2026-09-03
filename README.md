@@ -21,9 +21,12 @@ npm run dev -- -H 0.0.0.0 -p 3000
 
 ## Admin
 
+## Admin
+
 - URL: `/admin`
-- Default password: `FluffyAdmin1` (override with `ADMIN_PASSWORD`)
-- Verify bank transfers, update order status, edit prices/stock, change delivery rules
+- Configure the admin password with the `ADMIN_PASSWORD` environment variable.
+- Never store the admin password in this README or commit it to GitHub.
+- Verify bank transfers, update order status, edit prices/stock, and change delivery rules.
 
 ## Customer sign-in
 

@@ -13,6 +13,8 @@ const links = [
 
 export default function AdminNav() {
   const pathname = usePathname();
+  const storeUrl =
+  process.env.NEXT_PUBLIC_APP_URL || "https://fluffynyummystore.com";
   if (pathname === "/admin/login") return null;
 
   const navLinks = links.map((link) => {
@@ -48,9 +50,12 @@ export default function AdminNav() {
             {navLinks}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-3 text-xs sm:text-sm">
-            <Link href="/" className="text-cream-200 hover:text-white">
-              View store
-            </Link>
+           <a
+            href={storeUrl}
+            className="text-cream-200 hover:text-white"
+          >
+           View store
+            </a>
             <form action="/api/admin/logout" method="post">
               <button className="text-cream-200 hover:text-white">Log out</button>
             </form>
