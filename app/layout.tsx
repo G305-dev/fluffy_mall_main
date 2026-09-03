@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Outfit } from "next/font/google";
-// The stylesheet is handled by Next.js at build time; TypeScript has no module declaration for CSS.
-// @ts-expect-error CSS side-effect imports are supported by Next.js.
+
+// @ts-ignore - Next.js processes global CSS imports at build time.
 import "./globals.css";
 
 import { CartProvider } from "@/components/CartProvider";
