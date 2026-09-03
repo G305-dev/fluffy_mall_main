@@ -5,7 +5,7 @@ import { naira } from "@/lib/format";
 import { getProducts } from "@/lib/db";
 import settings from "@/data/settings.json";
 import { MapPin, ShoppingBag, Truck, BadgePercent } from "lucide-react";
-import Image from "next/image";
+import HeroSlideshow from "@/components/HeroSlideshow";
 
 export default async function HomePage() {
   const products = await getProducts();
@@ -15,17 +15,7 @@ export default async function HomePage() {
   return (
     <div>
       <section className="relative min-h-[560px] overflow-hidden sm:min-h-[650px] lg:min-h-[680px]">
-        <div className="absolute inset-0 animate-hero-bg">
-          <Image
-            src="/images/hero.jpg"
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-[center_28%]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-cocoa-900/80 via-cocoa-900/50 to-cocoa-900/20" />
-        </div>
+        <HeroSlideshow />
         <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <p className="animate-hero animate-hero-1 text-[10px] uppercase leading-relaxed tracking-[0.18em] sm:text-xs sm:tracking-[0.28em] text-gold-400">
             Lagos · @fluffy_nyummy_mall
