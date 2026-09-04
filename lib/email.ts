@@ -46,12 +46,13 @@ async function sendResendEmail({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from,
-        to: [to],
-        subject,
-        text,
-        html,
-      }),
+  from,
+  to: [to],
+  reply_to: process.env.RESEND_REPLY_TO_EMAIL || from,
+  subject,
+  text,
+  html,
+}),
     });
 
     if (!response.ok) {
