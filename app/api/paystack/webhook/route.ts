@@ -18,7 +18,45 @@ export async function POST(req: NextRequest) {
     const ref = String(event.data?.reference || "");
     const orderId = ref.replace(/^PSK-/, "").replace(/-\d+$/, "");
     const order = await getOrder(orderId);
-    if (order && event.event === "charge.success" && order.payment.status !== "paid") {
+    if (order && event.event === "charge.success") {
+  if (order.payment.status !== "paid") {
+    order.payment.status = "paid";
+    order.payment.paidAt = new Date().toISOString();
+    order.payment.reference = ref;
+    order.status = "paid";
+    order.updatedAt = new Date().toISOString();
+
+    await saveOrder(order);
+  }
+
+  if (!order.customerNotified) {
+    order.customerNotified = await sendPaymentEmail(
+      order,
+      "success"
+    );
+
+    await saveOrder(order);
+  }
+} else if (
+  order &&
+  event.event === "charge.failed" &&
+  order.payment.status !== "paid"
+) {
+  order.payment.status = "failed";
+  order.payment.reference = ref;
+  order.updatedAt = new Date().toISOString();
+
+  await saveOrder(order);
+
+  if (!order.customerNotified) {
+    order.customerNotified = await sendPaymentEmail(
+      order,
+      "failure"
+    );
+
+    await saveOrder(order);
+  }
+}
   }
   return NextResponse.json({ received: true });
 }
