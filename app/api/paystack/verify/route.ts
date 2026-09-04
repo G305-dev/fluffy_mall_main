@@ -40,27 +40,39 @@ export async function POST(req: NextRequest) {
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
   if (tx.status === "success") {
-    // Amount is returned in kobo; make sure it covers the order total.
-    if (Number(tx.amount) < order.total * 100) {
-      return NextResponse.json(
-        { error: "Paid amount does not match the order total." },
-        { status: 400 }
-      );
-    }
-    if (order.payment.status !== "paid") {
-      order.payment.status = "paid";
-      order.payment.paidAt = new Date().toISOString();
-      order.payment.reference = tx.reference;
-      order.status = "paid";
-      order.updatedAt = new Date().toISOString();
-      await saveOrder(order);
-      if (!order.customerNotified) {
-        order.customerNotified = await sendPaymentEmail(order, "success");
-        await saveOrder(order);
-      }
-    }
-    return NextResponse.json({ ok: true, order });
+  // Amount is returned in kobo; make sure it covers the order total.
+  if (Number(tx.amount) < order.total * 100) {
+    return NextResponse.json(
+      { error: "Paid amount does not match the order total." },
+      { status: 400 }
+    );
   }
+
+  if (order.payment.status !== "paid") {
+    order.payment.status = "paid";
+    order.payment.paidAt = new Date().toISOString();
+    order.payment.reference = tx.reference;
+    order.status = "paid";
+    order.updatedAt = new Date().toISOString();
+
+    await saveOrder(order);
+  }
+
+  /*
+   * This also retries the email if payment was already marked paid
+   * but the previous email attempt failed.
+   */
+  if (!order.customerNotified) {
+    order.customerNotified = await sendPaymentEmail(
+      order,
+      "success"
+    );
+
+    await saveOrder(order);
+  }
+
+  return NextResponse.json({ ok: true, order });
+}
 
   order.payment.status = "failed";
   order.payment.reference = tx.reference;
