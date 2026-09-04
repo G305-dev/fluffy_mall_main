@@ -162,7 +162,7 @@ export default function PaystackPage() {
                 onClick={() => router.push(`/order/${order.id}`)}
                 className="rounded-full py-3 text-sm ring-1 ring-stone-200"
               >
-                Pay later — view order
+                View order
               </button>
             </div>
           </>
