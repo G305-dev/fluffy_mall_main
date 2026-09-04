@@ -98,15 +98,12 @@ export default async function HomePage() {
           <div className="reveal hover-lift rounded-3xl bg-cocoa-800 p-6 text-cream-50">
             <Truck className="text-gold-400" />
             <h3 className="mt-4 font-display text-2xl">Nationwide delivery</h3>
-            <p className="mt-2 text-sm text-cream-300">
-              Lagos fee {naira(settings.lagosDeliveryFee)}, outside Lagos {naira(settings.outsideDeliveryFee)}. Free at {naira(settings.lagosFreeThreshold)} / {naira(settings.outsideFreeThreshold)}.
-            </p>
           </div>
           <div className="reveal hover-lift rounded-3xl bg-terracotta-500 p-6 text-white" data-reveal-delay={120}>
             <BadgePercent />
-            <h3 className="mt-4 font-display text-2xl">Pickup &amp; save</h3>
+            <h3 className="mt-4 font-display text-2xl">Pickup from store</h3>
             <p className="mt-2 text-sm text-white/90">
-              Collect at {settings.address} and enjoy a {settings.pickupDiscountPercent}% walk-in discount (2%–5% as in store).
+              Collect at {settings.address}.
             </p>
           </div>
           <div className="reveal hover-lift rounded-3xl bg-cream-200 p-6 text-cocoa-800" data-reveal-delay={240}>
