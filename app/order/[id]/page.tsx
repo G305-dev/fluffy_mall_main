@@ -53,6 +53,15 @@ export default function OrderPage() {
     );
   }
   if (!order) return <p className="p-10 text-center">Loading…</p>;
+  const paymentUrl =
+  order.payment.method === "bank_transfer"
+    ? `/pay/bank/${order.id}`
+    : `/pay/paystack/${order.id}`;
+
+const paymentMessage =
+  order.payment.method === "bank_transfer"
+    ? "Complete your bank transfer below. Your order will be confirmed after we verify your payment."
+    : "Your payment has not been completed yet. Continue to Paystack to complete your payment.";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
@@ -68,10 +77,17 @@ export default function OrderPage() {
         </div>
       )}
       {order.payment.status === "pending" && (
-        <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
-          We are waiting for Paystack to confirm your payment. This page will update automatically.
-        </div>
-      )}
+  <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
+    <p>{paymentMessage}</p>
+
+    <Link
+      href={paymentUrl}
+      className="mt-4 inline-flex rounded-full bg-terracotta-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-terracotta-600"
+    >
+      Pay now
+    </Link>
+  </div>
+)}
       <p className="mt-4 text-sm text-cocoa-700">
         Save this order ID. Use it with your WhatsApp number to track status anytime.
       </p>
