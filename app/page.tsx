@@ -47,10 +47,9 @@ export default async function HomePage() {
         <div className="animate-marquee flex w-max gap-10 whitespace-nowrap py-2.5 text-sm">
           {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="flex gap-10 px-6">
-              <span>Free Lagos delivery from {naira(settings.lagosFreeThreshold)}</span>
-              <span>Free nationwide from {naira(settings.outsideFreeThreshold)}</span>
-              <span>2%–5% off for in-store pickup</span>
+              <span>Home, kitchen &amp; gifting essentials</span>
               <span>Paystack · Bank transfer · WhatsApp</span>
+               <span>Shop online or visit our Lagos store</span>
               <span>30A Oseni Street, Anthony Village</span>
             </div>
           ))}
