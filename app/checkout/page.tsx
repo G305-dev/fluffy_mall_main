@@ -459,10 +459,6 @@ export default function CheckoutPage() {
                     }`}
                   >
                     <p className="font-medium">Nationwide delivery</p>
-                    <p className="mt-1 text-xs opacity-80">
-                      {zone === "lagos" ? "Lagos" : "Outside Lagos"} · free from{" "}
-                      {naira(zone === "lagos" ? settings.lagosFreeThreshold : settings.outsideFreeThreshold)}
-                    </p>
                   </button>
                   <button
                     type="button"
@@ -471,7 +467,7 @@ export default function CheckoutPage() {
                       fulfilment === "pickup" ? "bg-cocoa-800 text-cream-50 ring-cocoa-800" : "ring-cream-300"
                     }`}
                   >
-                    <p className="font-medium">Pickup in store · {settings.pickupDiscountPercent}% off</p>
+                    <p className="font-medium">Pickup in store </p>
                     <p className="mt-1 text-xs opacity-80">{settings.address}</p>
                   </button>
                 </div>
