@@ -158,10 +158,6 @@ export default function Footer() {
             <Phone size={15} className="mt-0.5 shrink-0 text-gold-400" />
             WhatsApp {settings.phones.join(" · ")}
           </p>
-          <p className="mt-3 text-sm text-cream-200">
-            Free delivery from {naira(settings.lagosFreeThreshold)} in Lagos and{" "}
-            {naira(settings.outsideFreeThreshold)} outside Lagos.
-          </p>
           <p className="mt-3 text-xs leading-relaxed text-cream-300">{settings.antiFraudNote}</p>
         </div>
       </div>
