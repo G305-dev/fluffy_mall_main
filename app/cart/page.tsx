@@ -109,6 +109,12 @@ export default function CartPage() {
         >
           Send cart on WhatsApp
         </a>
+        <Link
+  href="/shop"
+  className="mt-3 block rounded-full border border-cream-300 py-3 text-center text-sm font-semibold text-cocoa-800 transition hover:bg-cream-100"
+>
+  Continue shopping
+</Link>
       </aside>
     </div>
   );
