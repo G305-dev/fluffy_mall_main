@@ -1,5 +1,6 @@
 "use client";
 
+import { useCart } from "@/components/CartProvider";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Order } from "@/lib/types";
@@ -11,6 +12,7 @@ import { Copy, Check } from "lucide-react";
 export default function BankPayPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { clear } = useCart();
   const [order, setOrder] = useState<Order | null>(null);
   const [copied, setCopied] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,12 +34,19 @@ export default function BankPayPage() {
   async function confirm() {
     if (!order) return;
     setBusy(true);
-    await fetch(`/api/orders/${order.id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "mark_transferred" }),
-    });
-    router.push(`/order/${order.id}`);
+    const response = await fetch(`/api/orders/${order.id}`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ action: "mark_transferred" }),
+});
+
+if (!response.ok) {
+  setBusy(false);
+  return;
+}
+
+clear();
+router.push(`/order/${order.id}`);
   }
 
   return (
