@@ -29,7 +29,7 @@ function StepBadge({ n, active, done }: { n: number; active: boolean; done: bool
 }
 
 export default function CheckoutPage() {
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal } = useCart();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -198,7 +198,6 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not place order");
-      clear();
       if (method === "paystack") {
         router.push(`/pay/paystack/${data.order.id}`);
       } else {
