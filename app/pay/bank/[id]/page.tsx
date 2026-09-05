@@ -75,16 +75,28 @@ router.push(`/order/${order.id}`);
       <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
         {settings.antiFraudNote}
       </p>
-      <p className="mt-4 text-sm">
-        Narration: <strong>{order.id}</strong>
-      </p>
-      <button
-        onClick={confirm}
-        disabled={busy}
-        className="mt-6 w-full rounded-full bg-cocoa-800 py-3 text-sm font-semibold text-cream-50"
-      >
-        I have paid — notify the store
-      </button>
+      <div className="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+  <p>
+    Narration: <strong>{order.id}</strong>
+  </p>
+
+  <button
+    type="button"
+    onClick={() => router.push("/cart")}
+    disabled={busy}
+    className="inline-flex shrink-0 items-center justify-center rounded-full border border-terracotta-300 px-5 py-2.5 text-sm font-semibold text-terracotta-700 transition hover:bg-terracotta-50 disabled:opacity-60"
+  >
+    Modify cart
+  </button>
+</div>
+
+<button
+  onClick={confirm}
+  disabled={busy}
+  className="mt-6 w-full rounded-full bg-cocoa-800 py-3 text-sm font-semibold text-cream-50"
+>
+  I have paid — notify the store
+</button>
       <a
         href={orderWaHref(order)}
         target="_blank"
