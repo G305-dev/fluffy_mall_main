@@ -1,5 +1,6 @@
 "use client";
 
+import { useCart } from "@/components/CartProvider";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Order } from "@/lib/types";
@@ -18,6 +19,7 @@ declare global {
 export default function PaystackPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { clear } = useCart();
   const [order, setOrder] = useState<Order | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -99,8 +101,12 @@ export default function PaystackPage() {
         })
           .then(async (r) => {
             const d = await r.json();
-            if (!r.ok) throw new Error(d.error || "Verification failed");
-            router.push(`/order/${order.id}`);
+            if (!r.ok) {
+  throw new Error(d.error || "Verification failed");
+}
+
+clear();
+router.push(`/order/${order.id}`);
           })
           .catch((err) => {
             setPayError(
@@ -128,7 +134,8 @@ export default function PaystackPage() {
         reference: `PSK-${order.id}`,
       }),
     });
-    router.push(`/order/${order.id}`);
+    clear();
+router.push(`/order/${order.id}`);
   }
 
   return (
