@@ -222,17 +222,29 @@ export default function Header() {
               <Link href="/shop" className="rounded-xl px-3 py-3 font-medium text-cocoa-800 hover:bg-cream-100">
                 All products
               </Link>
-              <Link href="/track" className="rounded-xl px-3 py-3 text-cocoa-800 hover:bg-cream-100">
-                Track order
-              </Link>
-              {authenticated ? (
-                <button
-                  onClick={logout}
-                  className="flex items-center gap-2 rounded-xl px-3 py-3 text-left text-cocoa-800 hover:bg-cream-100"
-                >
-                  <LogOut size={17} />
-                  Logout
-                </button>
+              <Link
+  href="/track"
+  className="rounded-xl px-3 py-3 text-cocoa-800 hover:bg-cream-100"
+>
+  Track order
+</Link>
+
+<Link
+  href="/account/orders"
+  className="rounded-xl px-3 py-3 text-cocoa-800 hover:bg-cream-100"
+>
+  Order history
+</Link>
+
+{authenticated ? (
+  <button
+    onClick={logout}
+    className="flex items-center gap-2 rounded-xl px-3 py-3 text-left text-cocoa-800 hover:bg-cream-100"
+  >
+    <LogOut size={17} />
+    Logout
+  </button>
+) : (
               ) : (
                 <Link href="/login" className="flex items-center gap-2 rounded-xl px-3 py-3 text-cocoa-800 hover:bg-cream-100">
                   <LogIn size={17} />
