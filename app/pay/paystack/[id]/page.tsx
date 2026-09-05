@@ -158,12 +158,12 @@ export default function PaystackPage() {
                 {busy ? "Waiting for Paystack…" : scriptReady ? "Pay with card / transfer / USSD" : "Loading Paystack…"}
               </button>
               <button
-                disabled={busy}
-                onClick={() => router.push(`/order/${order.id}`)}
-                className="rounded-full py-3 text-sm ring-1 ring-stone-200"
-              >
-                View order
-              </button>
+  disabled={busy}
+  onClick={() => router.push("/cart")}
+  className="rounded-full py-3 text-sm ring-1 ring-stone-200"
+>
+  Modify cart
+</button>
             </div>
           </>
         ) : (
