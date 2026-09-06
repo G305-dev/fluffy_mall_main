@@ -74,25 +74,62 @@ export default function ProductView({ product }: { product: Product }) {
         )}
 
         {product.variants.length > 0 && (
-          <div className="mt-6">
-            <p className="text-sm font-medium">Choose option</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {product.variants.map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => setVariantId(v.id)}
-                  className={`rounded-full px-4 py-2 text-sm ring-1 ${
-                    variantId === v.id
-                      ? "bg-cocoa-800 text-cream-50 ring-cocoa-800"
-                      : "bg-white ring-cream-300"
-                  }`}
-                >
-                  {v.name} · {naira(v.price)}
-                </button>
-              ))}
+         
+  <div className="mt-6">
+    <p className="text-sm font-medium">
+      Choose size and color
+    </p>
+
+    <div className="mt-2 flex flex-wrap gap-2">
+      {product.variants.map((variantOption) => {
+        const optionLabel =
+          [
+            variantOption.size
+              ? `Size: ${variantOption.size}`
+              : "",
+            variantOption.color
+              ? `Color: ${variantOption.color}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · ") || variantOption.name;
+
+        const isSelected =
+          variantId === variantOption.id;
+
+        return (
+          <button
+            key={variantOption.id}
+            type="button"
+            disabled={variantOption.stock <= 0}
+            onClick={() =>
+              setVariantId(variantOption.id)
+            }
+            className={`rounded-full px-4 py-2 text-left text-sm ring-1 ${
+              isSelected
+                ? "bg-cocoa-800 text-cream-50 ring-cocoa-800"
+                : variantOption.stock <= 0
+                ? "cursor-not-allowed bg-stone-100 text-stone-400 ring-stone-200"
+                : "bg-white ring-cream-300"
+            }`}
+          >
+            <span className="block">
+              {optionLabel}
+            </span>
+
+            <span className="block text-xs opacity-80">
+              {naira(variantOption.price)} ·{" "}
+              {variantOption.stock > 0
+                ? `${variantOption.stock} available`
+                : "Out of stock"}
+            </span>
+          </button>
+            );
+            })}
+             </div>
             </div>
-          </div>
-        )}
+      )}
+        
 
         <p className="mt-5 rounded-2xl bg-cream-100 p-4 text-sm leading-relaxed text-cocoa-700">
           {product.deliveryNote}

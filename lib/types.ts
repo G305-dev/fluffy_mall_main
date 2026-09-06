@@ -9,6 +9,8 @@ export type CategorySlug =
 export type ProductVariant = {
   id: string;
   name: string;
+  size?: string;
+  color?: string;
   price: number;
   stock: number;
 };
