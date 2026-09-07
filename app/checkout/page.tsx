@@ -257,7 +257,7 @@ export default function CheckoutPage() {
   /* ---------- Gate: sign in OR continue as guest (Adikastore pattern) ---------- */
   if (!gatePassed) {
     return (
-      <div className="mx-auto grid max-w-6xl gap-7 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:px-8">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <main className="min-w-0">
           <h1 className="font-display text-3xl sm:text-4xl text-cocoa-800">Ready to checkout?</h1>
           <p className="mt-3 max-w-xl text-base leading-relaxed text-cocoa-700/70">
@@ -351,7 +351,7 @@ export default function CheckoutPage() {
           </div>
           {signInError && <p className="mt-4 text-sm text-rose-700">{signInError}</p>}
         </main>
-        {summary()}
+        <div className="mt-7">{summary("top")}</div>
       </div>
     );
   }
@@ -359,7 +359,6 @@ export default function CheckoutPage() {
   /* ---------- Stepped checkout: 1 Contact → 2 Delivery → 3 Payment ---------- */
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      {summary("top")}
       <main className="mt-7 min-w-0 space-y-4 sm:mt-10">
         <h1 className="font-display text-3xl sm:text-4xl text-cocoa-800">Checkout</h1>
         <p className="break-all text-sm text-cocoa-700/70">
@@ -466,6 +465,7 @@ export default function CheckoutPage() {
                       fulfilment === "pickup" ? "bg-cocoa-800 text-cream-50 ring-cocoa-800" : "ring-cream-300"
                     }`}
                   >
+
                     <p className="font-medium">Pickup in store </p>
                     <p className="mt-1 text-xs opacity-80">{settings.address}</p>
                   </button>
@@ -600,6 +600,7 @@ export default function CheckoutPage() {
           )}
         </section>
       </main>
+      <div className="mt-7">{summary("top")}</div>
     </div>
   );
 }

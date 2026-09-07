@@ -57,7 +57,7 @@ export default async function AdminOrderDetail({ params }: { params: { id: strin
       </p>
       <OrderActions id={order.id} status={order.status} paymentStatus={order.payment.status} />
       <a
-        href={orderWaHref(order)}
+        href={orderWaHref(order, order.customer.phone)}
         target="_blank"
         rel="noreferrer"
         className="mt-4 inline-block text-sm text-[#128C46]"

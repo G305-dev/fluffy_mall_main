@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import StoreFooter from "@/components/StoreFooter";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import Reveal from "@/components/Reveal";
+import { WishlistProvider } from "@/components/WishlistProvider";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -82,15 +83,17 @@ export default function RootLayout({
         className={`${fraunces.variable} ${outfit.variable} font-sans antialiased`}
       >
         <CartProvider>
-          <Header />
+          <WishlistProvider>
+            <Header />
 
-          <main className="min-h-[70vh]">{children}</main>
+            <main className="min-h-[70vh]">{children}</main>
 
-          <StoreFooter />
-          <WhatsAppFloat />
+            <StoreFooter />
+            <WhatsAppFloat />
 
-          {/* Current CSS scroll-reveal animation */}
-          <Reveal />
+            {/* Current CSS scroll-reveal animation */}
+            <Reveal />
+          </WishlistProvider>
         </CartProvider>
       </body>
     </html>

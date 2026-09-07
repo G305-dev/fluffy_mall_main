@@ -17,6 +17,7 @@ type FormState = {
   name: string;
   price: string;
   category: CategorySlug;
+  subcategory: string;
   stock: string;
   short: string;
   description: string;
@@ -40,6 +41,7 @@ function createEmptyForm(): FormState {
     name: "",
     price: "",
     category: CATEGORIES[0].slug as CategorySlug,
+    subcategory: CATEGORIES[0].subcategories[0] || "",
     stock: "",
     short: "",
     description: "",
@@ -216,6 +218,7 @@ export default function NewProductForm() {
             name: form.name.trim(),
             price,
             category: form.category,
+            subcategory: form.subcategory,
             stock: Number(form.stock || 0),
             short: form.short.trim(),
             description: form.description.trim(),
@@ -312,12 +315,16 @@ export default function NewProductForm() {
           Category
           <select
             value={form.category}
-            onChange={(event) =>
+            onChange={(event) => {
+              const category = CATEGORIES.find(
+                (item) => item.slug === event.target.value
+              );
               setForm({
                 ...form,
                 category: event.target.value as CategorySlug,
-              })
-            }
+                subcategory: category?.subcategories[0] || "",
+              });
+            }}
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           >
             {CATEGORIES.map((category) => (
@@ -329,6 +336,28 @@ export default function NewProductForm() {
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="text-sm">
+          Subcategory / product type
+          <select
+            value={form.subcategory}
+            onChange={(event) =>
+              setForm({ ...form, subcategory: event.target.value })
+            }
+            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+          >
+            {(CATEGORIES.find((item) => item.slug === form.category)?.subcategories || []).map(
+              (subcategory) => (
+                <option key={subcategory} value={subcategory}>
+                  {subcategory}
+                </option>
+              )
+            )}
+          </select>
+          <span className="mt-1 block text-xs text-stone-500">
+            Options change automatically when the main category changes.
+          </span>
         </label>
 
         <label className="text-sm">

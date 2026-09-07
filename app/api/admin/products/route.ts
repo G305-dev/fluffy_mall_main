@@ -183,6 +183,7 @@ export async function POST(req: NextRequest) {
     name,
     price,
     category,
+    subcategory: String(body.subcategory || "").trim() || undefined,
     featured: Boolean(body.featured),
     bestseller: Boolean(body.bestseller),
     stock: Math.max(0, Number(body.stock) || 0),

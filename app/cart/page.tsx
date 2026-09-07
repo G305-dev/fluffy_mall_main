@@ -90,7 +90,7 @@ export default function CartPage() {
         <p className="text-sm text-cocoa-700/70">Subtotal</p>
         <p className="font-display text-3xl text-cocoa-800">{naira(subtotal)}</p>
         <p className="mt-2 text-xs text-cocoa-700/70">
-          Delivery or pickup discount is calculated at checkout. Free Lagos delivery from ₦70,000.
+          Delivery and  pickup options are shown at checkout.
         </p>
         <Link
           href="/checkout"

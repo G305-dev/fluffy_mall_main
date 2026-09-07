@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Home,
+  Heart,
   LogIn,
   LogOut,
   Menu,
@@ -16,9 +17,11 @@ import {
 import { CATEGORIES } from "@/lib/categories";
 import { useCart } from "./CartProvider";
 import { usePathname, useRouter } from "next/navigation";
+import { useWishlist } from "./WishlistProvider";
 
 export default function Header() {
   const { count } = useCart();
+  const { count: wishlistCount } = useWishlist();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -176,6 +179,19 @@ export default function Header() {
             className="hidden rounded-full px-3 py-2 text-sm text-cocoa-700 hover:bg-cream-100 lg:inline"
           >
             Orders
+          </Link>
+
+          <Link
+            href="/wishlist"
+            className="relative rounded-full p-2 text-cocoa-800 hover:bg-cream-100"
+            aria-label="Wishlist"
+          >
+            <Heart size={22} />
+            {wishlistCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-terracotta-500 px-1 text-[10px] font-semibold text-white">
+                {wishlistCount}
+              </span>
+            )}
           </Link>
 
           {authenticated ? (

@@ -16,6 +16,28 @@ export function quoteDelivery(opts: {
   zone: Zone;
   subtotal: number;
 }) {
+
+
+  const { settings, fulfilment, zone, subtotal } = opts;
+  if (fulfilment === "pickup") {
+  return {
+    deliveryFee: 0,
+    pickupDiscount: 0,
+    freeDelivery: false,
+    total: subtotal,
+  };
+}
+  const fee =
+    zone === "lagos"
+      ? settings.lagosDeliveryFee
+      : settings.outsideDeliveryFee;
+  const threshold =
+    zone === "lagos"
+      ? settings.lagosFreeThreshold
+      : settings.outsideFreeThreshold;
+  const free = subtotal >= threshold;
+  const deliveryFee = free ? 0 : fee;
+
   return {
     deliveryFee: 0,
     pickupDiscount: 0,

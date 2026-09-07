@@ -62,6 +62,10 @@ const paymentMessage =
   order.payment.method === "bank_transfer"
     ? "Complete your bank transfer below. Your order will be confirmed after we verify your payment."
     : "Your payment has not been completed yet. Continue to Paystack to complete your payment.";
+  const paymentConfirmation =
+    order.payment.method === "bank_transfer"
+      ? "Your bank transfer has been verified and your order has been confirmed."
+      : "Your Paystack payment was successful and your order has been confirmed.";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
@@ -73,7 +77,7 @@ const paymentMessage =
       {order.payment.status === "paid" && (
         <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-200">
           <p className="font-semibold">Payment confirmed</p>
-          <p className="mt-1">Your Paystack payment was successful and your order has been confirmed.</p>
+          <p className="mt-1">{paymentConfirmation}</p>
         </div>
       )}
       {order.payment.status === "pending" && (

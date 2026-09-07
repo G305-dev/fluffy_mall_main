@@ -22,6 +22,7 @@ export type Product = {
   price: number;
   compareAt?: number;
   category: CategorySlug;
+  subcategory?: string;
   featured: boolean;
   bestseller: boolean;
   stock: number;
