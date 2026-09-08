@@ -17,7 +17,7 @@ Admin → Settings. Boundary tests: ₦69,999 (Lagos pays fee), ₦70,000 (Lagos
 
 ## Payments
 
-- **Paystack**: card, transfer, USSD. When live keys are set (`PAYSTACK_SECRET_KEY`, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`), point the Paystack webhook to `https://fluffynyummy.com/api/paystack/webhook`.
+- **Paystack**: card, transfer, USSD. When live keys are set (`PAYSTACK_SECRET_KEY`, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`), point the Paystack webhook to https://fluffynyummystore.com/api/paystack/webhook.
 - **Manual transfer**: customer sees company accounts and taps “I have paid”. You confirm in admin. Never accept a personal account.
 
 ## WhatsApp
