@@ -22,7 +22,7 @@ Admin → Settings. Boundary tests: ₦69,999 (Lagos pays fee), ₦70,000 (Lagos
 
 ## WhatsApp
 
-Every product, cart and confirmation page has a pre-filled message to 08133630563. Keep the Instagram bio link pointing at fluffynyummy.com **and** WhatsApp.
+Every product, cart and confirmation page has a pre-filled message to 08133630563. Keep the Instagram bio link pointing at fluffynyummystore.com **and** WhatsApp.
 
 ## Do not announce on Instagram until
 
