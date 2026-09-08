@@ -6,11 +6,15 @@ import { CATEGORIES } from "@/lib/categories";
 import { CategorySlug } from "@/lib/types";
 import { Plus, X } from "lucide-react";
 
+const MAX_VARIANTS = 3;
+
 type VariantDraft = {
   size: string;
   color: string;
   price: string;
   stock: string;
+  file: File | null;
+  preview: string | null;
 };
 
 type FormState = {
@@ -39,6 +43,8 @@ function createEmptyVariant(): VariantDraft {
     color: "",
     price: "",
     stock: "",
+    file: null,
+    preview: null,
   };
 }
 
@@ -114,9 +120,32 @@ export default function NewProductForm() {
     );
   }
 
+  function onVariantFileChange(
+    index: number,
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const selected = event.target.files?.[0] ?? null;
+
+    setForm((current) => ({
+      ...current,
+      variants: current.variants.map(
+        (variant, variantIndex) =>
+          variantIndex === index
+            ? {
+                ...variant,
+                file: selected,
+                preview: selected
+                  ? URL.createObjectURL(selected)
+                  : null,
+              }
+            : variant
+      ),
+    }));
+  }
+
   function updateVariant(
     index: number,
-    field: keyof VariantDraft,
+    field: "size" | "color" | "price" | "stock",
     value: string
   ) {
     setForm((current) => ({
@@ -131,13 +160,19 @@ export default function NewProductForm() {
   }
 
   function addVariant() {
-    setForm((current) => ({
-      ...current,
-      variants: [
-        ...current.variants,
-        createEmptyVariant(),
-      ],
-    }));
+    setForm((current) => {
+      if (current.variants.length >= MAX_VARIANTS) {
+        return current;
+      }
+
+      return {
+        ...current,
+        variants: [
+          ...current.variants,
+          createEmptyVariant(),
+        ],
+      };
+    });
   }
 
   function removeVariant(index: number) {
@@ -154,7 +189,7 @@ export default function NewProductForm() {
     setError(null);
 
     if (!file) {
-      setError("Please choose a product image.");
+      setError("Please choose the main product image.");
       return;
     }
 
@@ -170,11 +205,12 @@ export default function NewProductForm() {
       return;
     }
 
-    const variants: Array<{
+    const variantInputs: Array<{
       size: string;
       color: string;
       price: number;
       stock: number;
+      file: File;
     }> = [];
 
     for (
@@ -191,10 +227,10 @@ export default function NewProductForm() {
         size ||
           color ||
           draft.price.trim() ||
-          draft.stock.trim()
+          draft.stock.trim() ||
+          draft.file
       );
 
-      // Ignore completely empty rows.
       if (!hasAnyValue) {
         continue;
       }
@@ -202,6 +238,13 @@ export default function NewProductForm() {
       if (!size && !color) {
         setError(
           `Variant ${index + 1} needs a size or a color.`
+        );
+        return;
+      }
+
+      if (!draft.file) {
+        setError(
+          `Please choose an image for variant ${index + 1}.`
         );
         return;
       }
@@ -231,45 +274,110 @@ export default function NewProductForm() {
         return;
       }
 
-      variants.push({
+      variantInputs.push({
         size,
         color,
         price: variantPrice,
         stock: variantStock,
+        file: draft.file,
       });
     }
 
     setBusy(true);
 
     try {
-      const uploadData = new FormData();
-      uploadData.append("file", file);
+      /*
+       * Upload the main product image.
+       */
+      const mainUploadData = new FormData();
+      mainUploadData.append("file", file);
 
-      const uploadResponse = await fetch(
+      const mainUploadResponse = await fetch(
         "/api/admin/upload",
         {
           method: "POST",
-          body: uploadData,
+          body: mainUploadData,
         }
       );
 
-      const uploadJson = await readApiResponse(
-        uploadResponse,
-        "Image upload"
+      const mainUploadJson = await readApiResponse(
+        mainUploadResponse,
+        "Main image upload"
       );
 
-      if (!uploadResponse.ok) {
+      if (!mainUploadResponse.ok) {
         throw new Error(
-          uploadJson.error || "Image upload failed."
+          mainUploadJson.error ||
+            "Main image upload failed."
         );
       }
 
-      const imagePath = uploadJson.path;
-
-      if (!imagePath) {
+      if (!mainUploadJson.path) {
         throw new Error(
-          "Image upload did not return an image path."
+          "Main image upload did not return an image path."
         );
+      }
+
+      /*
+       * Upload each variant image separately.
+       */
+      const variants: Array<{
+        size: string;
+        color: string;
+        price: number;
+        stock: number;
+        image: string;
+      }> = [];
+
+      for (
+        let index = 0;
+        index < variantInputs.length;
+        index++
+      ) {
+        const variantInput = variantInputs[index];
+        const variantUploadData = new FormData();
+
+        variantUploadData.append(
+          "file",
+          variantInput.file
+        );
+
+        const variantUploadResponse = await fetch(
+          "/api/admin/upload",
+          {
+            method: "POST",
+            body: variantUploadData,
+          }
+        );
+
+        const variantUploadJson =
+          await readApiResponse(
+            variantUploadResponse,
+            `Variant ${index + 1} image upload`
+          );
+
+        if (!variantUploadResponse.ok) {
+          throw new Error(
+            variantUploadJson.error ||
+              `Variant ${index + 1} image upload failed.`
+          );
+        }
+
+        if (!variantUploadJson.path) {
+          throw new Error(
+            `Variant ${
+              index + 1
+            } image upload did not return an image path.`
+          );
+        }
+
+        variants.push({
+          size: variantInput.size,
+          color: variantInput.color,
+          price: variantInput.price,
+          stock: variantInput.stock,
+          image: variantUploadJson.path,
+        });
       }
 
       const createResponse = await fetch(
@@ -291,7 +399,7 @@ export default function NewProductForm() {
             featured: form.featured,
             bestseller: form.bestseller,
             variants,
-            image: imagePath,
+            image: mainUploadJson.path,
           }),
         }
       );
@@ -460,7 +568,7 @@ export default function NewProductForm() {
           />
 
           <span className="mt-1 block text-xs text-stone-500">
-            Used when the product has no variants.
+            Used for the main product image.
           </span>
         </label>
 
@@ -478,10 +586,6 @@ export default function NewProductForm() {
             }
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           />
-
-          <span className="mt-1 block text-xs text-stone-500">
-            Variant stock is used when variants are added.
-          </span>
         </label>
 
         <div className="rounded-2xl border border-cream-200 bg-cream-50 p-4 sm:col-span-2">
@@ -492,16 +596,18 @@ export default function NewProductForm() {
               </h3>
 
               <p className="mt-1 text-xs text-stone-500">
-                Add one row for each size and color
-                combination. Each row can have its own price
-                and stock.
+                Add up to 3 variants. Together with the main
+                product, the maximum is 4 images.
               </p>
             </div>
 
             <button
               type="button"
               onClick={addVariant}
-              className="inline-flex items-center gap-1 rounded-full bg-cocoa-800 px-3 py-2 text-xs font-semibold text-cream-50"
+              disabled={
+                form.variants.length >= MAX_VARIANTS
+              }
+              className="inline-flex items-center gap-1 rounded-full bg-cocoa-800 px-3 py-2 text-xs font-semibold text-cream-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus size={14} />
               Add variant
@@ -522,7 +628,8 @@ export default function NewProductForm() {
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wider text-gold-600">
-                      Variant {index + 1}
+                      Variant {index + 1} of{" "}
+                      {MAX_VARIANTS}
                     </p>
 
                     <button
@@ -537,7 +644,7 @@ export default function NewProductForm() {
                     </button>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                     <label className="text-sm">
                       Size
                       <input
@@ -603,6 +710,32 @@ export default function NewProductForm() {
                         className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
                       />
                     </label>
+
+                    <label className="text-sm">
+                      Variant image
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) =>
+                          onVariantFileChange(
+                            index,
+                            event
+                          )
+                        }
+                        className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-xs"
+                      />
+
+                      {variant.preview && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={variant.preview}
+                          alt={`Variant ${
+                            index + 1
+                          } preview`}
+                          className="mt-2 h-16 w-16 rounded-lg object-cover"
+                        />
+                      )}
+                    </label>
                   </div>
                 </div>
               ))}
@@ -656,7 +789,7 @@ export default function NewProductForm() {
         </label>
 
         <label className="text-sm sm:col-span-2">
-          Product image
+          Main product image
           <input
             required
             type="file"
@@ -669,7 +802,7 @@ export default function NewProductForm() {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={preview}
-              alt="Product preview"
+              alt="Main product preview"
               className="mt-3 h-24 w-24 rounded-xl object-cover"
             />
           )}
