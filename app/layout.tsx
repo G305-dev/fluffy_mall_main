@@ -32,7 +32,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://fluffynyummy.com"),
+  metadataBase: new URL("https://fluffynyummystore.com"),
 
   title: {
     default: "Fluffy'n'Yummy Mall | Home, Kitchen & Gifting — Lagos",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     title: "Fluffy'n'Yummy Mall",
     description:
       "Your one-stop store for everything home, kitchen & gifting. Nationwide delivery from Lagos.",
-    url: "https://fluffynyummy.com",
+    url: "https://fluffynyummystore.com",
     siteName: "Fluffy'n'Yummy Mall",
     images: [
       {
