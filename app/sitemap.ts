@@ -3,7 +3,7 @@ import { getProducts } from "@/lib/db";
 import { CATEGORIES } from "@/lib/categories";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://fluffynyummy.com";
+  const base = "https://fluffynyummystore.com";
   const products = await getProducts();
   return [
     { url: base, changeFrequency: "daily", priority: 1 },
