@@ -132,6 +132,30 @@ export default function NewProductForm() {
       return;
     }
 
+    async function readApiResponse(
+  response: Response,
+  name: string
+): Promise<Record<string, unknown>> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    throw new Error(
+      `${name} returned an empty response. HTTP status: ${response.status}`
+    );
+  }
+
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(
+      `${name} returned invalid JSON. HTTP status: ${response.status}. Response: ${text.slice(
+        0,
+        300
+      )}`
+    );
+  }
+}
+
     const variants: Array<{
       size: string;
       color: string;
