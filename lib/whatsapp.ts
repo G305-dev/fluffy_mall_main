@@ -6,7 +6,7 @@ export const WA_LINES = ["08133630563", "08147081420", "09167013447"];
 
 export function productWhatsAppText(name: string, price: number, variant?: string) {
   const v = variant ? ` (${variant})` : "";
-  return `Hello Fluffy'n'Yummy Mall! I want to order:\n\n• ${name}${v} — ${naira(price)}\n\nFrom fluffynyummy.com`;
+  return `Hello Fluffy'n'Yummy Mall! I want to order:\n\n• ${name}${v} — ${naira(price)}\n\nFrom fluffynyummystore.com`;
 }
 
 export function cartWhatsAppText(items: CartItem[], extra?: string) {
@@ -15,7 +15,7 @@ export function cartWhatsAppText(items: CartItem[], extra?: string) {
       `• ${i.name}${i.variantName ? ` (${i.variantName})` : ""} x${i.qty} — ${naira(i.unitPrice * i.qty)}`
   );
   const sub = items.reduce((s, i) => s + i.unitPrice * i.qty, 0);
-  return `Hello Fluffy'n'Yummy Mall! I'd like to order:\n\n${lines.join("\n")}\n\nSubtotal: ${naira(sub)}${extra ? `\n${extra}` : ""}\n\nFrom fluffynyummy.com`;
+  return `Hello Fluffy'n'Yummy Mall! I'd like to order:\n\n${lines.join("\n")}\n\nSubtotal: ${naira(sub)}${extra ? `\n${extra}` : ""}\n\nFrom fluffynyummystore.com`;
 }
 
 export function orderWhatsAppText(order: Order) {
