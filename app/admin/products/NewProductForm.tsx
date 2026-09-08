@@ -223,7 +223,10 @@ export default function NewProductForm() {
         body: uploadData,
       });
 
-      const uploadJson = await uploadResponse.json();
+      const uploadJson = await readApiResponse(
+  uploadResponse,
+  "Image upload"
+);
 
       if (!uploadResponse.ok) {
         throw new Error(
@@ -255,7 +258,10 @@ export default function NewProductForm() {
         }
       );
 
-      const createJson = await createResponse.json();
+      const createJson = await readApiResponse(
+  createResponse,
+  "Product creation"
+);
 
       if (!createResponse.ok) {
         throw new Error(
