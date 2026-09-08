@@ -11,7 +11,6 @@ import type {
 const DELIVERY_TIMES =
   "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days.";
 
-const MAX_VARIANTS = 3;
 
 function slugify(text: string) {
   return text
@@ -29,11 +28,6 @@ function parseVariants(
     return [];
   }
 
-  if (input.length > MAX_VARIANTS) {
-    throw new Error(
-      `A product can have a maximum of ${MAX_VARIANTS} variants.`
-    );
-  }
 
   const variants: ProductVariant[] = [];
   const usedCombinations = new Set<string>();
