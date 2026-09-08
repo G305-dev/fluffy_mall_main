@@ -17,7 +17,7 @@ export function middleware(req: NextRequest) {
     hostname === ADMIN_HOST.toLowerCase();
 
   /*
-   * Visiting https://admin.fluffynyummy.com
+   * Visiting https://admin.fluffynyummystore.com
    * redirects to the existing admin login page.
    */
   if (isAdminSubdomain && pathname === "/") {
