@@ -81,7 +81,7 @@ export default function PaystackPage() {
     const reference = `PSK-${order.id}-${Date.now() % 100000}`;
     const handler = window.PaystackPop.setup({
       key: PAYSTACK_PUBLIC_KEY,
-      email: order.customer.email || "orders@fluffynyummy.com",
+      email: order.customer.email || "orders@fluffynyummystore.com",
       amount: Math.round(order.total * 100), // kobo
       currency: "NGN",
       ref: reference,
