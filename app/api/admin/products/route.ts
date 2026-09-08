@@ -11,6 +11,8 @@ import type {
 const DELIVERY_TIMES =
   "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days.";
 
+const MAX_VARIANTS = 3;
+
 function slugify(text: string) {
   return text
     .toLowerCase()
@@ -27,6 +29,12 @@ function parseVariants(
     return [];
   }
 
+  if (input.length > MAX_VARIANTS) {
+    throw new Error(
+      `A product can have a maximum of ${MAX_VARIANTS} variants.`
+    );
+  }
+
   const variants: ProductVariant[] = [];
   const usedCombinations = new Set<string>();
 
@@ -41,20 +49,23 @@ function parseVariants(
 
     const size = String(raw.size ?? "").trim();
     const color = String(raw.color ?? "").trim();
+    const image = String(raw.image ?? "").trim();
     const rawPrice = String(raw.price ?? "").trim();
     const rawStock = String(raw.stock ?? "").trim();
 
-    const hasAnyValue = Boolean(
-      size || color || rawPrice || rawStock
-    );
-
-    if (!hasAnyValue) {
+    if (!size && !color && !image && !rawPrice && !rawStock) {
       continue;
     }
 
     if (!size && !color) {
       throw new Error(
         `Variant ${index + 1} needs a size or a color.`
+      );
+    }
+
+    if (!image) {
+      throw new Error(
+        `Variant ${index + 1} needs an image.`
       );
     }
 
@@ -84,17 +95,16 @@ function parseVariants(
 
     usedCombinations.add(combinationKey);
 
-    const name = [size, color]
-      .filter(Boolean)
-      .join(" / ");
-
     variants.push({
       id: `${productId}-variant-${index + 1}`,
-      name,
+      name: [size, color]
+        .filter(Boolean)
+        .join(" / "),
       size: size || undefined,
       color: color || undefined,
       price,
       stock,
+      image,
     });
   }
 
