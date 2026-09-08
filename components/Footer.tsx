@@ -169,7 +169,7 @@ export default function Footer() {
             © {new Date().getFullYear()} Fluffy&apos;n&apos;Yummy Concepts. All rights reserved.
           </p>
           <p className="text-cream-300/70">
-            Paystack · Bank transfer · WhatsApp orders · fluffynyummy.com
+            Paystack · Bank transfer · WhatsApp orders · fluffynyummystore.com
           </p>
         </div>
       </div>
