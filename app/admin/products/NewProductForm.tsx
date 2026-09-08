@@ -27,6 +27,12 @@ type FormState = {
   variants: VariantDraft[];
 };
 
+type ApiResponse = {
+  error?: string;
+  path?: string;
+  [key: string]: unknown;
+};
+
 function createEmptyVariant(): VariantDraft {
   return {
     size: "",
@@ -52,6 +58,35 @@ function createEmptyForm(): FormState {
   };
 }
 
+async function readApiResponse(
+  response: Response,
+  name: string
+): Promise<ApiResponse> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    throw new Error(
+      `${name} returned an empty response. HTTP status: ${response.status}`
+    );
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("The response was not an object.");
+    }
+
+    return parsed as ApiResponse;
+  } catch {
+    throw new Error(
+      `${name} returned invalid JSON. HTTP status: ${
+        response.status
+      }. Response: ${text.slice(0, 300)}`
+    );
+  }
+}
+
 export default function NewProductForm() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(createEmptyForm);
@@ -68,7 +103,9 @@ export default function NewProductForm() {
     setError(null);
   }
 
-  function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  function onFileChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
     const selected = event.target.files?.[0] ?? null;
 
     setFile(selected);
@@ -84,10 +121,11 @@ export default function NewProductForm() {
   ) {
     setForm((current) => ({
       ...current,
-      variants: current.variants.map((variant, variantIndex) =>
-        variantIndex === index
-          ? { ...variant, [field]: value }
-          : variant
+      variants: current.variants.map(
+        (variant, variantIndex) =>
+          variantIndex === index
+            ? { ...variant, [field]: value }
+            : variant
       ),
     }));
   }
@@ -132,30 +170,6 @@ export default function NewProductForm() {
       return;
     }
 
-    async function readApiResponse(
-  response: Response,
-  name: string
-): Promise<Record<string, unknown>> {
-  const text = await response.text();
-
-  if (!text.trim()) {
-    throw new Error(
-      `${name} returned an empty response. HTTP status: ${response.status}`
-    );
-  }
-
-  try {
-    return JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    throw new Error(
-      `${name} returned invalid JSON. HTTP status: ${response.status}. Response: ${text.slice(
-        0,
-        300
-      )}`
-    );
-  }
-}
-
     const variants: Array<{
       size: string;
       color: string;
@@ -163,11 +177,16 @@ export default function NewProductForm() {
       stock: number;
     }> = [];
 
-    for (let index = 0; index < form.variants.length; index++) {
+    for (
+      let index = 0;
+      index < form.variants.length;
+      index++
+    ) {
       const draft = form.variants[index];
 
       const size = draft.size.trim();
       const color = draft.color.trim();
+
       const hasAnyValue = Boolean(
         size ||
           color ||
@@ -190,16 +209,24 @@ export default function NewProductForm() {
       const variantPrice = Number(draft.price);
       const variantStock = Number(draft.stock || 0);
 
-      if (!Number.isFinite(variantPrice) || variantPrice <= 0) {
+      if (
+        !Number.isFinite(variantPrice) ||
+        variantPrice <= 0
+      ) {
         setError(
           `Enter a valid price for variant ${index + 1}.`
         );
         return;
       }
 
-      if (!Number.isFinite(variantStock) || variantStock < 0) {
+      if (
+        !Number.isFinite(variantStock) ||
+        variantStock < 0
+      ) {
         setError(
-          `Enter a valid stock quantity for variant ${index + 1}.`
+          `Enter a valid stock quantity for variant ${
+            index + 1
+          }.`
         );
         return;
       }
@@ -218,19 +245,30 @@ export default function NewProductForm() {
       const uploadData = new FormData();
       uploadData.append("file", file);
 
-      const uploadResponse = await fetch("/api/admin/upload", {
-        method: "POST",
-        body: uploadData,
-      });
+      const uploadResponse = await fetch(
+        "/api/admin/upload",
+        {
+          method: "POST",
+          body: uploadData,
+        }
+      );
 
       const uploadJson = await readApiResponse(
-  uploadResponse,
-  "Image upload"
-);
+        uploadResponse,
+        "Image upload"
+      );
 
       if (!uploadResponse.ok) {
         throw new Error(
           uploadJson.error || "Image upload failed."
+        );
+      }
+
+      const imagePath = uploadJson.path;
+
+      if (!imagePath) {
+        throw new Error(
+          "Image upload did not return an image path."
         );
       }
 
@@ -253,19 +291,20 @@ export default function NewProductForm() {
             featured: form.featured,
             bestseller: form.bestseller,
             variants,
-            image: uploadJson.path,
+            image: imagePath,
           }),
         }
       );
 
       const createJson = await readApiResponse(
-  createResponse,
-  "Product creation"
-);
+        createResponse,
+        "Product creation"
+      );
 
       if (!createResponse.ok) {
         throw new Error(
-          createJson.error || "Could not create product."
+          createJson.error ||
+            "Could not create product."
         );
       }
 
@@ -347,12 +386,16 @@ export default function NewProductForm() {
             value={form.category}
             onChange={(event) => {
               const category = CATEGORIES.find(
-                (item) => item.slug === event.target.value
+                (item) =>
+                  item.slug === event.target.value
               );
+
               setForm({
                 ...form,
-                category: event.target.value as CategorySlug,
-                subcategory: category?.subcategories[0] || "",
+                category:
+                  event.target.value as CategorySlug,
+                subcategory:
+                  category?.subcategories[0] || "",
               });
             }}
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
@@ -373,20 +416,30 @@ export default function NewProductForm() {
           <select
             value={form.subcategory}
             onChange={(event) =>
-              setForm({ ...form, subcategory: event.target.value })
+              setForm({
+                ...form,
+                subcategory: event.target.value,
+              })
             }
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           >
-            {(CATEGORIES.find((item) => item.slug === form.category)?.subcategories || []).map(
-              (subcategory) => (
-                <option key={subcategory} value={subcategory}>
-                  {subcategory}
-                </option>
-              )
-            )}
+            {(
+              CATEGORIES.find(
+                (item) => item.slug === form.category
+              )?.subcategories || []
+            ).map((subcategory) => (
+              <option
+                key={subcategory}
+                value={subcategory}
+              >
+                {subcategory}
+              </option>
+            ))}
           </select>
+
           <span className="mt-1 block text-xs text-stone-500">
-            Options change automatically when the main category changes.
+            Options change automatically when the main
+            category changes.
           </span>
         </label>
 
@@ -405,6 +458,7 @@ export default function NewProductForm() {
             }
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           />
+
           <span className="mt-1 block text-xs text-stone-500">
             Used when the product has no variants.
           </span>
@@ -424,6 +478,7 @@ export default function NewProductForm() {
             }
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           />
+
           <span className="mt-1 block text-xs text-stone-500">
             Variant stock is used when variants are added.
           </span>
@@ -435,9 +490,11 @@ export default function NewProductForm() {
               <h3 className="text-sm font-semibold text-cocoa-800">
                 Product variants
               </h3>
+
               <p className="mt-1 text-xs text-stone-500">
-                Add one row for each size and color combination.
-                Each row can have its own price and stock.
+                Add one row for each size and color
+                combination. Each row can have its own price
+                and stock.
               </p>
             </div>
 
@@ -470,7 +527,9 @@ export default function NewProductForm() {
 
                     <button
                       type="button"
-                      onClick={() => removeVariant(index)}
+                      onClick={() =>
+                        removeVariant(index)
+                      }
                       className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800"
                     >
                       <X size={14} />
