@@ -6,7 +6,6 @@ import { CATEGORIES } from "@/lib/categories";
 import { CategorySlug } from "@/lib/types";
 import { Plus, X } from "lucide-react";
 
-const MAX_VARIANTS = 3;
 
 type VariantDraft = {
   size: string;
@@ -160,21 +159,14 @@ export default function NewProductForm() {
   }
 
   function addVariant() {
-    setForm((current) => {
-      if (current.variants.length >= MAX_VARIANTS) {
-        return current;
-      }
-
-      return {
-        ...current,
-        variants: [
-          ...current.variants,
-          createEmptyVariant(),
-        ],
-      };
-    });
-  }
-
+  setForm((current) => ({
+    ...current,
+    variants: [
+      ...current.variants,
+      createEmptyVariant(),
+    ],
+  }));
+}
   function removeVariant(index: number) {
     setForm((current) => ({
       ...current,
@@ -596,18 +588,15 @@ export default function NewProductForm() {
               </h3>
 
               <p className="mt-1 text-xs text-stone-500">
-                Add up to 3 variants. Together with the main
-                product, the maximum is 4 images.
+                Add as many size and color variants as needed.
+Each variant must have its own price, stock, and image.
               </p>
             </div>
 
             <button
               type="button"
               onClick={addVariant}
-              disabled={
-                form.variants.length >= MAX_VARIANTS
-              }
-              className="inline-flex items-center gap-1 rounded-full bg-cocoa-800 px-3 py-2 text-xs font-semibold text-cream-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-full bg-cocoa-800 px-3 py-2 text-xs font-semibold text-cream-50"
             >
               <Plus size={14} />
               Add variant
@@ -628,8 +617,7 @@ export default function NewProductForm() {
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wider text-gold-600">
-                      Variant {index + 1} of{" "}
-                      {MAX_VARIANTS}
+                      Variant {index + 1}
                     </p>
 
                     <button
