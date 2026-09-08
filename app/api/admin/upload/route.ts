@@ -1,7 +1,9 @@
-﻿import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { NextRequest, NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 import { isAdminAuthed } from "@/lib/auth";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const ALLOWED_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -9,7 +11,7 @@ const ALLOWED_TYPES: Record<string, string> = {
   "image/webp": "webp",
 };
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_BYTES = 5 * 1024 * 1024;
 
 function slugifyFilename(name: string) {
   return name
@@ -22,35 +24,69 @@ function slugifyFilename(name: string) {
 
 export async function POST(req: NextRequest) {
   if (!isAdminAuthed()) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const formData = await req.formData();
-  const file = formData.get("file");
-
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-  }
-
-  const ext = ALLOWED_TYPES[file.type];
-  if (!ext) {
     return NextResponse.json(
-      { error: "Only JPEG, PNG or WEBP images are allowed" },
-      { status: 400 }
+      { error: "Unauthorized" },
+      { status: 401 }
     );
   }
 
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "Image must be under 5MB" }, { status: 400 });
+  try {
+    const formData = await req.formData();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+      return NextResponse.json(
+        { error: "No file uploaded." },
+        { status: 400 }
+      );
+    }
+
+    const extension = ALLOWED_TYPES[file.type];
+
+    if (!extension) {
+      return NextResponse.json(
+        {
+          error:
+            "Only JPEG, PNG or WEBP images are allowed.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json(
+        { error: "Image must be under 5MB." },
+        { status: 400 }
+      );
+    }
+
+    const baseName =
+      slugifyFilename(file.name) || "product";
+
+    const filename = `${baseName}-${Date.now()}.${extension}`;
+
+    const blob = await put(
+      `products/${filename}`,
+      file,
+      {
+        access: "public",
+      }
+    );
+
+    return NextResponse.json({
+      path: blob.url,
+    });
+  } catch (error) {
+    console.error("[admin upload]", error);
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Image upload failed.",
+      },
+      { status: 500 }
+    );
   }
-
-  const base = slugifyFilename(file.name) || "product";
-  const filename = `${base}-${Date.now()}.${ext}`;
-  const dir = path.join(process.cwd(), "public", "images", "products");
-  await fs.mkdir(dir, { recursive: true });
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(dir, filename), buffer);
-
-  return NextResponse.json({ path: `/images/products/${filename}` });
 }
