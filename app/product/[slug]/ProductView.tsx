@@ -68,31 +68,30 @@ export default function ProductView({
 
   const activeSlide = slides[safeSlideIndex];
 
-  if (!activeSlide) {
-    return null;
-  }
+const activeVariant = activeSlide?.variant;
+const activeImage =
+  activeSlide?.image || product.images[0];
 
-  const activeVariant = activeSlide.variant;
-  const activeImage = activeSlide.image;
-  const price = activeVariant
-    ? activeVariant.price
-    : product.price;
-  const stock = activeVariant
-    ? activeVariant.stock
-    : product.stock;
+const price = activeVariant
+  ? activeVariant.price
+  : product.price;
 
-  const wa = useMemo(
-    () =>
-      waLink(
-        PRIMARY_WA,
-        productWhatsAppText(
-          product.name,
-          price,
-          activeVariant?.name
-        )
-      ),
-    [product.name, price, activeVariant?.name]
-  );
+const stock = activeVariant
+  ? activeVariant.stock
+  : product.stock;
+
+const wa = waLink(
+  PRIMARY_WA,
+  productWhatsAppText(
+    product.name,
+    price,
+    activeVariant?.name
+  )
+);
+
+if (!activeSlide) {
+  return null;
+}
 
   function movePrevious() {
     setSlideIndex((current) =>
