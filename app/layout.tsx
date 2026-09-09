@@ -43,10 +43,10 @@ export const metadata: Metadata = {
     "Shop household, kitchen and gifting essentials from Fluffy'n'Yummy Mall, Anthony Village, Lagos. Nationwide delivery, Paystack checkout, bank transfer and WhatsApp ordering.",
 
   icons: {
-    icon: "/images/fm%20logo.png",
-    shortcut: "/images/fm%20logo.png",
-    apple: "/images/fm%20logo.png",
-  },
+  icon: "/icon.png",
+  shortcut: "/icon.png",
+  apple: "/icon.png",
+},
 
   openGraph: {
     title: "Fluffy'n'Yummy Mall",
