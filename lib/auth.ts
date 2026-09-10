@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 
 export const ADMIN_COOKIE = "fny_admin";
 export const ADMIN_SESSION_MAX_AGE = 60 * 5;
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "FluffyAdmin1";
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 
 /**
  * Sandbox-preview escape hatch: some browsers block ALL third-party cookies
