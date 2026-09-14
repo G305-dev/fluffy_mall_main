@@ -869,7 +869,6 @@ Each variant must have its own price, stock, and image.
           </p>
         
           <input
-            required
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={onFileChange}
