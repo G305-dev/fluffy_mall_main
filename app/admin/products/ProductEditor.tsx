@@ -1,7 +1,7 @@
 "use client";
 
-import { Product } from "@/lib/types";
-import { categoryName } from "@/lib/categories";
+import { CATEGORIES } from "@/lib/categories";
+import type { CategorySlug, Product } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -17,6 +17,12 @@ export default function ProductEditor({
   const [price, setPrice] = useState(product.price);
   const [stock, setStock] = useState(product.stock);
   const [name, setName] = useState(product.name);
+  const [category, setCategory] = useState<CategorySlug>(
+  product.category
+);
+const [subcategory, setSubcategory] = useState(
+  product.subcategory ?? ""
+);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -29,13 +35,28 @@ export default function ProductEditor({
       if (confirmTimer.current) clearTimeout(confirmTimer.current);
     };
   }, []);
+  
+  const selectedCategory = CATEGORIES.find(
+  (item) => item.slug === category
+);
+
+function handleCategoryChange(value: string) {
+  const nextCategory = CATEGORIES.find(
+    (item) => item.slug === value
+  );
+
+  if (!nextCategory) return;
+
+  setCategory(nextCategory.slug);
+  setSubcategory(nextCategory.subcategories[0] ?? "");
+}
 
   async function save() {
     setBusy(true);
     await fetch("/api/admin/products", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: product.id, price, stock, name }),
+      body: JSON.stringify({ id: product.id, price, stock, name,category,subcategory}),
     });
     setBusy(false);
     router.refresh();
@@ -130,7 +151,42 @@ export default function ProductEditor({
                 className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-base"
               />
             </label>
-            <p className="mt-1 text-xs text-cocoa-700/60">{categoryName(product.category)}</p>
+
+            <div className="mt-3 grid gap-2">
+  <label className="block text-xs text-stone-500">
+    Category
+    <select
+      value={category}
+      onChange={(event) =>
+        handleCategoryChange(event.target.value)
+      }
+      className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-base"
+    >
+      {CATEGORIES.map((item) => (
+        <option key={item.slug} value={item.slug}>
+          {item.name}
+        </option>
+      ))}
+    </select>
+  </label>
+
+  <label className="block text-xs text-stone-500">
+    Subcategory
+    <select
+      value={subcategory}
+      onChange={(event) =>
+        setSubcategory(event.target.value)
+      }
+      className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-base"
+    >
+      {selectedCategory?.subcategories.map((item) => (
+        <option key={item} value={item}>
+          {item}
+        </option>
+      ))}
+    </select>
+  </label>
+</div>
           </div>
         </div>
         {imageError && <p className="mt-2 break-words text-xs text-red-600">{imageError}</p>}
@@ -222,7 +278,43 @@ export default function ProductEditor({
           </div>
         </div>
       </td>
-      <td className="p-3 text-xs">{categoryName(product.category)}</td>
+      <td className="p-3">
+  <div className="grid min-w-[12rem] gap-2">
+    <label className="text-xs text-stone-500">
+      Category
+      <select
+        value={category}
+        onChange={(event) =>
+          handleCategoryChange(event.target.value)
+        }
+        className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5"
+      >
+        {CATEGORIES.map((item) => (
+          <option key={item.slug} value={item.slug}>
+            {item.name}
+          </option>
+        ))}
+      </select>
+    </label>
+
+    <label className="text-xs text-stone-500">
+      Subcategory
+      <select
+        value={subcategory}
+        onChange={(event) =>
+          setSubcategory(event.target.value)
+        }
+        className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5"
+      >
+        {selectedCategory?.subcategories.map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
+    </label>
+  </div>
+</td>
       <td className="p-3">
         <input
           type="number"

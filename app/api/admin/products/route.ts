@@ -222,6 +222,7 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
   const products = await getProducts();
+
   const index = products.findIndex(
     (product) => product.id === body.id
   );
@@ -254,11 +255,84 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
+  let nextCategory: CategorySlug =
+    products[index].category;
+
+  let nextSubcategory =
+    products[index].subcategory;
+
+  if (body.category !== undefined) {
+    const requestedCategory = String(
+      body.category
+    ).trim() as CategorySlug;
+
+    const categoryDefinition = CATEGORIES.find(
+      (item) => item.slug === requestedCategory
+    );
+
+    if (!categoryDefinition) {
+      return NextResponse.json(
+        { error: "Unknown category." },
+        { status: 400 }
+      );
+    }
+
+    nextCategory = requestedCategory;
+
+    if (body.subcategory === undefined) {
+      const currentSubcategoryIsValid =
+        typeof nextSubcategory === "string" &&
+        categoryDefinition.subcategories.includes(
+          nextSubcategory
+        );
+
+      nextSubcategory = currentSubcategoryIsValid
+        ? nextSubcategory
+        : categoryDefinition.subcategories[0] ||
+          undefined;
+    }
+  }
+
+  if (body.subcategory !== undefined) {
+    const categoryDefinition = CATEGORIES.find(
+      (item) => item.slug === nextCategory
+    );
+
+    const requestedSubcategory = String(
+      body.subcategory ?? ""
+    ).trim();
+
+    if (
+      requestedSubcategory &&
+      (!categoryDefinition ||
+        !categoryDefinition.subcategories.includes(
+          requestedSubcategory
+        ))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid subcategory for this category.",
+        },
+        { status: 400 }
+      );
+    }
+
+    nextSubcategory =
+      requestedSubcategory || undefined;
+  }
+
   products[index] = {
     ...products[index],
     name: body.name ?? products[index].name,
-    price: Number(body.price ?? products[index].price),
-    stock: Number(body.stock ?? products[index].stock),
+    price: Number(
+      body.price ?? products[index].price
+    ),
+    stock: Number(
+      body.stock ?? products[index].stock
+    ),
+    category: nextCategory,
+    subcategory: nextSubcategory,
     variants,
   };
 
