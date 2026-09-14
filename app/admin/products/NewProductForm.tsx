@@ -63,6 +63,24 @@ function createEmptyForm(): FormState {
   };
 }
 
+function getClipboardImage(
+  event: React.ClipboardEvent<HTMLElement>
+): File | null {
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ];
+
+  const item = Array.from(event.clipboardData.items).find(
+    (clipboardItem) =>
+      clipboardItem.kind === "file" &&
+      allowedTypes.includes(clipboardItem.type)
+  );
+
+  return item?.getAsFile() ?? null;
+}
+
 async function readApiResponse(
   response: Response,
   name: string
@@ -141,6 +159,53 @@ export default function NewProductForm() {
       ),
     }));
   }
+
+  function onMainImagePaste(
+  event: React.ClipboardEvent<HTMLInputElement>
+) {
+  event.preventDefault();
+
+  const selected = getClipboardImage(event);
+
+  if (!selected) {
+    setError("Paste a JPEG, PNG or WEBP image.");
+    return;
+  }
+
+  setError(null);
+  setFile(selected);
+  setPreview(URL.createObjectURL(selected));
+}
+
+function onVariantImagePaste(
+  index: number,
+  event: React.ClipboardEvent<HTMLInputElement>
+) {
+  event.preventDefault();
+
+  const selected = getClipboardImage(event);
+
+  if (!selected) {
+    setError("Paste a JPEG, PNG or WEBP image.");
+    return;
+  }
+
+  setError(null);
+
+  setForm((current) => ({
+    ...current,
+    variants: current.variants.map(
+      (variant, variantIndex) =>
+        variantIndex === index
+          ? {
+              ...variant,
+              file: selected,
+              preview: URL.createObjectURL(selected),
+            }
+          : variant
+    ),
+  }));
+}
 
   function updateVariant(
     index: number,
@@ -701,29 +766,40 @@ Each variant must have its own price, stock, and image.
 
                     <label className="text-sm">
                       Variant image
+                    
                       <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={(event) =>
-                          onVariantFileChange(
-                            index,
-                            event
-                          )
+                        type="text"
+                        readOnly
+                        placeholder="Click here, then press Ctrl+V"
+                        onPaste={(event) =>
+                          onVariantImagePaste(index, event)
                         }
-                        className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-xs"
+                        aria-label={`Paste image for variant ${index + 1}`}
+                        className="mt-1 w-full rounded-lg border border-dashed border-cream-300 px-2 py-2 text-xs"
                       />
+                    
+                      <p className="mt-1 text-xs text-stone-500">
+                        Or choose an image file:
+                      </p>
 
-                      {variant.preview && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={variant.preview}
-                          alt={`Variant ${
-                            index + 1
-                          } preview`}
-                          className="mt-2 h-16 w-16 rounded-lg object-cover"
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(event) =>
+                            onVariantFileChange(index, event)
+                          }
+                          className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-xs"
                         />
-                      )}
-                    </label>
+                      
+                        {variant.preview && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={variant.preview}
+                            alt={`Variant ${index + 1} preview`}
+                            className="mt-2 h-16 w-16 rounded-lg object-cover"
+                          />
+                        )}
+                      </label>
                   </div>
                 </div>
               ))}
@@ -778,6 +854,20 @@ Each variant must have its own price, stock, and image.
 
         <label className="text-sm sm:col-span-2">
           Main product image
+        
+          <input
+            type="text"
+            readOnly
+            placeholder="Click here, then press Ctrl+V to paste an image"
+            onPaste={onMainImagePaste}
+            aria-label="Paste main product image"
+            className="mt-1 w-full rounded-lg border border-dashed border-cream-300 px-3 py-2 text-sm"
+          />
+        
+          <p className="mt-1 text-xs text-stone-500">
+            Or choose an image file:
+          </p>
+        
           <input
             required
             type="file"
@@ -785,7 +875,7 @@ Each variant must have its own price, stock, and image.
             onChange={onFileChange}
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           />
-
+        
           {preview && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
