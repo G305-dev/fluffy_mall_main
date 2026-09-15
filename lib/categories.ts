@@ -35,7 +35,8 @@ export const CATEGORIES: {
     emoji: "🧺",
     subcategories: [
       "Food Storage", "Spice/Sauce Bottles", "Refrigerator Storage",
-      "Pantry Organizer", "Pantry", "Organisers", "Rack", "Hangers", "Cloth Dryer",
+      "Pantry Organizer", "Pantry", "Organisers", "Rack", "Hangers", "Cloth Dryer","Detergent Storage Container",
+      "Pant Hanger","Peg",
     ],
   },
   {
@@ -45,7 +46,7 @@ export const CATEGORIES: {
     emoji: "🏠",
     subcategories: [
       "Vacuum Cleaner", "Cleaning Tools", "Spray Bottles", "Waste Bin", "Mats",
-      "Ladders", "Iron", "Tools", "Glassware", "Dinnerware",
+      "Ladders", "Iron", "Tools", "Glassware", "Dinnerware","ironing board",
     ],
   },
   {
