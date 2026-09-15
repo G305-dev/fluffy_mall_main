@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-const AWAY_TIMEOUT = 5 * 60 * 1000;
+const AWAY_TIMEOUT = 30* 60 * 1000;
 const HEARTBEAT_INTERVAL = 60 * 1000;
 
 export default function AdminSessionGuard() {
