@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/components/CartProvider";
 import { naira, NIGERIAN_STATES } from "@/lib/format";
-import { quoteDelivery, zoneFromState } from "@/lib/delivery";
+import { DELIVERY_CITIES, quoteDelivery, zoneFromState } from "@/lib/delivery";
 import settingsFile from "@/data/settings.json";
 import { Fulfilment, PayMethod, StoreSettings } from "@/lib/types";
 import Link from "next/link";
@@ -55,6 +55,7 @@ export default function CheckoutPage() {
   // Step 2 — delivery
   const [state, setState] = useState("Lagos");
   const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
   const [fulfilment, setFulfilment] = useState<Fulfilment>("delivery");
 
@@ -171,15 +172,23 @@ export default function CheckoutPage() {
   }
 
   function continueToPayment(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    if (fulfilment === "delivery" && !address.trim()) {
-      setError("Please add a delivery address.");
-      return;
-    }
-    setStep(3);
-    setMaxStep(3);
+  e.preventDefault();
+  setError("");
+
+  if (fulfilment === "delivery" && !city) {
+    setError("Please select your city.");
+    return;
   }
+
+  if (fulfilment === "delivery" && !address.trim()) {
+    setError("Please add a delivery address.");
+    return;
+  }
+
+  setStep(3);
+  setMaxStep(3);
+}
+  
 
   async function payNow(e: React.FormEvent) {
     e.preventDefault();
@@ -190,7 +199,7 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customer: { name, phone, email, address, state, notes },
+          customer: { name, phone, email, address, state,city, notes },
           items,
           fulfilment,
           method,
@@ -456,7 +465,7 @@ export default function CheckoutPage() {
                       fulfilment === "delivery" ? "bg-cocoa-800 text-cream-50 ring-cocoa-800" : "ring-cream-300"
                     }`}
                   >
-                    <p className="font-medium">Nationwide delivery</p>
+                    <p className="font-medium"> Delivery</p>
                   </button>
                   <button
                     type="button"
@@ -483,6 +492,26 @@ export default function CheckoutPage() {
                   ))}
                 </select>
               </label>
+
+              {fulfilment === "delivery" && (
+  <label className="text-sm">
+    City
+    <select
+      required
+      value={city}
+      onChange={(e) => setCity(e.target.value)}
+      className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3"
+    >
+      <option value="">Select your city</option>
+
+      {DELIVERY_CITIES.map((deliveryCity) => (
+        <option key={deliveryCity} value={deliveryCity}>
+          {deliveryCity}
+        </option>
+      ))}
+    </select>
+  </label>
+)}
               {fulfilment === "delivery" && (
                 <label className="text-sm">
                   Delivery address
@@ -522,7 +551,7 @@ export default function CheckoutPage() {
             <p className="break-words border-t border-cream-100 p-4 text-sm text-cocoa-700/70 sm:p-5">
               {fulfilment === "pickup"
                 ? `Pickup at ${settings.address}`
-                : `Deliver to ${address}, ${state}`}
+                : `Deliver to ${address}, ${city}, ${state}`}
             </p>
           )}
         </section>
@@ -563,7 +592,7 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              {/* Payment method badges — Adikastore pattern */}
+              {/* Payment method badges */}
               <div className="flex flex-wrap gap-2">
                 {["Visa", "Mastercard", "Verve", "Bank Transfer", "USSD"].map((m) => (
                   <span

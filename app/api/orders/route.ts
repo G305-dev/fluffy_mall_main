@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProducts, getSettings, makeOrderId, saveOrder } from "@/lib/db";
-import { quoteDelivery, zoneFromState } from "@/lib/delivery";
+import {  DELIVERY_CITIES,quoteDelivery, zoneFromState } from "@/lib/delivery";
 import { CartItem, Order, PayMethod } from "@/lib/types";
 import { CUSTOMER_COOKIE, readCustomerSession } from "@/lib/customer-auth";
 
@@ -28,6 +28,19 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  const city = String(customer.city || "").trim();
+
+if (
+  fulfilment === "delivery" &&
+  !DELIVERY_CITIES.some(
+    (deliveryCity) => deliveryCity === city
+  )
+) {
+  return NextResponse.json(
+    { error: "Please select a valid delivery city." },
+    { status: 400 }
+  );
+}
 
   const catalog = await getProducts();
   const resolved = items.map((item) => {
@@ -62,6 +75,7 @@ export async function POST(req: NextRequest) {
       email: session?.email || String(customer.email).trim().toLowerCase(),
       address: customer.address || "",
       state: customer.state || "Lagos",
+      city: fulfilment === "delivery" ? city : "",
       notes: customer.notes || "",
     },
     items: resolved,

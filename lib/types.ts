@@ -75,6 +75,7 @@ export type Customer = {
   email?: string;
   address?: string;
   state: string;
+  city?: string;
   notes?: string;
 };
 
