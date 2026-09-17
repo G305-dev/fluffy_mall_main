@@ -97,15 +97,22 @@ export default function CheckoutPage() {
 
   const zone = zoneFromState(state);
   const quote = useMemo(
-    () =>
-      quoteDelivery({
-        settings,
-        fulfilment,
-        zone,
-        subtotal,
-      }),
-    [settings, fulfilment, zone, subtotal]
-  );
+  () =>
+    quoteDelivery({
+      settings,
+      fulfilment,
+      zone,
+      subtotal,
+      city,
+    }),
+  [
+    settings,
+    fulfilment,
+    zone,
+    subtotal,
+    city,
+  ]
+);
 
   if (items.length === 0) {
     return (

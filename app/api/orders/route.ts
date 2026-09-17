@@ -61,7 +61,7 @@ if (
   const subtotal = resolved.reduce((s, i) => s + i.unitPrice * i.qty, 0);
   const settings = await getSettings();
   const zone = zoneFromState(customer.state || "Lagos");
-  const quote = quoteDelivery({ settings, fulfilment, zone, subtotal });
+  const quote = quoteDelivery({ settings, fulfilment, zone, subtotal, city });
   const now = new Date().toISOString();
   const id = makeOrderId();
 
