@@ -60,7 +60,7 @@ export async function fetchTraceposProducts(): Promise<
       }
     );
 
-    const text = await response.text();
+    
 
     const text = await response.text();
 
