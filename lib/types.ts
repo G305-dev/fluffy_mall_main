@@ -14,6 +14,8 @@ export type ProductVariant = {
   price: number;
   stock: number;
   image?: string;
+   traceposItemCode?: string;
+ 
 };
 
 export type Product = {
@@ -32,6 +34,9 @@ export type Product = {
   description: string;
   variants: ProductVariant[];
   deliveryNote: string;
+
+   traceposItemCode?: string;
+
 };
 
 export type CartItem = {

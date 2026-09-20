@@ -19,7 +19,6 @@ function slugify(text: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
 }
-
 function parseVariants(
   input: unknown,
   productId: string
@@ -27,7 +26,6 @@ function parseVariants(
   if (!Array.isArray(input)) {
     return [];
   }
-
 
   const variants: ProductVariant[] = [];
   const usedCombinations = new Set<string>();
@@ -44,10 +42,22 @@ function parseVariants(
     const size = String(raw.size ?? "").trim();
     const color = String(raw.color ?? "").trim();
     const image = String(raw.image ?? "").trim();
+
+    const traceposItemCode =
+      String(raw.traceposItemCode ?? "").trim() ||
+      undefined;
+
     const rawPrice = String(raw.price ?? "").trim();
     const rawStock = String(raw.stock ?? "").trim();
 
-    if (!size && !color && !image && !rawPrice && !rawStock) {
+    if (
+      !size &&
+      !color &&
+      !image &&
+      !rawPrice &&
+      !rawStock &&
+      !traceposItemCode
+    ) {
       continue;
     }
 
@@ -91,20 +101,18 @@ function parseVariants(
 
     variants.push({
       id: `${productId}-variant-${index + 1}`,
-      name: [size, color]
-        .filter(Boolean)
-        .join(" / "),
+      name: [size, color].filter(Boolean).join(" / "),
       size: size || undefined,
       color: color || undefined,
       price,
       stock,
       image,
+      traceposItemCode,
     });
   }
 
   return variants;
 }
-
 export async function POST(req: NextRequest) {
   if (!isAdminAuthed()) {
     return NextResponse.json(
@@ -185,6 +193,9 @@ export async function POST(req: NextRequest) {
     id: productId,
     slug,
     name,
+    traceposItemCode:
+  String(body.traceposItemCode ?? "").trim() ||
+  undefined,
     price,
     category,
     subcategory: String(body.subcategory || "").trim() || undefined,
@@ -321,7 +332,29 @@ export async function PATCH(req: NextRequest) {
     nextSubcategory =
       requestedSubcategory || undefined;
   }
+  if (
+  body.variantItemCodes &&
+  typeof body.variantItemCodes === "object" &&
+  !Array.isArray(body.variantItemCodes)
+) {
+  const codes = body.variantItemCodes as Record<
+    string,
+    unknown
+  >;
 
+  variants = variants.map((variant) => {
+    if (!(variant.id in codes)) {
+      return variant;
+    }
+
+    return {
+      ...variant,
+      traceposItemCode:
+        String(codes[variant.id] ?? "").trim() ||
+        undefined,
+    };
+  });
+}
   products[index] = {
     ...products[index],
     name: body.name ?? products[index].name,
@@ -333,7 +366,14 @@ export async function PATCH(req: NextRequest) {
     ),
     category: nextCategory,
     subcategory: nextSubcategory,
+     traceposItemCode:
+    body.traceposItemCode !== undefined
+      ? String(body.traceposItemCode ?? "").trim() ||
+        undefined
+      : products[index].traceposItemCode,
+    
     variants,
+    
   };
 
   if (

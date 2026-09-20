@@ -17,6 +17,15 @@ export default function ProductEditor({
   const [price, setPrice] = useState(product.price);
   const [stock, setStock] = useState(product.stock);
   const [name, setName] = useState(product.name);
+  const [variantCodes, setVariantCodes] =
+  useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      product.variants.map((variant) => [
+        variant.id,
+        variant.traceposItemCode || "",
+      ])
+    )
+  );
   const [category, setCategory] = useState<CategorySlug>(
   product.category
 );
@@ -56,7 +65,7 @@ function handleCategoryChange(value: string) {
     await fetch("/api/admin/products", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: product.id, price, stock, name,category,subcategory}),
+      body: JSON.stringify({ id: product.id, price, stock, name,category,subcategory,variantItemCodes: variantCodes,}),
     });
     setBusy(false);
     router.refresh();
@@ -190,6 +199,36 @@ function handleCategoryChange(value: string) {
           </div>
         </div>
         {imageError && <p className="mt-2 break-words text-xs text-red-600">{imageError}</p>}
+        {product.variants.length > 0 && (
+  <div className="mt-3 rounded-xl bg-cream-50 p-3">
+    <p className="text-xs font-semibold text-cocoa-800">
+      Variant Tracepos item codes
+    </p>
+
+    <div className="mt-2 grid gap-2">
+      {product.variants.map((variant) => (
+        <label
+          key={variant.id}
+          className="text-xs text-stone-500"
+        >
+          {variant.name}
+
+          <input
+            value={variantCodes[variant.id] || ""}
+            onChange={(event) =>
+              setVariantCodes((current) => ({
+                ...current,
+                [variant.id]: event.target.value,
+              }))
+            }
+            placeholder="Exact scanner item code"
+            className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-2 py-2 text-sm"
+          />
+        </label>
+      ))}
+    </div>
+  </div>
+)}
         <div className="mt-4 grid grid-cols-2 gap-3">
           <label className="text-xs text-stone-500">
             Price (₦)

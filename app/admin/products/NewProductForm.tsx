@@ -14,6 +14,7 @@ type VariantDraft = {
   stock: string;
   file: File | null;
   preview: string | null;
+  traceposItemCode: string;
 };
 
 type FormState = {
@@ -28,6 +29,7 @@ type FormState = {
   featured: boolean;
   bestseller: boolean;
   variants: VariantDraft[];
+  traceposItemCode: string;
 };
 
 type ApiResponse = {
@@ -44,6 +46,7 @@ function createEmptyVariant(): VariantDraft {
     stock: "",
     file: null,
     preview: null,
+    traceposItemCode: "",
   };
 }
 
@@ -55,6 +58,7 @@ function createEmptyForm(): FormState {
     subcategory: CATEGORIES[0].subcategories[0] || "",
     stock: "",
     short: "",
+    traceposItemCode: "",
     description: "",
     deliveryNote: "",
     featured: false,
@@ -209,7 +213,7 @@ function onVariantImagePaste(
 
   function updateVariant(
     index: number,
-    field: "size" | "color" | "price" | "stock",
+    field: "size" | "color" | "price" | "stock" | "traceposItemCode",
     value: string
   ) {
     setForm((current) => ({
@@ -445,7 +449,10 @@ function onVariantImagePaste(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            name: form.name.trim(),
+            name: form.name.trim(),        
+            traceposItemCode:
+              form.traceposItemCode.trim() ||
+              undefined,
             price,
             category: form.category,
             subcategory: form.subcategory,
@@ -544,6 +551,24 @@ function onVariantImagePaste(
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           />
         </label>
+        <label className="text-sm">
+      Tracepos item code
+      <input
+        value={form.traceposItemCode}
+        onChange={(event) =>
+          setForm({
+            ...form,
+            traceposItemCode: event.target.value,
+          })
+        }
+        placeholder="Exact scanner item code"
+        className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+      />
+
+      <span className="mt-1 block text-xs text-stone-500">
+        Use the exact code scanned in Tracepos.
+      </span>
+</label>
 
         <label className="text-sm">
           Category
@@ -697,7 +722,7 @@ Each variant must have its own price, stock, and image.
                     </button>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
                     <label className="text-sm">
                       Size
                       <input
@@ -763,7 +788,34 @@ Each variant must have its own price, stock, and image.
                         className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
                       />
                     </label>
+                        <label className="text-sm">
+  Tracepos item code
+  <input
+    value={variant.traceposItemCode}
+    onChange={(event) =>
+      updateVariant(
+        index,
+        "traceposItemCode",
+        event.target.value
+      )
+    }
+    placeholder="Exact scanner code"
+    className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+  />
+</label>
 
+{/* Existing Variant image field stays below */}
+<label className="text-sm">
+  Variant image
+  <input
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    onChange={(event) =>
+      onVariantFileChange(index, event)
+    }
+    className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-xs"
+  />
+</label>
                     <label className="text-sm">
                       Variant image
                     
