@@ -17,6 +17,8 @@ export default function ProductEditor({
   const [price, setPrice] = useState(product.price);
   const [stock, setStock] = useState(product.stock);
   const [name, setName] = useState(product.name);
+  const [traceposItemCode, setTraceposItemCode] =
+  useState(product.traceposItemCode || "");
   const [variantCodes, setVariantCodes] =
   useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -65,7 +67,8 @@ function handleCategoryChange(value: string) {
     await fetch("/api/admin/products", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: product.id, price, stock, name,category,subcategory,variantItemCodes: variantCodes,}),
+      body: JSON.stringify({ id: product.id, price, stock, name,category,subcategory,variantItemCodes: variantCodes,traceposItemCode:
+    traceposItemCode.trim() || undefined,}),
     });
     setBusy(false);
     router.refresh();
@@ -160,6 +163,17 @@ function handleCategoryChange(value: string) {
                 className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-base"
               />
             </label>
+            <label className="mt-2 block text-xs text-stone-500">
+  Tracepos item code
+  <input
+    value={traceposItemCode}
+    onChange={(event) =>
+      setTraceposItemCode(event.target.value)
+    }
+    placeholder="Exact scanner item code"
+    className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-base"
+  />
+</label>
 
             <div className="mt-3 grid gap-2">
   <label className="block text-xs text-stone-500">
@@ -315,6 +329,14 @@ function handleCategoryChange(value: string) {
               <p className="mt-1 text-xs text-red-600">{imageError}</p>
             )}
           </div>
+        <input
+  value={traceposItemCode}
+  onChange={(event) =>
+    setTraceposItemCode(event.target.value)
+  }
+  placeholder="Tracepos item code"
+  className="mt-2 w-56 rounded-lg border border-cream-300 px-2 py-1 text-xs"
+/>
         </div>
       </td>
       <td className="p-3">
