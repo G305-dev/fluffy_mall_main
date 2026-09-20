@@ -11,8 +11,8 @@ function getTraceposConfig() {
     process.env.TRACEPOS_BASE_URL ||
     "https://app.tracepos.net/api/v1/public";
 
-  const publicKey = process.env.TRACEPOS_PUBLIC_KEY;
-  const secretKey = process.env.TRACEPOS_SECRET_KEY;
+  const publicKey =  process.env.TRACEPOS_PUBLIC_KEY?.trim();
+  const secretKey = process.env.TRACEPOS_SECRET_KEY?.trim();
 
   if (!publicKey || !secretKey) {
     throw new Error(
@@ -23,10 +23,11 @@ function getTraceposConfig() {
   return {
     baseUrl: baseUrl.replace(/\/$/, ""),
     headers: {
-      "X-Tracepos-Public-Key": publicKey,
-      "X-Tracepos-Secret-Key": secretKey,
-      Accept: "application/json",
-    },
+  "X-Tracepos-Public-Key": publicKey,
+  "X-Tracepos-Secret-Key": secretKey,
+  "X-Tracepos-API-Key": secretKey,
+  Accept: "application/json",
+},
   };
 }
 
@@ -61,15 +62,35 @@ export async function fetchTraceposProducts(): Promise<
 
     const text = await response.text();
 
-    let payload: any;
+    const text = await response.text();
 
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      throw new Error(
-        `Tracepos returned invalid JSON. HTTP status: ${response.status}`
-      );
-    }
+if (!response.ok) {
+  let detail = text.slice(0, 500);
+
+  try {
+    const errorBody = JSON.parse(text);
+    detail =
+      errorBody?.message ||
+      errorBody?.error ||
+      detail;
+  } catch {
+    // Tracepos may return plain text or HTML for a 403.
+  }
+
+  throw new Error(
+    `Tracepos request failed with HTTP ${response.status}: ${detail}`
+  );
+}
+
+let payload: any;
+
+try {
+  payload = JSON.parse(text);
+} catch {
+  throw new Error(
+    `Tracepos returned invalid JSON. HTTP status: ${response.status}`
+  );
+}
 
     if (!response.ok) {
       throw new Error(
