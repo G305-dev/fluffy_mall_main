@@ -27,6 +27,7 @@ function getTraceposConfig() {
   "X-Tracepos-Secret-Key": secretKey,
   "X-Tracepos-API-Key": secretKey,
   Accept: "application/json",
+  "User-Agent": "TraceposAPIClient/1.0",
 },
   };
 }
