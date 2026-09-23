@@ -337,6 +337,36 @@ function handleCategoryChange(value: string) {
   placeholder="Tracepos item code"
   className="mt-2 w-56 rounded-lg border border-cream-300 px-2 py-1 text-xs"
 />
+{product.variants.length > 0 && (
+  <div className="mt-2 w-72 rounded-xl bg-cream-50 p-2">
+    <p className="text-xs font-semibold text-cocoa-800">
+      Variant Tracepos item codes
+    </p>
+
+    <div className="mt-2 grid gap-2">
+      {product.variants.map((variant) => (
+        <label
+          key={variant.id}
+          className="text-xs text-stone-500"
+        >
+          {variant.name}
+
+          <input
+            value={variantCodes[variant.id] || ""}
+            onChange={(event) =>
+              setVariantCodes((current) => ({
+                ...current,
+                [variant.id]: event.target.value,
+              }))
+            }
+            placeholder="Exact scanner item code"
+            className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1 text-xs"
+          />
+        </label>
+      ))}
+    </div>
+  </div>
+)}
         </div>
       </td>
       <td className="p-3">

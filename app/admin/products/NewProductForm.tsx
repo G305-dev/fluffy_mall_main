@@ -272,6 +272,7 @@ function onVariantImagePaste(
       price: number;
       stock: number;
       file: File;
+      traceposItemCode: string;
     }> = [];
 
     for (
@@ -289,6 +290,7 @@ function onVariantImagePaste(
           color ||
           draft.price.trim() ||
           draft.stock.trim() ||
+          draft.traceposItemCode.trim() ||
           draft.file
       );
 
@@ -341,6 +343,7 @@ function onVariantImagePaste(
         price: variantPrice,
         stock: variantStock,
         file: draft.file,
+        traceposItemCode: draft.traceposItemCode.trim(),
       });
     }
 
@@ -388,6 +391,7 @@ function onVariantImagePaste(
         price: number;
         stock: number;
         image: string;
+        traceposItemCode: string;
       }> = [];
 
       for (
@@ -438,6 +442,7 @@ function onVariantImagePaste(
           price: variantInput.price,
           stock: variantInput.stock,
           image: variantUploadJson.path,
+          traceposItemCode: variantInput.traceposItemCode,
         });
       }
 
