@@ -196,10 +196,10 @@ export async function syncWebsiteStockFromTracepos() {
 
     revalidatePath("/");
     revalidatePath("/shop");
-
-    for (const slug of changedSlugs) {
-      revalidatePath(`/product/${slug}`);
-    }
+    
+for (const slug of Array.from(changedSlugs)) {
+  revalidatePath(`/product/${slug}`);
+}
   }
 
   const websiteCodes = new Set(
