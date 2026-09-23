@@ -272,15 +272,16 @@ function handleCategoryChange(value: string) {
             {busy ? "Saving…" : "Save"}
           </button>
           <button
-            onClick={remove}
-            disabled={busy}
-            aria-label={confirming ? "Confirm delete" : `Delete ${product.name}`}
-            className={
-              confirming
-                ? "flex items-center gap-1 rounded-full bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
-                : "rounded-full p-2 text-red-600 hover:bg-red-50 disabled:opacity-60"
-            }
-          >
+             type="button"
+              onClick={remove}
+              disabled={busy}
+              aria-label={
+                confirming
+                  ? "Confirm delete"
+                  : `Delete ${product.name}`
+              }
+              className="inline-flex items-center gap-1 rounded-full bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+            >
             <Trash2 size={15} />
             {confirming && "Delete?"}
           </button>
@@ -432,15 +433,17 @@ function handleCategoryChange(value: string) {
             Save
           </button>
           <button
-            onClick={remove}
-            disabled={busy}
-            aria-label={confirming ? "Confirm delete" : `Delete ${product.name}`}
-            className={
-              confirming
-                ? "flex items-center gap-1 rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-                : "rounded-full p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-60"
-            }
-          >
+           type="button"
+          onClick={remove}
+          disabled={busy}
+          aria-label={
+            confirming
+              ? "Confirm delete"
+              : `Delete ${product.name}`
+          }
+                className="inline-flex items-center gap-1 rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                          
             <Trash2 size={15} />
             {confirming && "Delete?"}
           </button>
