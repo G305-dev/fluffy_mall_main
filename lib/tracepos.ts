@@ -4,6 +4,9 @@ export type TraceposProduct = {
   item_code?: string | null;
   sku?: string | null;
   current_stock?: number | string | null;
+    details?: {
+    current_stock?: number | string | null;
+  };
 };
 
 function getTraceposConfig() {
@@ -103,13 +106,33 @@ try {
 
     const pageData = payload?.data;
 
-    const rows = Array.isArray(pageData)
-      ? pageData
-      : Array.isArray(pageData?.data)
-        ? pageData.data
-        : [];
+const rows = Array.isArray(pageData)
+  ? pageData
+  : Array.isArray(pageData?.data)
+    ? pageData.data
+    : [];
 
-    products.push(...rows);
+const normalizedRows = rows.map(
+  (row: TraceposProduct) => {
+    const directStock = row.current_stock;
+    const detailStock = row.details?.current_stock;
+
+    const hasDirectStock =
+      directStock !== null &&
+      directStock !== undefined &&
+      String(directStock).trim() !== "";
+
+    return {
+      ...row,
+      current_stock: hasDirectStock
+        ? directStock
+        : detailStock ?? null,
+    };
+  }
+);
+
+products.push(...normalizedRows);
+
 
     const total = Number(pageData?.total || 0);
     const currentPage = Number(
