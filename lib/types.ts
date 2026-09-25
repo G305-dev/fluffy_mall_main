@@ -14,8 +14,7 @@ export type ProductVariant = {
   price: number;
   stock: number;
   image?: string;
-   traceposItemCode?: string;
- 
+  traceposItemCode?: string;
 };
 
 export type Product = {
@@ -34,9 +33,7 @@ export type Product = {
   description: string;
   variants: ProductVariant[];
   deliveryNote: string;
-
-   traceposItemCode?: string;
-
+  traceposItemCode?: string;
 };
 
 export type CartItem = {
@@ -51,8 +48,12 @@ export type CartItem = {
 };
 
 export type Fulfilment = "delivery" | "pickup";
+
 export type Zone = "lagos" | "outside";
-export type PayMethod = "paystack" | "bank_transfer";
+
+export type PayMethod =
+  | "paystack"
+  | "bank_transfer";
 
 export type OrderStatus =
   | "pending_payment"
@@ -68,6 +69,7 @@ export type OrderStatus =
 export type OrderItem = {
   productId: string;
   name: string;
+  variantId?: string;
   variantName?: string;
   unitPrice: number;
   qty: number;
@@ -86,11 +88,20 @@ export type Customer = {
 
 export type Payment = {
   method: PayMethod;
-  status: "pending" | "paid" | "failed" | "awaiting_verification";
+  status:
+    | "pending"
+    | "paid"
+    | "failed"
+    | "awaiting_verification";
   reference?: string;
   amount: number;
   paidAt?: string;
 };
+
+export type TraceposSaleStatus =
+  | "processing"
+  | "synced"
+  | "failed";
 
 export type Order = {
   id: string;
@@ -107,6 +118,13 @@ export type Order = {
   status: OrderStatus;
   payment: Payment;
   customerNotified?: boolean;
+
+  traceposSaleStatus?: TraceposSaleStatus;
+  traceposSaleReference?: string;
+  traceposSaleInvoiceNumber?: string;
+  traceposSaleAttemptedAt?: string;
+  traceposSaleSyncedAt?: string;
+  traceposSaleError?: string;
 };
 
 export type StoreSettings = {
@@ -125,7 +143,14 @@ export type StoreSettings = {
   pickupDiscountPercent: number;
   pickupDiscountMin: number;
   pickupDiscountMax: number;
-  bankAccounts: { bank: string; number: string; name: string }[];
+  bankAccounts: {
+    bank: string;
+    number: string;
+    name: string;
+  }[];
   antiFraudNote: string;
-  openingHours: { day: string; hours: string }[];
+  openingHours: {
+    day: string;
+    hours: string;
+  }[];
 };
