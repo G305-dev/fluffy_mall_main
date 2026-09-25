@@ -12,6 +12,22 @@ import {
   normalizeTraceposCode,
 } from "@/lib/tracepos";
 
+function addWebsiteCodeCount(
+  counts: Map<string, number>,
+  value: unknown
+): void {
+  const code = normalizeTraceposCode(value);
+
+  if (!code) {
+    return;
+  }
+
+  counts.set(
+    code,
+    (counts.get(code) || 0) + 1
+  );
+}
+
 export async function syncPaidOrderToTracepos(
   orderId: string
 ) {
@@ -61,24 +77,15 @@ export async function syncPaidOrderToTracepos(
       number
     >();
 
-    function countWebsiteCode(value: unknown) {
-      const code = normalizeTraceposCode(value);
-
-      if (!code) return;
-
-      websiteCodeCounts.set(
-        code,
-        (websiteCodeCounts.get(code) || 0) + 1
-      );
-    }
-
     for (const product of websiteProducts) {
-      countWebsiteCode(
+      addWebsiteCodeCount(
+        websiteCodeCounts,
         product.traceposItemCode
       );
 
       for (const variant of product.variants) {
-        countWebsiteCode(
+        addWebsiteCodeCount(
+          websiteCodeCounts,
           variant.traceposItemCode
         );
       }
@@ -98,7 +105,9 @@ export async function syncPaidOrderToTracepos(
           traceposProduct.sku
       );
 
-      if (!code) continue;
+      if (!code) {
+        continue;
+      }
 
       if (traceposByCode.has(code)) {
         duplicateTraceposCodes.add(code);
