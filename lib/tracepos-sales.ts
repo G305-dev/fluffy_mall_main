@@ -1,3 +1,5 @@
+import { syncWebsiteStockFromTracepos } from "@/lib/inventory-sync";
+
 import {
   claimTraceposSale,
   getOrder,
@@ -243,10 +245,57 @@ export async function syncPaidOrderToTracepos(
       traceposResponse?.data?.invoice_number || ""
     );
 
+    /*
+     * Mark the sale as synced immediately after
+     * Tracepos accepts it.
+     *
+     * This is done before refreshing website stock so
+     * a stock-refresh failure cannot cause the already
+     * accepted sale to be retried and deducted twice.
+     */
     await markTraceposSaleSynced(order.id, {
       orderReference,
       invoiceNumber: invoiceNumber || undefined,
     });
+
+    let stockRefresh:
+      | Awaited<
+          ReturnType<
+            typeof syncWebsiteStockFromTracepos
+          >
+        >
+      | undefined;
+
+    let stockRefreshError:
+      | string
+      | undefined;
+
+    /*
+     * Refresh website stock after the Tracepos sale.
+     *
+     * If this refresh fails, the sale remains marked
+     * as synced because Tracepos has already accepted
+     * the transaction. The webhook or cron sync can
+     * refresh the stock later.
+     */
+    try {
+      stockRefresh =
+        await syncWebsiteStockFromTracepos();
+    } catch (error) {
+      stockRefreshError =
+        error instanceof Error
+          ? error.message
+          : "Website stock refresh failed.";
+
+      console.error(
+        "[Tracepos] Sale succeeded but website stock refresh failed.",
+        {
+          orderId: order.id,
+          orderReference,
+          error: stockRefreshError,
+        }
+      );
+    }
 
     return {
       status: "synced",
@@ -254,6 +303,8 @@ export async function syncPaidOrderToTracepos(
       orderReference,
       invoiceNumber:
         invoiceNumber || undefined,
+      stockRefresh,
+      stockRefreshError,
     };
   } catch (error) {
     const message =
