@@ -1,44 +1,68 @@
-// ─────────────────────────────────────────────────────────────
-//  lib/mongo.ts  (NEW FILE — copy into your project's `lib/` folder)
-//  MongoDB Atlas connection helper, used by lib/db.ts and lib/customer-auth.ts.
-// ─────────────────────────────────────────────────────────────
-
 import { MongoClient } from "mongodb";
 
-// Cache the connection promise on globalThis so Next.js dev-mode hot reload
-// doesn't open a brand-new connection on every single request.
 declare global {
   // eslint-disable-next-line no-var
-  var _fnyMongoClientPromise: Promise<MongoClient> | undefined;
+  var _fnyMongoClient:
+    | MongoClient
+    | undefined;
+
+  // eslint-disable-next-line no-var
+  var _fnyMongoClientPromise:
+    | Promise<MongoClient>
+    | undefined;
 }
 
-const uri = process.env.MONGODB_URI;
-const dbName = process.env.MONGODB_DB || "fluffy_mall";
-
-if (!uri) {
-  console.warn(
-    "[mongo] MONGODB_URI is not set. Add it to .env.local and restart the dev server."
-  );
-}
-
-const clientPromise: Promise<MongoClient> | null = uri
-  ? global._fnyMongoClientPromise ??
-    (global._fnyMongoClientPromise = new MongoClient(uri).connect())
-  : null;
-
-/** Returns a handle to the app's database (the DB + collections are created
- *  automatically on first write). */
 export async function getDb() {
-  if (!clientPromise) {
+  const uri = process.env.MONGODB_URI?.trim();
+
+  const dbName =
+    process.env.MONGODB_DB?.trim() ||
+    "fluffy_mall";
+
+  if (!uri) {
     throw new Error(
-      "MONGODB_URI is not set. Add it to .env.local and restart the dev server."
+      "MONGODB_URI is not set."
     );
   }
-  const client = await clientPromise;
+
+  if (global._fnyMongoClient) {
+    return global._fnyMongoClient.db(dbName);
+  }
+
+  if (!global._fnyMongoClientPromise) {
+    const client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      maxPoolSize: 10,
+    });
+
+    global._fnyMongoClientPromise =
+      client
+        .connect()
+        .then((connectedClient) => {
+          global._fnyMongoClient =
+            connectedClient;
+
+          return connectedClient;
+        })
+        .catch((error) => {
+          global._fnyMongoClientPromise =
+            undefined;
+
+          void client.close().catch(() => {
+            // Ignore cleanup errors.
+          });
+
+          throw error;
+        });
+  }
+
+  const client =
+    await global._fnyMongoClientPromise;
+
   return client.db(dbName);
 }
 
-/** Collection names. */
 export const COLLECTIONS = {
   ORDERS: "orders",
   CUSTOMERS: "customers",
