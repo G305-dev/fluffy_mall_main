@@ -172,19 +172,12 @@ export async function createTraceposSale(input: {
     headers,
   } = getTraceposConfig();
 
-  const requestBody: Record<string, unknown> = {
+  const requestBody = {
     order_reference: input.orderReference,
     order_date: input.orderDate,
     items: input.items,
     notes: input.notes,
   };
-
-  const traceposUserId =
-    process.env.TRACEPOS_SALES_USER_ID?.trim();
-
-  if (traceposUserId) {
-    requestBody.user_id = traceposUserId;
-  }
 
   const response = await fetch(
     `${baseUrl}/sales`,

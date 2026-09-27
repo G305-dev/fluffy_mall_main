@@ -157,80 +157,41 @@ export async function syncPaidOrderToTracepos(
       }
 
       const websiteCode =
-        normalizeTraceposCode(
-          variant?.traceposItemCode ||
-            websiteProduct.traceposItemCode
-        );
+  normalizeTraceposCode(
+    variant?.traceposItemCode ||
+      websiteProduct.traceposItemCode
+  );
 
-      if (!websiteCode) {
-        throw new Error(
-          `No Tracepos item code for ${item.name}${
-            item.variantName
-              ? ` - ${item.variantName}`
-              : ""
-          }`
-        );
-      }
+if (!websiteCode) {
+  throw new Error(
+    `No Tracepos item code for ${item.name}${
+      item.variantName
+        ? ` - ${item.variantName}`
+        : ""
+    }`
+  );
+}
 
-      if (
-        (websiteCodeCounts.get(websiteCode) || 0) >
-        1
-      ) {
-        throw new Error(
-          `Duplicate website Tracepos code: ${websiteCode}`
-        );
-      }
+const traceposProduct =
+  traceposByCode.get(websiteCode);
 
-      if (
-        duplicateTraceposCodes.has(websiteCode)
-      ) {
-        throw new Error(
-          `Duplicate Tracepos code: ${websiteCode}`
-        );
-      }
+if (!traceposProduct) {
+  throw new Error(
+    `Tracepos item not found for code: ${websiteCode}`
+  );
+}
 
-      const traceposProduct =
-        traceposByCode.get(websiteCode);
+if (!traceposProduct.id) {
+  throw new Error(
+    `Tracepos product id is missing for code: ${websiteCode}`
+  );
+}
 
-      if (!traceposProduct) {
-        throw new Error(
-          `Tracepos item not found for code: ${websiteCode}`
-        );
-      }
-
-      if (!traceposProduct.id) {
-        throw new Error(
-          `Tracepos product id is missing for code: ${websiteCode}`
-        );
-      }
-
-      const quantity = Number(item.qty);
-
-      if (
-        !Number.isInteger(quantity) ||
-        quantity <= 0
-      ) {
-        throw new Error(
-          `Invalid quantity for ${item.name}`
-        );
-      }
-
-      const unitPrice = Number(item.unitPrice);
-
-      if (
-        !Number.isFinite(unitPrice) ||
-        unitPrice < 0
-      ) {
-        throw new Error(
-          `Invalid price for ${item.name}`
-        );
-      }
-
-      saleItems.push({
-        product_id: traceposProduct.id,
-        quantity,
-        unit_price: unitPrice,
-      });
+saleItems.push({
+  product_id: traceposProduct.id,
+  quantity: Number(item.qty),
+  unit_price: Number(item.unitPrice),
+});
     }
 
     const traceposResponse =
