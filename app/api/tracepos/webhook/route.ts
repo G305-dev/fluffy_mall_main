@@ -60,6 +60,10 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  console.log(
+  "[TRACEPOS_WEBHOOK_PAYLOAD]",
+  rawBody
+);
 
   const eventType = String(
     payload.event_type || ""
