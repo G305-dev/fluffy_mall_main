@@ -157,41 +157,91 @@ export async function syncPaidOrderToTracepos(
       }
 
       const websiteCode =
-  normalizeTraceposCode(
-    variant?.traceposItemCode ||
-      websiteProduct.traceposItemCode
-  );
+        normalizeTraceposCode(
+          variant?.traceposItemCode ||
+            websiteProduct.traceposItemCode
+        );
 
-if (!websiteCode) {
-  throw new Error(
-    `No Tracepos item code for ${item.name}${
-      item.variantName
-        ? ` - ${item.variantName}`
-        : ""
-    }`
-  );
-}
+      if (!websiteCode) {
+        throw new Error(
+          `No Tracepos item code for ${item.name}${
+            item.variantName
+              ? ` - ${item.variantName}`
+              : ""
+          }`
+        );
+      }
 
-const traceposProduct =
-  traceposByCode.get(websiteCode);
+      if (
+        (websiteCodeCounts.get(websiteCode) || 0) >
+        1
+      ) {
+        throw new Error(
+          `Duplicate website Tracepos code: ${websiteCode}`
+        );
+      }
 
-if (!traceposProduct) {
-  throw new Error(
-    `Tracepos item not found for code: ${websiteCode}`
-  );
-}
+      if (
+        duplicateTraceposCodes.has(websiteCode)
+      ) {
+        throw new Error(
+          `Duplicate Tracepos code: ${websiteCode}`
+        );
+      }
 
-if (!traceposProduct.id) {
-  throw new Error(
-    `Tracepos product id is missing for code: ${websiteCode}`
-  );
-}
+      const traceposProduct =
+        traceposByCode.get(websiteCode);
 
-saleItems.push({
-  product_id: traceposProduct.id,
-  quantity: Number(item.qty),
-  unit_price: Number(item.unitPrice),
-});
+      if (!traceposProduct) {
+        throw new Error(
+          `Tracepos item not found for code: ${websiteCode}`
+        );
+      }
+
+      /*
+       * The live Tracepos product response contains
+       * xid rather than id.
+       *
+       * The top-level xid is the product identifier.
+       * Do not use details.xid.
+       */
+      const traceposProductId =
+        traceposProduct.xid ||
+        traceposProduct.id;
+
+      if (!traceposProductId) {
+        throw new Error(
+          `Tracepos product identifier is missing for code: ${websiteCode}`
+        );
+      }
+
+      const quantity = Number(item.qty);
+
+      if (
+        !Number.isInteger(quantity) ||
+        quantity <= 0
+      ) {
+        throw new Error(
+          `Invalid quantity for ${item.name}`
+        );
+      }
+
+      const unitPrice = Number(item.unitPrice);
+
+      if (
+        !Number.isFinite(unitPrice) ||
+        unitPrice < 0
+      ) {
+        throw new Error(
+          `Invalid price for ${item.name}`
+        );
+      }
+
+      saleItems.push({
+        product_id: traceposProductId,
+        quantity,
+        unit_price: unitPrice,
+      });
     }
 
     const traceposResponse =
@@ -210,9 +260,8 @@ saleItems.push({
      * Mark the sale as synced immediately after
      * Tracepos accepts it.
      *
-     * This is done before refreshing website stock so
-     * a stock-refresh failure cannot cause the already
-     * accepted sale to be retried and deducted twice.
+     * This prevents a stock-refresh failure from
+     * causing the sale to be submitted again.
      */
     await markTraceposSaleSynced(order.id, {
       orderReference,
@@ -232,12 +281,8 @@ saleItems.push({
       | undefined;
 
     /*
-     * Refresh website stock after the Tracepos sale.
-     *
-     * If this refresh fails, the sale remains marked
-     * as synced because Tracepos has already accepted
-     * the transaction. The webhook or cron sync can
-     * refresh the stock later.
+     * Refresh website stock from Tracepos after
+     * the successful sale.
      */
     try {
       stockRefresh =

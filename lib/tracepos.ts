@@ -1,5 +1,6 @@
 export type TraceposProduct = {
   id?: string;
+  xid?: string;
   name?: string;
   item_code?: string | null;
   sku?: string | null;
