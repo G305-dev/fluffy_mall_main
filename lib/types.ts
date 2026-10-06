@@ -161,3 +161,8 @@ export type StoreSettings = {
     hours: string;
   }[];
 };
+export type Subscriber = {
+  name: string;
+  email: string;
+  subscribedAt: string;
+};
