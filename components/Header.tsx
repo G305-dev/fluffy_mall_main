@@ -52,16 +52,19 @@ export default function Header() {
     };
   }, [open]);
 
-  useEffect(() => {
-    fetch("/api/customer/session")
-      .then((response) => response.json())
-      .then((data) => {
-        setAuthenticated(Boolean(data.authenticated));
-      })
-      .catch(() => {
-        setAuthenticated(false);
-      });
-  }, [pathname]);
+ useEffect(() => {
+  fetch("/api/customer/session", {
+    credentials: "include",
+    cache: "no-store",
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      setAuthenticated(Boolean(data.authenticated));
+    })
+    .catch(() => {
+      setAuthenticated(false);
+    });
+}, [pathname]);
 
   if (pathname?.startsWith("/admin")) {
     return null;
@@ -77,15 +80,34 @@ export default function Header() {
     );
   }
 
-  async function logout() {
-    await fetch("/api/customer/logout", {
-      method: "POST",
-    });
+ async function logout() {
+  try {
+    const response = await fetch(
+      "/api/customer/logout",
+      {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Logout failed.");
+    }
 
     setAuthenticated(false);
     setOpen(false);
-    router.refresh();
+
+    /*
+     * Force a full navigation so the header performs
+     * a fresh session check with the deleted cookie.
+     */
+    window.location.replace("/");
+  } catch {
+    setAuthenticated(false);
+    setOpen(false);
   }
+}
 
   return (
     <header className="sticky top-0 z-50 border-b border-cream-200 bg-[#fff9f2]/90 backdrop-blur-md">
