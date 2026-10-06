@@ -15,6 +15,10 @@ import {
   PayMethod,
   StoreSettings,
 } from "@/lib/types";
+import {
+  NEW_CUSTOMER_DISCOUNT_PERCENT,
+  roundMoney,
+} from "@/lib/promotions";
 import Link from "next/link";
 import {
   Check,
@@ -58,7 +62,8 @@ export default function CheckoutPage() {
   // Customers must sign in before checkout.
   const [gatePassed, setGatePassed] = useState(false);
   const [signInEmail, setSignInEmail] = useState("");
-  const [signInPassword, setSignInPassword] = useState("");
+  const [signInPassword, setSignInPassword] =
+    useState("");
   const [signInBusy, setSignInBusy] = useState(false);
   const [signInError, setSignInError] = useState(
     () => searchParams.get("authError") || ""
@@ -66,6 +71,18 @@ export default function CheckoutPage() {
   const [signedInAs, setSignedInAs] = useState("");
   const [showSignInPassword, setShowSignInPassword] =
     useState(false);
+
+  const [
+    newCustomerDiscountEligible,
+    setNewCustomerDiscountEligible,
+  ] = useState(false);
+
+  const [
+    newCustomerDiscountPercent,
+    setNewCustomerDiscountPercent,
+  ] = useState(
+    NEW_CUSTOMER_DISCOUNT_PERCENT
+  );
 
   // Stepped checkout
   const [step, setStep] = useState<Step>(1);
@@ -90,7 +107,6 @@ export default function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  // Live settings from the database.
   const [settings, setSettings] =
     useState<StoreSettings>(
       settingsFile as StoreSettings
@@ -111,9 +127,11 @@ export default function CheckoutPage() {
       });
   }, []);
 
-  // If the customer is already signed in, skip the sign-in gate.
+  // Load the authenticated account and discount status.
   useEffect(() => {
-    fetch("/api/customer/session")
+    fetch("/api/customer/session", {
+      cache: "no-store",
+    })
       .then((response) =>
         response.ok ? response.json() : null
       )
@@ -122,6 +140,23 @@ export default function CheckoutPage() {
           setEmail(data.email);
           setSignedInAs(data.email);
           setGatePassed(true);
+        }
+
+        setNewCustomerDiscountEligible(
+          Boolean(
+            data?.newCustomerDiscountEligible
+          )
+        );
+
+        const percent = Number(
+          data?.newCustomerDiscountPercent
+        );
+
+        if (
+          Number.isFinite(percent) &&
+          percent > 0
+        ) {
+          setNewCustomerDiscountPercent(percent);
         }
       })
       .catch(() => {
@@ -147,6 +182,21 @@ export default function CheckoutPage() {
       subtotal,
       city,
     ]
+  );
+
+  const newCustomerDiscount =
+    newCustomerDiscountEligible
+      ? roundMoney(
+          subtotal *
+            (newCustomerDiscountPercent / 100)
+        )
+      : 0;
+
+  const checkoutTotal = roundMoney(
+    Math.max(
+      0,
+      quote.total - newCustomerDiscount
+    )
   );
 
   if (items.length === 0) {
@@ -203,8 +253,41 @@ export default function CheckoutPage() {
         );
       }
 
-      setEmail(data.email);
-      setSignedInAs(data.email);
+      const sessionResponse = await fetch(
+        "/api/customer/session",
+        {
+          cache: "no-store",
+        }
+      );
+
+      const sessionData =
+        await sessionResponse.json().catch(
+          () => null
+        );
+
+      const accountEmail =
+        sessionData?.email || data.email;
+
+      setEmail(accountEmail);
+      setSignedInAs(accountEmail);
+
+      setNewCustomerDiscountEligible(
+        Boolean(
+          sessionData?.newCustomerDiscountEligible
+        )
+      );
+
+      const percent = Number(
+        sessionData?.newCustomerDiscountPercent
+      );
+
+      if (
+        Number.isFinite(percent) &&
+        percent > 0
+      ) {
+        setNewCustomerDiscountPercent(percent);
+      }
+
       setGatePassed(true);
     } catch (signInErrorValue) {
       setSignInError(
@@ -299,7 +382,9 @@ export default function CheckoutPage() {
           `/pay/paystack/${data.order.id}`
         );
       } else {
-        router.push(`/pay/bank/${data.order.id}`);
+        router.push(
+          `/pay/bank/${data.order.id}`
+        );
       }
     } catch (paymentError) {
       setError(
@@ -361,12 +446,26 @@ export default function CheckoutPage() {
           <dd>{naira(subtotal)}</dd>
         </div>
 
+        {newCustomerDiscount > 0 && (
+          <div className="flex justify-between text-sage-600">
+            <dt>
+              New customer discount (
+              {newCustomerDiscountPercent}%)
+            </dt>
+
+            <dd>
+              -{naira(newCustomerDiscount)}
+            </dd>
+          </div>
+        )}
+
         {quote.pickupDiscount > 0 && (
           <div className="flex justify-between text-sage-600">
             <dt>
               Pickup discount (
               {settings.pickupDiscountPercent}%)
             </dt>
+
             <dd>
               -{naira(quote.pickupDiscount)}
             </dd>
@@ -386,7 +485,7 @@ export default function CheckoutPage() {
 
         <div className="flex justify-between border-t border-cream-200 pt-3 text-base font-semibold">
           <dt>Total</dt>
-          <dd>{naira(quote.total)}</dd>
+          <dd>{naira(checkoutTotal)}</dd>
         </div>
       </dl>
     </aside>
@@ -596,15 +695,13 @@ export default function CheckoutPage() {
                 <input
                   type="email"
                   required
+                  readOnly
                   value={email}
-                  onChange={(event) =>
-                    setEmail(event.target.value)
-                  }
-                  className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3"
+                  className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-100 px-4 py-3"
                 />
 
                 <span className="mt-1 block text-xs text-cocoa-700/60">
-                  Order confirmation will be sent here
+                  This is the email connected to your account
                 </span>
               </label>
 
@@ -924,7 +1021,7 @@ export default function CheckoutPage() {
                 >
                   {busy
                     ? "Processing…"
-                    : `Pay now · ${naira(quote.total)}`}
+                    : `Pay now · ${naira(checkoutTotal)}`}
                 </button>
               </div>
 

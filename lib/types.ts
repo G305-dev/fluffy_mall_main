@@ -112,6 +112,13 @@ export type Order = {
   fulfilment: Fulfilment;
   zone: Zone;
   subtotal: number;
+
+  // Product discount amount in naira.
+  discount?: number;
+
+  // Discount percentage used for this order.
+  discountPercent?: number;
+
   deliveryFee: number;
   pickupDiscount: number;
   total: number;
