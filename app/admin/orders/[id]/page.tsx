@@ -133,7 +133,6 @@ export default async function AdminOrderDetail({
       <OrderActions
         id={order.id}
         status={order.status}
-        paymentStatus={order.payment.status}
       />
 
       <a

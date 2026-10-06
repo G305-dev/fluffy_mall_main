@@ -6,7 +6,7 @@ import {
 } from "@/lib/customer-auth";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const order = await getOrder(params.id);
@@ -19,12 +19,14 @@ export async function GET(
   }
 
   const session = readCustomerSession(
-    _req.cookies.get(CUSTOMER_COOKIE)?.value
+    req.cookies.get(CUSTOMER_COOKIE)?.value
   );
 
   if (!session) {
     return NextResponse.json(
-      { error: "You must sign in to view this order." },
+      {
+        error: "You must sign in to view this order.",
+      },
       { status: 401 }
     );
   }
@@ -34,7 +36,9 @@ export async function GET(
     session.email.toLowerCase()
   ) {
     return NextResponse.json(
-      { error: "You can only view your own orders." },
+      {
+        error: "You can only view your own orders.",
+      },
       { status: 403 }
     );
   }
@@ -83,24 +87,24 @@ export async function POST(
   const body = await req.json();
   const action = body.action as string;
 
-  if (action === "mark_transferred") {
-    order.status = "awaiting_verification";
-    order.payment.status = "awaiting_verification";
-    order.updatedAt = new Date().toISOString();
-
-    await saveOrder(order);
-
-    return NextResponse.json({ order });
-  }
-
   if (action === "paystack_success") {
+    if (order.payment.method !== "paystack") {
+      return NextResponse.json(
+        {
+          error: "This order is not a Paystack order.",
+        },
+        { status: 400 }
+      );
+    }
+
     order.status =
       order.fulfilment === "pickup"
         ? "awaiting_pickup"
         : "paid";
 
     order.payment.status = "paid";
-    order.payment.paidAt = new Date().toISOString();
+    order.payment.paidAt =
+      new Date().toISOString();
     order.payment.reference =
       body.reference || order.id;
     order.customerNotified = true;
@@ -112,6 +116,15 @@ export async function POST(
   }
 
   if (action === "paystack_failed") {
+    if (order.payment.method !== "paystack") {
+      return NextResponse.json(
+        {
+          error: "This order is not a Paystack order.",
+        },
+        { status: 400 }
+      );
+    }
+
     order.payment.status = "failed";
     order.updatedAt = new Date().toISOString();
 

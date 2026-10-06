@@ -51,13 +51,10 @@ export type Fulfilment = "delivery" | "pickup";
 
 export type Zone = "lagos" | "outside";
 
-export type PayMethod =
-  | "paystack"
-  | "bank_transfer";
+export type PayMethod = "paystack";
 
 export type OrderStatus =
   | "pending_payment"
-  | "awaiting_verification"
   | "paid"
   | "processing"
   | "out_for_delivery"
@@ -88,11 +85,7 @@ export type Customer = {
 
 export type Payment = {
   method: PayMethod;
-  status:
-    | "pending"
-    | "paid"
-    | "failed"
-    | "awaiting_verification";
+  status: "pending" | "paid" | "failed";
   reference?: string;
   amount: number;
   paidAt?: string;
@@ -113,10 +106,7 @@ export type Order = {
   zone: Zone;
   subtotal: number;
 
-  // Product discount amount in naira.
   discount?: number;
-
-  // Discount percentage used for this order.
   discountPercent?: number;
 
   deliveryFee: number;
@@ -150,17 +140,12 @@ export type StoreSettings = {
   pickupDiscountPercent: number;
   pickupDiscountMin: number;
   pickupDiscountMax: number;
-  bankAccounts: {
-    bank: string;
-    number: string;
-    name: string;
-  }[];
-  antiFraudNote: string;
   openingHours: {
     day: string;
     hours: string;
   }[];
 };
+
 export type Subscriber = {
   name: string;
   email: string;

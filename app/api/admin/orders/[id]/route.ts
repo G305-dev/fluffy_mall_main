@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
 import { getOrder, saveOrder } from "@/lib/db";
-import { sendPaymentEmail } from "@/lib/email";
 import type { OrderStatus } from "@/lib/types";
-import { syncPaidOrderToTracepos } from "@/lib/tracepos-sales";
 
 export async function PATCH(
   req: NextRequest,
@@ -35,72 +33,13 @@ export async function PATCH(
     order.status = body.status as OrderStatus;
   }
 
-  if (body.verifyBank === true) {
-    if (
-      order.payment.method !== "bank_transfer"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "This order does not use bank transfer.",
-        },
-        { status: 400 }
-      );
-    }
-
-    order.payment.status = "paid";
-    order.payment.paidAt =
-      new Date().toISOString();
-    order.payment.reference =
-      order.payment.reference || order.id;
-
-    order.status =
-      order.fulfilment === "pickup"
-        ? "awaiting_pickup"
-        : "paid";
-  }
-
-  order.updatedAt =
-    new Date().toISOString();
+  order.updatedAt = new Date().toISOString();
 
   await saveOrder(order);
-
-  let receiptSent: boolean | undefined;
-
-  if (
-    body.verifyBank === true &&
-    order.payment.method === "bank_transfer"
-  ) {
-    if (order.customerNotified) {
-      receiptSent = true;
-    } else {
-      receiptSent = await sendPaymentEmail(
-        order,
-        "success"
-      );
-
-      if (receiptSent) {
-        order.customerNotified = true;
-        order.updatedAt =
-          new Date().toISOString();
-
-        await saveOrder(order);
-      }
-    }
-  }
-
-  let traceposSync;
-
-  if (body.verifyBank === true) {
-    traceposSync =
-      await syncPaidOrderToTracepos(order.id);
-  }
 
   const latestOrder = await getOrder(order.id);
 
   return NextResponse.json({
     order: latestOrder || order,
-    receiptSent,
-    traceposSync,
   });
 }

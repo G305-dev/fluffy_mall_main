@@ -35,25 +35,31 @@ async function sendResendEmail({
     console.error(
       "[email] Missing RESEND_API_KEY, RESEND_FROM_EMAIL, or customer email."
     );
+
     return false;
   }
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-  from,
-  to: [to],
-  reply_to: process.env.RESEND_REPLY_TO_EMAIL || from,
-  subject,
-  text,
-  html,
-}),
-    });
+    const response = await fetch(
+      "https://api.resend.com/emails",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          reply_to:
+            process.env.RESEND_REPLY_TO_EMAIL ||
+            from,
+          subject,
+          text,
+          html,
+        }),
+      }
+    );
 
     if (!response.ok) {
       console.error(
@@ -65,7 +71,11 @@ async function sendResendEmail({
 
     return response.ok;
   } catch (error) {
-    console.error("[email] Failed to send email:", error);
+    console.error(
+      "[email] Failed to send email:",
+      error
+    );
+
     return false;
   }
 }
@@ -80,33 +90,24 @@ export async function sendPaymentEmail(
     console.error(
       `[email] Order ${order.id} has no customer email address.`
     );
+
     return false;
   }
 
   const successful = outcome === "success";
-  const isBankTransfer = order.payment.method === "bank_transfer";
-
-  const paymentMethod = isBankTransfer
-    ? "Bank transfer"
-    : "Paystack";
+  const paymentMethod = "Paystack";
 
   const subject = successful
-    ? isBankTransfer
-      ? `Payment receipt for order ${order.id}`
-      : `Payment confirmed for order ${order.id}`
+    ? `Payment confirmed for order ${order.id}`
     : `Payment could not be completed for order ${order.id}`;
 
   const message = successful
-    ? isBankTransfer
-      ? `Your bank transfer of ${naira(
-          order.total
-        )} has been received and confirmed. This email is your payment receipt.`
-      : `Your Paystack payment of ${naira(
-          order.total
-        )} was successful. Your order has been confirmed.`
+    ? `Your Paystack payment of ${naira(
+        order.total
+      )} was successful. Your order has been confirmed.`
     : `Your payment of ${naira(
         order.total
-      )} could not be completed. Please try again or choose another payment method.`;
+      )} could not be completed. Please try again through Paystack.`;
 
   const baseUrl = (
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -115,14 +116,19 @@ export async function sendPaymentEmail(
   ).replace(/\/$/, "");
 
   const orderUrl = baseUrl
-    ? `${baseUrl}/order/${encodeURIComponent(order.id)}`
+    ? `${baseUrl}/order/${encodeURIComponent(
+        order.id
+      )}`
     : `/order/${encodeURIComponent(order.id)}`;
 
   const paymentReference =
-    order.payment.reference || "Not available";
+    order.payment.reference ||
+    "Not available";
 
   const paidAt = order.payment.paidAt
-    ? new Date(order.payment.paidAt).toLocaleString("en-NG", {
+    ? new Date(
+        order.payment.paidAt
+      ).toLocaleString("en-NG", {
         dateStyle: "medium",
         timeStyle: "short",
         timeZone: "Africa/Lagos",
@@ -141,9 +147,18 @@ export async function sendPaymentEmail(
     })
     .join("\n");
 
+  const discountText =
+    order.discount && order.discount > 0
+      ? `New customer discount: -${naira(
+          order.discount
+        )}`
+      : "";
+
   const pickupDiscountText =
     order.pickupDiscount > 0
-      ? `Pickup discount: ${naira(order.pickupDiscount)}`
+      ? `Pickup discount: -${naira(
+          order.pickupDiscount
+        )}`
       : "";
 
   const text = [
@@ -160,6 +175,7 @@ export async function sendPaymentEmail(
     itemText,
     "",
     `Subtotal: ${naira(order.subtotal)}`,
+    discountText,
     `Delivery: ${naira(order.deliveryFee)}`,
     pickupDiscountText,
     `${successful ? "Total paid" : "Order total"}: ${naira(
@@ -167,7 +183,9 @@ export async function sendPaymentEmail(
     )}`,
     "",
     `View your order: ${orderUrl}`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const itemRows = order.items
     .map((item) => {
@@ -193,13 +211,33 @@ export async function sendPaymentEmail(
     })
     .join("");
 
+  const discountRow =
+    order.discount && order.discount > 0
+      ? `
+        <tr>
+          <td style="padding:6px 0;">
+            New customer discount
+          </td>
+          <td style="padding:6px 0;text-align:right;">
+            -${escapeHtml(
+              naira(order.discount)
+            )}
+          </td>
+        </tr>
+      `
+      : "";
+
   const pickupDiscountRow =
     order.pickupDiscount > 0
       ? `
         <tr>
-          <td style="padding:6px 0;">Pickup discount</td>
+          <td style="padding:6px 0;">
+            Pickup discount
+          </td>
           <td style="padding:6px 0;text-align:right;">
-            -${escapeHtml(naira(order.pickupDiscount))}
+            -${escapeHtml(
+              naira(order.pickupDiscount)
+            )}
           </td>
         </tr>
       `
@@ -258,14 +296,20 @@ export async function sendPaymentEmail(
           <tr>
             <td style="padding:6px 0;">Subtotal</td>
             <td style="padding:6px 0;text-align:right;">
-              ${escapeHtml(naira(order.subtotal))}
+              ${escapeHtml(
+                naira(order.subtotal)
+              )}
             </td>
           </tr>
+
+          ${discountRow}
 
           <tr>
             <td style="padding:6px 0;">Delivery</td>
             <td style="padding:6px 0;text-align:right;">
-              ${escapeHtml(naira(order.deliveryFee))}
+              ${escapeHtml(
+                naira(order.deliveryFee)
+              )}
             </td>
           </tr>
 
@@ -273,10 +317,14 @@ export async function sendPaymentEmail(
 
           <tr>
             <td style="padding:10px 0;font-size:18px;">
-              <strong>${successful ? "Total paid" : "Order total"}</strong>
+              <strong>
+                ${successful ? "Total paid" : "Order total"}
+              </strong>
             </td>
             <td style="padding:10px 0;text-align:right;font-size:18px;">
-              <strong>${escapeHtml(naira(order.total))}</strong>
+              <strong>
+                ${escapeHtml(naira(order.total))}
+              </strong>
             </td>
           </tr>
         </tbody>
@@ -305,14 +353,18 @@ export async function sendPaymentEmail(
   });
 }
 
-export async function sendWelcomeEmail(email: string) {
+export async function sendWelcomeEmail(
+  email: string
+) {
   const baseUrl = (
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXT_PUBLIC_BASE_URL ||
     ""
   ).replace(/\/$/, "");
 
-  const shopUrl = baseUrl ? `${baseUrl}/shop` : "/shop";
+  const shopUrl = baseUrl
+    ? `${baseUrl}/shop`
+    : "/shop";
 
   const message =
     "Welcome to Fluffy'n'Yummy Mall. Your customer account is ready, and you can now checkout and track your orders from one place.";

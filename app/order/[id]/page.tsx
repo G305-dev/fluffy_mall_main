@@ -93,19 +93,13 @@ export default function OrderPage() {
   }
 
   const paymentUrl =
-    order.payment.method === "bank_transfer"
-      ? `/pay/bank/${order.id}`
-      : `/pay/paystack/${order.id}`;
+    `/pay/paystack/${order.id}`;
 
   const paymentMessage =
-    order.payment.method === "bank_transfer"
-      ? "Complete your bank transfer below. Your order will be confirmed after we verify your payment."
-      : "Your payment has not been completed yet. Continue to Paystack to complete your payment.";
+    "Your payment has not been completed yet. Continue to Paystack to complete your payment.";
 
   const paymentConfirmation =
-    order.payment.method === "bank_transfer"
-      ? "Your bank transfer has been verified and your order has been confirmed."
-      : "Your Paystack payment was successful and your order has been confirmed.";
+    "Your Paystack payment was successful and your order has been confirmed.";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">

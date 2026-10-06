@@ -12,6 +12,7 @@ import {
 } from "@/lib/delivery";
 import {
   CartItem,
+  Fulfilment,
   Order,
   PayMethod,
 } from "@/lib/types";
@@ -34,22 +35,18 @@ export async function POST(req: NextRequest) {
   if (!session) {
     return NextResponse.json(
       {
-        error:
-          "You must sign in before placing an order.",
+        error: "You must sign in before placing an order.",
       },
       { status: 401 }
     );
   }
 
-  const account = await findCustomerAccount(
-    session.email
-  );
+  const account = await findCustomerAccount(session.email);
 
   if (!account) {
     return NextResponse.json(
       {
-        error:
-          "Your customer account could not be found.",
+        error: "Your customer account could not be found.",
       },
       { status: 401 }
     );
@@ -59,15 +56,13 @@ export async function POST(req: NextRequest) {
 
   const items = (body.items || []) as CartItem[];
 
-  const fulfilment =
+  const fulfilment: Fulfilment =
     body.fulfilment === "pickup"
       ? "pickup"
       : "delivery";
 
-  const method: PayMethod =
-    body.method === "bank_transfer"
-      ? "bank_transfer"
-      : "paystack";
+  // Paystack is the only supported checkout provider.
+  const method: PayMethod = "paystack";
 
   const customer =
     body.customer &&
@@ -91,21 +86,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const city = String(
-    customer.city || ""
-  ).trim();
+  const city = String(customer.city || "").trim();
 
   if (
     fulfilment === "delivery" &&
     !DELIVERY_CITIES.some(
-      (deliveryCity) =>
-        deliveryCity === city
+      (deliveryCity) => deliveryCity === city
     )
   ) {
     return NextResponse.json(
       {
-        error:
-          "Please select a valid delivery city.",
+        error: "Please select a valid delivery city.",
       },
       { status: 400 }
     );
@@ -139,10 +130,7 @@ export async function POST(req: NextRequest) {
       name: product.name,
       variantName: variant?.name,
       unitPrice,
-      qty: Math.max(
-        1,
-        Number(item.qty) || 1
-      ),
+      qty: Math.max(1, Number(item.qty) || 1),
       image: product.images[0],
     };
   });
@@ -168,14 +156,12 @@ export async function POST(req: NextRequest) {
   });
 
   /*
-   * Delivery and pickup adjustments are not
-   * discounted. Only the product subtotal receives
-   * the 5% discount.
+   * Delivery and pickup adjustments are not discounted.
+   * Only the product subtotal receives the new-customer
+   * discount.
    */
   const discountClaimed =
-    await claimNewCustomerDiscount(
-      session.email
-    );
+    await claimNewCustomerDiscount(session.email);
 
   const discount = discountClaimed
     ? roundMoney(

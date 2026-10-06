@@ -59,7 +59,6 @@ export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Customers must sign in before checkout.
   const [gatePassed, setGatePassed] = useState(false);
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] =
@@ -80,20 +79,15 @@ export default function CheckoutPage() {
   const [
     newCustomerDiscountPercent,
     setNewCustomerDiscountPercent,
-  ] = useState(
-    NEW_CUSTOMER_DISCOUNT_PERCENT
-  );
+  ] = useState(NEW_CUSTOMER_DISCOUNT_PERCENT);
 
-  // Stepped checkout
   const [step, setStep] = useState<Step>(1);
   const [maxStep, setMaxStep] = useState<Step>(1);
 
-  // Step 1 — contact
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // Step 2 — delivery
   const [state, setState] = useState("Lagos");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -101,9 +95,9 @@ export default function CheckoutPage() {
   const [fulfilment, setFulfilment] =
     useState<Fulfilment>("delivery");
 
-  // Step 3 — payment
-  const [method, setMethod] =
-    useState<PayMethod>("paystack");
+  // Paystack is the only checkout method.
+  const method: PayMethod = "paystack";
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -127,7 +121,6 @@ export default function CheckoutPage() {
       });
   }, []);
 
-  // Load the authenticated account and discount status.
   useEffect(() => {
     fetch("/api/customer/session", {
       cache: "no-store",
@@ -199,25 +192,8 @@ export default function CheckoutPage() {
     )
   );
 
-  if (items.length === 0) {
-    return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center sm:px-6 sm:py-20">
-        <h1 className="font-display text-3xl">
-          Nothing to check out
-        </h1>
-
-        <Link
-          href="/shop"
-          className="mt-4 inline-block text-terracotta-600"
-        >
-          Go to shop
-        </Link>
-      </div>
-    );
-  }
-
-  async function signIn(e: React.FormEvent) {
-    e.preventDefault();
+  async function signIn(event: React.FormEvent) {
+    event.preventDefault();
     setSignInBusy(true);
     setSignInError("");
 
@@ -306,8 +282,10 @@ export default function CheckoutPage() {
     }
   }
 
-  function continueToDelivery(e: React.FormEvent) {
-    e.preventDefault();
+  function continueToDelivery(
+    event: React.FormEvent
+  ) {
+    event.preventDefault();
     setError("");
 
     if (!name.trim() || !phone.trim()) {
@@ -321,8 +299,10 @@ export default function CheckoutPage() {
     );
   }
 
-  function continueToPayment(e: React.FormEvent) {
-    e.preventDefault();
+  function continueToPayment(
+    event: React.FormEvent
+  ) {
+    event.preventDefault();
     setError("");
 
     if (fulfilment === "delivery" && !city) {
@@ -342,8 +322,8 @@ export default function CheckoutPage() {
     setMaxStep(3);
   }
 
-  async function payNow(e: React.FormEvent) {
-    e.preventDefault();
+  async function payNow(event: React.FormEvent) {
+    event.preventDefault();
     setError("");
     setBusy(true);
 
@@ -377,15 +357,9 @@ export default function CheckoutPage() {
         );
       }
 
-      if (method === "paystack") {
-        router.push(
-          `/pay/paystack/${data.order.id}`
-        );
-      } else {
-        router.push(
-          `/pay/bank/${data.order.id}`
-        );
-      }
+      router.push(
+        `/pay/paystack/${data.order.id}`
+      );
     } catch (paymentError) {
       setError(
         paymentError instanceof Error
@@ -491,7 +465,23 @@ export default function CheckoutPage() {
     </aside>
   );
 
-  /* ---------- Gate: sign in ---------- */
+  if (items.length === 0) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center sm:px-6 sm:py-20">
+        <h1 className="font-display text-3xl">
+          Nothing to check out
+        </h1>
+
+        <Link
+          href="/shop"
+          className="mt-4 inline-block text-terracotta-600"
+        >
+          Go to shop
+        </Link>
+      </div>
+    );
+  }
+
   if (!gatePassed) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
@@ -616,7 +606,6 @@ export default function CheckoutPage() {
     );
   }
 
-  /* ---------- Stepped checkout: 1 Contact → 2 Delivery → 3 Payment ---------- */
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
       <main className="mt-7 min-w-0 space-y-4 sm:mt-10">
@@ -628,7 +617,6 @@ export default function CheckoutPage() {
           Signed in as {signedInAs || email}.
         </p>
 
-        {/* Step 1 — Contact */}
         <section className="rounded-3xl bg-white ring-1 ring-cream-200">
           <header className="flex items-start justify-between gap-3 p-4 sm:items-center sm:p-5">
             <div className="min-w-0 flex items-center gap-3">
@@ -726,7 +714,6 @@ export default function CheckoutPage() {
           )}
         </section>
 
-        {/* Step 2 — Delivery */}
         <section
           className={`rounded-3xl bg-white ring-1 ring-cream-200 ${
             maxStep < 2 ? "opacity-50" : ""
@@ -913,7 +900,6 @@ export default function CheckoutPage() {
           )}
         </section>
 
-        {/* Step 3 — Payment */}
         <section
           className={`rounded-3xl bg-white ring-1 ring-cream-200 ${
             maxStep < 3 ? "opacity-50" : ""
@@ -936,47 +922,15 @@ export default function CheckoutPage() {
               onSubmit={payNow}
               className="grid gap-4 border-t border-cream-100 p-4 sm:p-5"
             >
-              <div className="grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMethod("paystack")
-                  }
-                  className={`rounded-2xl p-4 text-left ring-1 transition ${
-                    method === "paystack"
-                      ? "bg-terracotta-500 text-white ring-terracotta-500"
-                      : "ring-cream-300"
-                  }`}
-                >
-                  <p className="flex items-center gap-2 font-medium">
-                    <ShieldCheck size={16} />
-                    Secure payment via Paystack
-                  </p>
+              <div className="rounded-2xl bg-terracotta-500 p-4 text-left text-white ring-1 ring-terracotta-500">
+                <p className="flex items-center gap-2 font-medium">
+                  <ShieldCheck size={16} />
+                  Secure payment via Paystack
+                </p>
 
-                  <p className="mt-1 text-xs opacity-80">
-                    Pay with card, bank transfer, or USSD — all in one secure checkout.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMethod("bank_transfer")
-                  }
-                  className={`rounded-2xl p-4 text-left ring-1 transition ${
-                    method === "bank_transfer"
-                      ? "bg-terracotta-500 text-white ring-terracotta-500"
-                      : "ring-cream-300"
-                  }`}
-                >
-                  <p className="font-medium">
-                    Company bank transfer
-                  </p>
-
-                  <p className="mt-1 text-xs opacity-80">
-                    Parallex or Providus — we confirm in admin
-                  </p>
-                </button>
+                <p className="mt-1 text-xs opacity-90">
+                  Pay with card, bank transfer, or USSD — all in one secure checkout.
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -995,10 +949,6 @@ export default function CheckoutPage() {
                   </span>
                 ))}
               </div>
-
-              <p className="text-xs leading-relaxed text-cocoa-700/70">
-                {settings.antiFraudNote}
-              </p>
 
               {error && step === 3 && (
                 <p className="text-sm text-rose-700">
