@@ -1,6 +1,6 @@
 # Fluffy'n'Yummy Mall
 A Next.js storefront and operations dashboard for Fluffy'n'Yummy Mall, an online shop based in Anthony Village, Lagos. The current customer journey is:
-**browse → choose a product/variant → cart → guest or customer checkout → Paystack or bank transfer → WhatsApp/order tracking → admin fulfilment**
+**browse → choose a product/variant → cart → customer checkout → Paystack or bank transfer → WhatsApp/order tracking → admin fulfilment**
 > This README describes the repository as it exists today. It is intentionally not a deployment claim: verify payment, email, storage, and delivery behaviour in a staging environment before launch.
 ## Overview
 The application provides:
@@ -20,7 +20,7 @@ The application provides:
 - WhatsApp messages for products, carts, and orders.
 - Customer pages: `/login`, `/signup`, `/account/orders`, `/wishlist`, `/track`, and `/order/[id]`.
 ### Checkout and fulfilment
-- Guest checkout and signed-in customer checkout.
+-  signed-in customer checkout.
 - Delivery or pickup fulfilment selection.
 - Lagos and outside-Lagos zones.
 - Paystack payment flow: `/pay/paystack/[id]`.
@@ -203,7 +203,7 @@ A Vercel-style deployment is supported by the existing Next.js configuration:
 4. Configure Paystack's webhook at `/api/paystack/webhook`.
 5. Register the Google callback URL if OAuth is enabled.
 6. Verify the Resend sender domain.
-7. Test catalogue browsing, variant stock, guest checkout, customer login, both payment methods, email, WhatsApp, admin status updates, and order tracking.
+7. Test catalogue browsing, variant stock,  customer login, both payment methods, email, WhatsApp, admin status updates, and order tracking.
 8. Confirm backups and a rollback procedure for MongoDB.
 The app also references Vercel Blob for admin uploads. Configure the Blob integration according to the hosting provider before using upload functionality.
 ## Troubleshooting
