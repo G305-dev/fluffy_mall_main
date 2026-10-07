@@ -112,6 +112,9 @@ export default async function HomePage() {
               className="flex gap-10 px-6"
             >
               <span>
+                5% off your first signed-in order for new customers
+              </span>
+              <span>
                 Home, kitchen &amp; gifting essentials
               </span>
 

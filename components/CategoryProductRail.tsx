@@ -19,13 +19,14 @@ type CategoryInfo = {
 
 const sectionStyles = [
   {
-    background: "bg-orange-200",
+    background:
+      "bg-white ring-1 ring-cream-200",
     text: "text-cocoa-900",
-    mutedText: "text-cocoa-900/75",
+    mutedText: "text-cocoa-700/70",
     action:
       "bg-cocoa-900 text-white hover:bg-cocoa-800",
     control:
-      "bg-white/95 text-cocoa-800 hover:bg-white",
+      "bg-cocoa-900 text-white hover:bg-cocoa-800",
   },
   {
     background:
@@ -47,13 +48,14 @@ const sectionStyles = [
       "bg-white/95 text-cocoa-800 hover:bg-white",
   },
   {
-    background: "bg-orange-200",
+    background:
+      "bg-white ring-1 ring-cream-200",
     text: "text-cocoa-900",
-    mutedText: "text-cocoa-900/75",
+    mutedText: "text-cocoa-700/70",
     action:
       "bg-cocoa-900 text-white hover:bg-cocoa-800",
     control:
-      "bg-white/95 text-cocoa-800 hover:bg-white",
+      "bg-cocoa-900 text-white hover:bg-cocoa-800",
   },
 ];
 

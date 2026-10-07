@@ -114,7 +114,7 @@ export default function Header() {
       <div className="bg-cocoa-800 text-cream-100">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2 text-[10px] tracking-wide sm:px-6 sm:text-xs lg:px-8">
           <p className="truncate">
-            Home, kitchen and gifting essentials from Lagos
+            5% off your first signed-in order for new customers
           </p>
 
           <Link
