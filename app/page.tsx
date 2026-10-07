@@ -28,39 +28,45 @@ export default async function HomePage() {
     <div>
       <NewsletterPopup />
 
-      <section className="relative h-[560px] overflow-hidden sm:h-[620px] lg:h-[clamp(520px,34vw,680px)]">
-        <HeroSlideshow />
+     <section className="bg-cream-100">
+  <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+    <div className="grid overflow-hidden rounded-[2rem] bg-cream-100 shadow-card ring-1 ring-cream-200 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="flex min-h-[460px] flex-col justify-center px-5 py-12 sm:px-10 sm:py-16 lg:min-h-[560px] lg:px-12 lg:py-20">
+        <p className="animate-hero animate-hero-1 text-[10px] uppercase leading-relaxed tracking-[0.18em] text-gold-600 sm:text-xs sm:tracking-[0.28em]">
+          Lagos · @fluffy_nyummy_mall
+        </p>
 
-        <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
-          <p className="animate-hero animate-hero-1 text-[10px] uppercase leading-relaxed tracking-[0.18em] text-gold-400 sm:text-xs sm:tracking-[0.28em]">
-            Lagos · @fluffy_nyummy_mall
-          </p>
+        <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-4xl leading-tight text-cocoa-800 sm:text-5xl lg:text-6xl">
+          Home, kitchen &amp; gifting.
+        </h1>
 
-          <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-4xl leading-tight text-cream-50 sm:text-6xl">
-            Home, kitchen &amp; gifting.
-          </h1>
+        <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-base leading-relaxed text-cocoa-700 sm:text-lg">
+          {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
+        </p>
 
-          <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-base text-cream-200 sm:text-lg">
-            {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
-          </p>
+        <div className="animate-hero animate-hero-4 mt-8 grid gap-3 min-[430px]:flex min-[430px]:flex-wrap">
+          <Link
+            href="/shop"
+            className="btn-pop rounded-full bg-terracotta-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg"
+          >
+            Shop the catalog
+          </Link>
 
-          <div className="animate-hero animate-hero-4 mt-8 grid gap-3 min-[430px]:flex min-[430px]:flex-wrap">
-            <Link
-              href="/shop"
-              className="btn-pop rounded-full bg-terracotta-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg"
-            >
-              Shop the catalog
-            </Link>
-
-            <Link
-              href="/contact"
-              className="btn-pop rounded-full bg-white/10 px-6 py-3 text-center text-sm font-semibold text-cream-50 ring-1 ring-white/30"
-            >
-              Visit 30A Oseni Street
-            </Link>
-          </div>
+          <Link
+            href="/contact"
+            className="btn-pop rounded-full bg-cocoa-800 px-6 py-3 text-center text-sm font-semibold text-cream-50"
+          >
+            Visit 30A Oseni Street
+          </Link>
         </div>
-      </section>
+      </div>
+
+      <div className="min-h-[360px] lg:min-h-[560px]">
+        <HeroSlideshow />
+      </div>
+    </div>
+  </div>
+</section>
 
       <div className="overflow-hidden border-y border-cream-200 bg-terracotta-500 text-white">
         <div className="animate-marquee flex w-max gap-10 whitespace-nowrap py-2.5 text-sm">

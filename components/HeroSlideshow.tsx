@@ -58,7 +58,7 @@ export default function HeroSlideshow() {
 
   return (
     <div
-      className="absolute inset-0 overflow-hidden bg-cocoa-900"
+      className="relative h-full min-h-[360px] overflow-hidden bg-cocoa-900 sm:min-h-[480px] lg:min-h-[560px]"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
@@ -79,31 +79,28 @@ export default function HeroSlideshow() {
             fill
             priority={index === 0}
             quality={100}
-            sizes="100vw"
+            sizes="(min-width: 1024px) 55vw, 100vw"
             className="object-cover object-center"
           />
         </div>
       ))}
 
-      {/* Light overlay for readability of the homepage text */}
-      <div className="absolute inset-0 bg-gradient-to-r from-cocoa-900/75 via-cocoa-900/35 to-transparent" />
-
       <button
         type="button"
         onClick={previousSlide}
         aria-label="Previous slide"
-        className="absolute left-0 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-r-full bg-white/90 text-cocoa-800 shadow-sm transition hover:bg-white sm:h-12 sm:w-12"
+        className="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-cocoa-800 shadow-md transition hover:bg-white sm:left-5 sm:h-11 sm:w-11"
       >
-        <ChevronLeft size={22} />
+        <ChevronLeft size={21} />
       </button>
 
       <button
         type="button"
         onClick={nextSlide}
         aria-label="Next slide"
-        className="absolute right-0 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-l-full bg-white/90 text-cocoa-800 shadow-sm transition hover:bg-white sm:h-12 sm:w-12"
+        className="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-cocoa-800 shadow-md transition hover:bg-white sm:right-5 sm:h-11 sm:w-11"
       >
-        <ChevronRight size={22} />
+        <ChevronRight size={21} />
       </button>
 
       <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/35 px-3 py-2 backdrop-blur-sm">
