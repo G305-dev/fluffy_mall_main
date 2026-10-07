@@ -28,7 +28,7 @@ export default async function HomePage() {
     <div>
       <NewsletterPopup />
 
-      <section className="relative min-h-[560px] overflow-hidden sm:min-h-[650px] lg:min-h-[680px]">
+      <section className="relative h-[560px] overflow-hidden sm:h-[620px] lg:h-[clamp(560px,42vw,720px)]">
         <HeroSlideshow />
 
         <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
