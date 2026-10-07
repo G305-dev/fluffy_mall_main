@@ -2,10 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
 
 type HeroSlideshowProps = {
   variant?: "background" | "panel";
@@ -43,26 +39,12 @@ export default function HeroSlideshow({
       setActiveSlide(
         (current) => (current + 1) % slides.length
       );
-    }, 5500);
+    }, 3000);
 
     return () => {
       window.clearInterval(timer);
     };
   }, [isPaused]);
-
-  function previousSlide() {
-    setActiveSlide(
-      (current) =>
-        (current - 1 + slides.length) %
-        slides.length
-    );
-  }
-
-  function nextSlide() {
-    setActiveSlide(
-      (current) => (current + 1) % slides.length
-    );
-  }
 
   return (
     <div
@@ -105,53 +87,8 @@ export default function HeroSlideshow({
         </div>
       ))}
 
-      {/* Keep the previous dark overlay on mobile. */}
       {!isPanel && (
         <div className="absolute inset-0 bg-gradient-to-r from-cocoa-900/80 via-cocoa-900/50 to-cocoa-900/20" />
-      )}
-
-      {/* Controls are shown on the desktop image panel only. */}
-      {isPanel && (
-        <>
-          <button
-            type="button"
-            onClick={previousSlide}
-            aria-label="Previous slide"
-            className="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-cocoa-800 shadow-md transition hover:bg-white sm:left-5 sm:h-11 sm:w-11"
-          >
-            <ChevronLeft size={21} />
-          </button>
-
-          <button
-            type="button"
-            onClick={nextSlide}
-            aria-label="Next slide"
-            className="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-cocoa-800 shadow-md transition hover:bg-white sm:right-5 sm:h-11 sm:w-11"
-          >
-            <ChevronRight size={21} />
-          </button>
-
-          <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/35 px-3 py-2 backdrop-blur-sm">
-            {slides.map((slide, index) => (
-              <button
-                key={slide.src}
-                type="button"
-                onClick={() => setActiveSlide(index)}
-                aria-label={`Go to slide ${index + 1}`}
-                aria-current={
-                  index === activeSlide
-                    ? "true"
-                    : undefined
-                }
-                className={`h-2.5 rounded-full transition-all ${
-                  index === activeSlide
-                    ? "w-7 bg-white"
-                    : "w-2.5 bg-white/60 hover:bg-white"
-                }`}
-              />
-            ))}
-          </div>
-        </>
       )}
     </div>
   );

@@ -67,7 +67,7 @@ export default async function HomePage() {
 <section className="hidden bg-cream-100 lg:block">
   <div className="mx-auto max-w-6xl px-8 py-8">
     <div className="grid overflow-hidden rounded-[2rem] bg-cream-100 shadow-card ring-1 ring-cream-200 lg:grid-cols-[0.9fr_1.1fr]">
-      <div className="flex min-h-[560px] flex-col justify-center px-12 py-20">
+      <div className="flex min-h-[560px] flex-col justify-center bg-white px-12 py-20">
         <p className="animate-hero animate-hero-1 text-xs uppercase tracking-[0.28em] text-gold-600">
           Lagos · @fluffy_nyummy_mall
         </p>
