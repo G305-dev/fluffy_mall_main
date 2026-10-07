@@ -106,7 +106,7 @@ export default function CategoryProductRail({
 
         <Link
           href={`/shop/${category.slug}`}
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-semibold text-cocoa-800 shadow-sm transition hover:bg-cream-50"
+         className={`inline-flex shrink-0 items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${style.action}`}
         >
           See all
           <ChevronRight size={16} />
@@ -151,7 +151,7 @@ export default function CategoryProductRail({
         <button
           type="button"
           onClick={() => scrollProducts(1)}
-          className="inline-flex items-center gap-1 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-cocoa-800"
+          className={`hidden h-9 w-9 shrink-0 place-items-center rounded-full shadow-sm transition sm:grid ${style.control}`}
         >
           Swipe to see more
           <ArrowRight size={14} />
