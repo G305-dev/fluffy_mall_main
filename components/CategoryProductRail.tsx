@@ -20,7 +20,7 @@ type CategoryInfo = {
 const sectionStyles = [
   {
     background:
-      "bg-white ring-1 ring-cream-200",
+      "bg-[#fff9f2] ring-1 ring-cream-200",
     text: "text-cocoa-900",
     mutedText: "text-cocoa-700/70",
     action:
@@ -30,7 +30,7 @@ const sectionStyles = [
   },
   {
     background:
-      "bg-white ring-1 ring-cream-200",
+      "bg-[#fff9f2] ring-1 ring-cream-200",
     text: "text-cocoa-900",
     mutedText: "text-cocoa-700/70",
     action:
@@ -49,7 +49,7 @@ const sectionStyles = [
   },
   {
     background:
-      "bg-white ring-1 ring-cream-200",
+      "bg-[#fff9f2] ring-1 ring-cream-200",
     text: "text-cocoa-900",
     mutedText: "text-cocoa-700/70",
     action:
