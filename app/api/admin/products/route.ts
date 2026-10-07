@@ -355,26 +355,44 @@ export async function PATCH(req: NextRequest) {
     };
   });
 }
-  products[index] = {
-    ...products[index],
-    name: body.name ?? products[index].name,
-    price: Number(
-      body.price ?? products[index].price
-    ),
-    stock: Number(
-      body.stock ?? products[index].stock
-    ),
-    category: nextCategory,
-    subcategory: nextSubcategory,
-     traceposItemCode:
+products[index] = {
+  ...products[index],
+
+  name:
+    body.name !== undefined
+      ? String(body.name).trim()
+      : products[index].name,
+
+  price: Number(
+    body.price ?? products[index].price
+  ),
+
+  stock: Number(
+    body.stock ?? products[index].stock
+  ),
+
+  category: nextCategory,
+  subcategory: nextSubcategory,
+
+  featured:
+    body.featured !== undefined
+      ? Boolean(body.featured)
+      : products[index].featured,
+
+  bestseller:
+    body.bestseller !== undefined
+      ? Boolean(body.bestseller)
+      : products[index].bestseller,
+
+  traceposItemCode:
     body.traceposItemCode !== undefined
-      ? String(body.traceposItemCode ?? "").trim() ||
-        undefined
+      ? String(
+          body.traceposItemCode ?? ""
+        ).trim() || undefined
       : products[index].traceposItemCode,
-    
-    variants,
-    
-  };
+
+  variants,
+};
 
   if (
     typeof body.image === "string" &&

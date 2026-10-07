@@ -1,7 +1,10 @@
 "use client";
 
 import { CATEGORIES } from "@/lib/categories";
-import type { CategorySlug, Product } from "@/lib/types";
+import type {
+  CategorySlug,
+  Product,
+} from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -17,9 +20,17 @@ export default function ProductEditor({
   const [price, setPrice] = useState(product.price);
   const [stock, setStock] = useState(product.stock);
   const [name, setName] = useState(product.name);
-  const [traceposItemCode, setTraceposItemCode] = useState(
-    product.traceposItemCode || ""
+
+  const [featured, setFeatured] = useState(
+    Boolean(product.featured)
   );
+
+  const [bestseller, setBestseller] = useState(
+    Boolean(product.bestseller)
+  );
+
+  const [traceposItemCode, setTraceposItemCode] =
+    useState(product.traceposItemCode || "");
 
   const [variantCodes, setVariantCodes] = useState<
     Record<string, string>
@@ -32,20 +43,26 @@ export default function ProductEditor({
     )
   );
 
-  const [category, setCategory] = useState<CategorySlug>(
-    product.category
-  );
+  const [category, setCategory] =
+    useState<CategorySlug>(product.category);
+
   const [subcategory, setSubcategory] = useState(
     product.subcategory ?? ""
   );
+
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(
+  const [error, setError] = useState<string | null>(
     null
   );
-  const fileInput = useRef<HTMLInputElement | null>(null);
+
+  const confirmTimer = useRef<
+    ReturnType<typeof setTimeout> | null
+  >(null);
+
+  const fileInput =
+    useRef<HTMLInputElement | null>(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -65,10 +82,15 @@ export default function ProductEditor({
       (item) => item.slug === value
     );
 
-    if (!nextCategory) return;
+    if (!nextCategory) {
+      return;
+    }
 
     setCategory(nextCategory.slug);
-    setSubcategory(nextCategory.subcategories[0] ?? "");
+
+    setSubcategory(
+      nextCategory.subcategories[0] ?? ""
+    );
   }
 
   async function save() {
@@ -76,28 +98,35 @@ export default function ProductEditor({
     setError(null);
 
     try {
-      const response = await fetch("/api/admin/products", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: product.id,
-          price,
-          stock,
-          name: name.trim(),
-          category,
-          subcategory,
-          variantItemCodes: variantCodes,
+      const response = await fetch(
+        "/api/admin/products",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: product.id,
+            price,
+            stock,
+            name: name.trim(),
+            category,
+            subcategory,
 
-          // Send an empty string when no parent code is wanted.
-          // This allows a parent code to be cleared when variants
-          // have their own separate Tracepos codes.
-          traceposItemCode: traceposItemCode.trim(),
-        }),
-      });
+            featured,
+            bestseller,
 
-      const data = (await response.json().catch(() => ({}))) as {
+            variantItemCodes: variantCodes,
+
+            traceposItemCode:
+              traceposItemCode.trim(),
+          }),
+        }
+      );
+
+      const data = (await response
+        .json()
+        .catch(() => ({}))) as {
         error?: string;
       };
 
@@ -126,7 +155,9 @@ export default function ProductEditor({
 
     event.target.value = "";
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     setError(null);
     setBusy(true);
@@ -135,10 +166,13 @@ export default function ProductEditor({
       const uploadData = new FormData();
       uploadData.append("file", file);
 
-      const uploadResponse = await fetch("/api/admin/upload", {
-        method: "POST",
-        body: uploadData,
-      });
+      const uploadResponse = await fetch(
+        "/api/admin/upload",
+        {
+          method: "POST",
+          body: uploadData,
+        }
+      );
 
       const uploadJson = await uploadResponse.json();
 
@@ -201,17 +235,22 @@ export default function ProductEditor({
     setError(null);
 
     try {
-      const response = await fetch("/api/admin/products", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: product.id,
-        }),
-      });
+      const response = await fetch(
+        "/api/admin/products",
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: product.id,
+          }),
+        }
+      );
 
-      const data = (await response.json().catch(() => ({}))) as {
+      const data = (await response
+        .json()
+        .catch(() => ({}))) as {
         error?: string;
       };
 
@@ -228,6 +267,7 @@ export default function ProductEditor({
           ? deleteError.message
           : "Could not delete product."
       );
+
       setConfirming(false);
     } finally {
       setBusy(false);
@@ -288,11 +328,14 @@ export default function ProductEditor({
 
               <input
                 type="text"
-                value={variantCodes[variant.id] || ""}
+                value={
+                  variantCodes[variant.id] || ""
+                }
                 onChange={(event) =>
                   setVariantCodes((current) => ({
                     ...current,
-                    [variant.id]: event.target.value,
+                    [variant.id]:
+                      event.target.value,
                   }))
                 }
                 placeholder="Exact scanner item code"
@@ -305,6 +348,44 @@ export default function ProductEditor({
             </label>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  function launchFlags(compact = false) {
+    return (
+      <div
+        className={
+          compact
+            ? "mt-4 grid gap-3 rounded-xl bg-cream-50 p-3"
+            : "mt-3 grid gap-2"
+        }
+      >
+        <label className="flex items-center gap-2 text-xs text-cocoa-800">
+          <input
+            type="checkbox"
+            checked={featured}
+            onChange={(event) =>
+              setFeatured(event.target.checked)
+            }
+            className="h-4 w-4 rounded border-cream-300 text-terracotta-500 focus:ring-terracotta-400"
+          />
+
+          <span>Featured for launch</span>
+        </label>
+
+        <label className="flex items-center gap-2 text-xs text-cocoa-800">
+          <input
+            type="checkbox"
+            checked={bestseller}
+            onChange={(event) =>
+              setBestseller(event.target.checked)
+            }
+            className="h-4 w-4 rounded border-cream-300 text-terracotta-500 focus:ring-terracotta-400"
+          />
+
+          <span>Best seller</span>
+        </label>
       </div>
     );
   }
@@ -348,7 +429,9 @@ export default function ProductEditor({
 
               <input
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) =>
+                  setName(event.target.value)
+                }
                 className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
               />
             </label>
@@ -359,7 +442,9 @@ export default function ProductEditor({
               <input
                 value={traceposItemCode}
                 onChange={(event) =>
-                  setTraceposItemCode(event.target.value)
+                  setTraceposItemCode(
+                    event.target.value
+                  )
                 }
                 placeholder="Leave empty when variants have separate codes"
                 className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
@@ -373,12 +458,17 @@ export default function ProductEditor({
                 <select
                   value={category}
                   onChange={(event) =>
-                    handleCategoryChange(event.target.value)
+                    handleCategoryChange(
+                      event.target.value
+                    )
                   }
                   className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
                 >
                   {CATEGORIES.map((item) => (
-                    <option key={item.slug} value={item.slug}>
+                    <option
+                      key={item.slug}
+                      value={item.slug}
+                    >
                       {item.name}
                     </option>
                   ))}
@@ -395,11 +485,13 @@ export default function ProductEditor({
                   }
                   className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
                 >
-                  {selectedCategory?.subcategories.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
+                  {selectedCategory?.subcategories.map(
+                    (item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
             </div>
@@ -441,6 +533,8 @@ export default function ProductEditor({
             />
           </label>
         </div>
+
+        {launchFlags(true)}
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-cream-100 pt-3">
           <button
@@ -494,7 +588,9 @@ export default function ProductEditor({
           <div className="min-w-0">
             <input
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
               className="w-40 rounded-lg border border-cream-300 px-2 py-1 text-sm"
             />
 
@@ -507,12 +603,15 @@ export default function ProductEditor({
             <input
               value={traceposItemCode}
               onChange={(event) =>
-                setTraceposItemCode(event.target.value)
+                setTraceposItemCode(
+                  event.target.value
+                )
               }
               placeholder="Parent Tracepos code"
               className="mt-2 w-40 rounded-lg border border-cream-300 px-2 py-1 text-xs"
             />
 
+            {launchFlags(false)}
             {variantCodeFields(false)}
           </div>
         </div>
@@ -526,12 +625,17 @@ export default function ProductEditor({
             <select
               value={category}
               onChange={(event) =>
-                handleCategoryChange(event.target.value)
+                handleCategoryChange(
+                  event.target.value
+                )
               }
               className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-xs"
             >
               {CATEGORIES.map((item) => (
-                <option key={item.slug} value={item.slug}>
+                <option
+                  key={item.slug}
+                  value={item.slug}
+                >
                   {item.name}
                 </option>
               ))}
@@ -548,11 +652,13 @@ export default function ProductEditor({
               }
               className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-xs"
             >
-              {selectedCategory?.subcategories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
+              {selectedCategory?.subcategories.map(
+                (item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                )
+              )}
             </select>
           </label>
         </div>
