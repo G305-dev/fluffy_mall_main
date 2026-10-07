@@ -7,6 +7,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+type HeroSlideshowProps = {
+  variant?: "background" | "panel";
+};
+
 const slides = [
   {
     src: "/images/hero.jpg",
@@ -22,9 +26,13 @@ const slides = [
   },
 ];
 
-export default function HeroSlideshow() {
+export default function HeroSlideshow({
+  variant = "background",
+}: HeroSlideshowProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+
+  const isPanel = variant === "panel";
 
   useEffect(() => {
     if (isPaused) {
@@ -58,7 +66,11 @@ export default function HeroSlideshow() {
 
   return (
     <div
-      className="relative h-full min-h-[360px] overflow-hidden bg-cocoa-900 sm:min-h-[480px] lg:min-h-[560px]"
+      className={
+        isPanel
+          ? "relative h-full min-h-[360px] overflow-hidden bg-cocoa-900 sm:min-h-[480px] lg:min-h-[560px]"
+          : "absolute inset-0 overflow-hidden bg-cocoa-900"
+      }
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
@@ -79,50 +91,68 @@ export default function HeroSlideshow() {
             fill
             priority={index === 0}
             quality={100}
-            sizes="(min-width: 1024px) 55vw, 100vw"
-            className="object-cover object-center"
+            sizes={
+              isPanel
+                ? "(min-width: 1024px) 55vw, 100vw"
+                : "100vw"
+            }
+            className={
+              isPanel
+                ? "object-cover object-center"
+                : "object-cover object-[center_28%]"
+            }
           />
         </div>
       ))}
 
-      <button
-        type="button"
-        onClick={previousSlide}
-        aria-label="Previous slide"
-        className="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-cocoa-800 shadow-md transition hover:bg-white sm:left-5 sm:h-11 sm:w-11"
-      >
-        <ChevronLeft size={21} />
-      </button>
+      {/* Keep the previous dark overlay on mobile. */}
+      {!isPanel && (
+        <div className="absolute inset-0 bg-gradient-to-r from-cocoa-900/80 via-cocoa-900/50 to-cocoa-900/20" />
+      )}
 
-      <button
-        type="button"
-        onClick={nextSlide}
-        aria-label="Next slide"
-        className="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-cocoa-800 shadow-md transition hover:bg-white sm:right-5 sm:h-11 sm:w-11"
-      >
-        <ChevronRight size={21} />
-      </button>
-
-      <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/35 px-3 py-2 backdrop-blur-sm">
-        {slides.map((slide, index) => (
+      {/* Controls are shown on the desktop image panel only. */}
+      {isPanel && (
+        <>
           <button
-            key={slide.src}
             type="button"
-            onClick={() => setActiveSlide(index)}
-            aria-label={`Go to slide ${index + 1}`}
-            aria-current={
-              index === activeSlide
-                ? "true"
-                : undefined
-            }
-            className={`h-2.5 rounded-full transition-all ${
-              index === activeSlide
-                ? "w-7 bg-white"
-                : "w-2.5 bg-white/60 hover:bg-white"
-            }`}
-          />
-        ))}
-      </div>
+            onClick={previousSlide}
+            aria-label="Previous slide"
+            className="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-cocoa-800 shadow-md transition hover:bg-white sm:left-5 sm:h-11 sm:w-11"
+          >
+            <ChevronLeft size={21} />
+          </button>
+
+          <button
+            type="button"
+            onClick={nextSlide}
+            aria-label="Next slide"
+            className="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-cocoa-800 shadow-md transition hover:bg-white sm:right-5 sm:h-11 sm:w-11"
+          >
+            <ChevronRight size={21} />
+          </button>
+
+          <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/35 px-3 py-2 backdrop-blur-sm">
+            {slides.map((slide, index) => (
+              <button
+                key={slide.src}
+                type="button"
+                onClick={() => setActiveSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+                aria-current={
+                  index === activeSlide
+                    ? "true"
+                    : undefined
+                }
+                className={`h-2.5 rounded-full transition-all ${
+                  index === activeSlide
+                    ? "w-7 bg-white"
+                    : "w-2.5 bg-white/60 hover:bg-white"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

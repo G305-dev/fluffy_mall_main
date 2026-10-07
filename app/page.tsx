@@ -28,23 +28,59 @@ export default async function HomePage() {
     <div>
       <NewsletterPopup />
 
-     <section className="bg-cream-100">
-  <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+     {/* Mobile and tablet hero — previous layout */}
+<section className="relative min-h-[560px] overflow-hidden sm:min-h-[650px] lg:hidden">
+  <HeroSlideshow variant="background" />
+
+  <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-24">
+    <p className="animate-hero animate-hero-1 text-[10px] uppercase leading-relaxed tracking-[0.18em] text-gold-400 sm:text-xs sm:tracking-[0.28em]">
+      Lagos · @fluffy_nyummy_mall
+    </p>
+
+    <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-4xl leading-tight text-cream-50 sm:text-6xl">
+      Home, kitchen &amp; gifting.
+    </h1>
+
+    <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-base text-cream-200 sm:text-lg">
+      {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
+    </p>
+
+    <div className="animate-hero animate-hero-4 mt-8 grid gap-3 min-[430px]:flex min-[430px]:flex-wrap">
+      <Link
+        href="/shop"
+        className="btn-pop rounded-full bg-terracotta-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg"
+      >
+        Shop the catalog
+      </Link>
+
+      <Link
+        href="/contact"
+        className="btn-pop rounded-full bg-white/10 px-6 py-3 text-center text-sm font-semibold text-cream-50 ring-1 ring-white/30"
+      >
+        Visit 30A Oseni Street
+      </Link>
+    </div>
+  </div>
+</section>
+
+{/* Desktop hero — separated text and slideshow */}
+<section className="hidden bg-cream-100 lg:block">
+  <div className="mx-auto max-w-6xl px-8 py-8">
     <div className="grid overflow-hidden rounded-[2rem] bg-cream-100 shadow-card ring-1 ring-cream-200 lg:grid-cols-[0.9fr_1.1fr]">
-      <div className="flex min-h-[460px] flex-col justify-center px-5 py-12 sm:px-10 sm:py-16 lg:min-h-[560px] lg:px-12 lg:py-20">
-        <p className="animate-hero animate-hero-1 text-[10px] uppercase leading-relaxed tracking-[0.18em] text-gold-600 sm:text-xs sm:tracking-[0.28em]">
+      <div className="flex min-h-[560px] flex-col justify-center px-12 py-20">
+        <p className="animate-hero animate-hero-1 text-xs uppercase tracking-[0.28em] text-gold-600">
           Lagos · @fluffy_nyummy_mall
         </p>
 
-        <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-4xl leading-tight text-cocoa-800 sm:text-5xl lg:text-6xl">
+        <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-5xl leading-tight text-cocoa-800 xl:text-6xl">
           Home, kitchen &amp; gifting.
         </h1>
 
-        <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-base leading-relaxed text-cocoa-700 sm:text-lg">
+        <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-lg leading-relaxed text-cocoa-700">
           {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
         </p>
 
-        <div className="animate-hero animate-hero-4 mt-8 grid gap-3 min-[430px]:flex min-[430px]:flex-wrap">
+        <div className="animate-hero animate-hero-4 mt-8 flex flex-wrap gap-3">
           <Link
             href="/shop"
             className="btn-pop rounded-full bg-terracotta-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg"
@@ -61,8 +97,8 @@ export default async function HomePage() {
         </div>
       </div>
 
-      <div className="min-h-[360px] lg:min-h-[560px]">
-        <HeroSlideshow />
+      <div className="min-h-[560px]">
+        <HeroSlideshow variant="panel" />
       </div>
     </div>
   </div>
