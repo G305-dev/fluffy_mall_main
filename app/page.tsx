@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
+import CategoryProductRail from "@/components/CategoryProductRail";
 import { CATEGORIES } from "@/lib/categories";
 import { getProducts } from "@/lib/db";
 import settings from "@/data/settings.json";
@@ -40,7 +41,7 @@ export default async function HomePage() {
           </h1>
 
           <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-base text-cream-200 sm:text-lg">
-            {settings.tagline}. Browse prices, pay with Paystack or transfer, or order on WhatsApp the way you always have.
+            {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
           </p>
 
           <div className="animate-hero animate-hero-4 mt-8 grid gap-3 min-[430px]:flex min-[430px]:flex-wrap">
@@ -71,12 +72,15 @@ export default async function HomePage() {
               <span>
                 Home, kitchen &amp; gifting essentials
               </span>
+
               <span>
-                Paystack · Bank transfer · WhatsApp
+                Paystack · WhatsApp
               </span>
+
               <span>
                 Shop online or visit our Lagos store
               </span>
+
               <span>
                 30A Oseni Street, Anthony Village
               </span>
@@ -126,6 +130,33 @@ export default async function HomePage() {
               </p>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* Jumia-style product rows for every category */}
+      <section className="mx-auto max-w-6xl px-4 pb-10 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          {CATEGORIES.map((category, index) => {
+            const categoryProducts = products
+              .filter(
+                (product) =>
+                  product.category === category.slug
+              )
+              .slice(0, 12);
+
+            if (categoryProducts.length === 0) {
+              return null;
+            }
+
+            return (
+              <CategoryProductRail
+                key={category.slug}
+                category={category}
+                products={categoryProducts}
+                index={index}
+              />
+            );
+          })}
         </div>
       </section>
 
@@ -224,6 +255,7 @@ export default async function HomePage() {
                 className="mt-0.5 shrink-0"
                 size={16}
               />
+
               {settings.address}
             </p>
 
