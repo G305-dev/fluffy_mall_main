@@ -197,9 +197,14 @@ export default function OrderPage() {
           </div>
         )}
 
-        <div className="flex justify-between">
+         <div className="flex justify-between">
           <dt>Delivery</dt>
-          <dd>{naira(order.deliveryFee)}</dd>
+
+          <dd>
+            {order.zone === "outside"
+              ? "To be communicated"
+              : naira(order.deliveryFee)}
+          </dd>
         </div>
 
         <div className="flex justify-between font-semibold">
@@ -211,11 +216,13 @@ export default function OrderPage() {
       <p className="mt-4 break-words text-sm text-cocoa-700">
         {order.fulfilment === "pickup"
           ? "Pickup at 30A Oseni Street, Anthony Village, opposite GTBank."
-          : `Delivering to ${order.customer.state}${
-              order.customer.address
-                ? ` · ${order.customer.address}`
-                : ""
-            }`}
+          : order.zone === "outside"
+            ? `Outside Lagos delivery · ${order.customer.address || ""}. The delivery fee will be communicated by phone call or WhatsApp.`
+            : `Delivering to ${order.customer.state}${
+                order.customer.address
+                  ? ` · ${order.customer.address}`
+                  : ""
+              }`}
       </p>
 
       <div className="mt-6 flex flex-wrap gap-3">

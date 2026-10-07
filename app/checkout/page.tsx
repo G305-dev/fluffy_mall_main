@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/components/CartProvider";
-import { naira, NIGERIAN_STATES } from "@/lib/format";
+import { naira } from "@/lib/format";
 import {
   DELIVERY_CITIES,
   quoteDelivery,
@@ -59,6 +59,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Customers must sign in before checkout.
   const [gatePassed, setGatePassed] = useState(false);
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] =
@@ -79,15 +80,20 @@ export default function CheckoutPage() {
   const [
     newCustomerDiscountPercent,
     setNewCustomerDiscountPercent,
-  ] = useState(NEW_CUSTOMER_DISCOUNT_PERCENT);
+  ] = useState(
+    NEW_CUSTOMER_DISCOUNT_PERCENT
+  );
 
+  // Stepped checkout.
   const [step, setStep] = useState<Step>(1);
   const [maxStep, setMaxStep] = useState<Step>(1);
 
+  // Step 1 — contact.
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
+  // Step 2 — delivery.
   const [state, setState] = useState("Lagos");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -95,9 +101,13 @@ export default function CheckoutPage() {
   const [fulfilment, setFulfilment] =
     useState<Fulfilment>("delivery");
 
-  // Paystack is the only checkout method.
-  const method: PayMethod = "paystack";
+  const [
+    outsideDeliveryNoticeOpen,
+    setOutsideDeliveryNoticeOpen,
+  ] = useState(false);
 
+  // Step 3 — payment.
+  const method: PayMethod = "paystack";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -157,6 +167,19 @@ export default function CheckoutPage() {
       });
   }, []);
 
+  useEffect(() => {
+    if (!outsideDeliveryNoticeOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [outsideDeliveryNoticeOpen]);
+
   const zone = zoneFromState(state);
 
   const quote = useMemo(
@@ -192,8 +215,8 @@ export default function CheckoutPage() {
     )
   );
 
-  async function signIn(event: React.FormEvent) {
-    event.preventDefault();
+  async function signIn(e: React.FormEvent) {
+    e.preventDefault();
     setSignInBusy(true);
     setSignInError("");
 
@@ -283,9 +306,9 @@ export default function CheckoutPage() {
   }
 
   function continueToDelivery(
-    event: React.FormEvent
+    e: React.FormEvent
   ) {
-    event.preventDefault();
+    e.preventDefault();
     setError("");
 
     if (!name.trim() || !phone.trim()) {
@@ -300,13 +323,17 @@ export default function CheckoutPage() {
   }
 
   function continueToPayment(
-    event: React.FormEvent
+    e: React.FormEvent
   ) {
-    event.preventDefault();
+    e.preventDefault();
     setError("");
 
-    if (fulfilment === "delivery" && !city) {
-      setError("Please select your city.");
+    if (
+      fulfilment === "delivery" &&
+      zone === "lagos" &&
+      !city
+    ) {
+      setError("Please select your Lagos city.");
       return;
     }
 
@@ -322,8 +349,50 @@ export default function CheckoutPage() {
     setMaxStep(3);
   }
 
-  async function payNow(event: React.FormEvent) {
-    event.preventDefault();
+  function chooseFulfilment(
+    nextFulfilment: Fulfilment
+  ) {
+    setFulfilment(nextFulfilment);
+    setError("");
+
+    if (nextFulfilment === "pickup") {
+      // Pickup has no delivery area selector.
+      setState("Lagos");
+      setCity("");
+      setOutsideDeliveryNoticeOpen(false);
+    }
+  }
+
+  function chooseDeliveryArea(
+    nextState: string
+  ) {
+    setState(nextState);
+    setCity("");
+    setError("");
+
+    if (nextState === "Outside Lagos") {
+      setOutsideDeliveryNoticeOpen(true);
+    }
+  }
+
+  function goBackFromOutsideDelivery() {
+    setOutsideDeliveryNoticeOpen(false);
+    setState("Lagos");
+    setCity("");
+  }
+
+  function proceedFromOutsideDelivery() {
+    setOutsideDeliveryNoticeOpen(false);
+
+    window.setTimeout(() => {
+      document
+        .getElementById("delivery-address")
+        ?.focus();
+    }, 0);
+  }
+
+  async function payNow(e: React.FormEvent) {
+    e.preventDefault();
     setError("");
     setBusy(true);
 
@@ -448,12 +517,15 @@ export default function CheckoutPage() {
 
         <div className="flex justify-between">
           <dt>Delivery</dt>
+
           <dd>
             {fulfilment === "pickup"
               ? "Pickup"
-              : quote.freeDelivery
-                ? "Free"
-                : naira(quote.deliveryFee)}
+              : zone === "outside"
+                ? "To be communicated"
+                : quote.freeDelivery
+                  ? "Free"
+                  : naira(quote.deliveryFee)}
           </dd>
         </div>
 
@@ -462,6 +534,13 @@ export default function CheckoutPage() {
           <dd>{naira(checkoutTotal)}</dd>
         </div>
       </dl>
+
+      {fulfilment === "delivery" &&
+        zone === "outside" && (
+          <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+            The outside-Lagos delivery fee will be communicated by phone call or WhatsApp.
+          </p>
+        )}
     </aside>
   );
 
@@ -608,6 +687,50 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      {outsideDeliveryNoticeOpen && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="outside-delivery-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border-b-4 border-terracotta-500 bg-white p-6 shadow-2xl sm:p-8">
+            <p className="text-xs uppercase tracking-[0.2em] text-gold-600">
+              Outside Lagos delivery
+            </p>
+
+            <h2
+              id="outside-delivery-title"
+              className="mt-3 font-display text-2xl text-cocoa-800 sm:text-3xl"
+            >
+              One quick delivery note
+            </h2>
+
+            <p className="mt-4 text-sm leading-relaxed text-cocoa-700/80">
+              For deliveries outside Lagos, we use an external delivery service. The delivery fee will be communicated to you via phone call or WhatsApp.
+            </p>
+
+            <div className="mt-7 grid gap-3">
+              <button
+                type="button"
+                onClick={proceedFromOutsideDelivery}
+                className="w-full rounded-none bg-terracotta-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-terracotta-600"
+              >
+                Proceed to payment
+              </button>
+
+              <button
+                type="button"
+                onClick={goBackFromOutsideDelivery}
+                className="w-full rounded-none border border-cream-300 px-5 py-3 text-sm font-semibold text-cocoa-800 transition hover:bg-cream-100"
+              >
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="mt-7 min-w-0 space-y-4 sm:mt-10">
         <h1 className="font-display text-3xl text-cocoa-800 sm:text-4xl">
           Checkout
@@ -756,7 +879,7 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      setFulfilment("delivery")
+                      chooseFulfilment("delivery")
                     }
                     className={`rounded-2xl p-4 text-left ring-1 transition ${
                       fulfilment === "delivery"
@@ -767,12 +890,16 @@ export default function CheckoutPage() {
                     <p className="font-medium">
                       Delivery
                     </p>
+
+                    <p className="mt-1 text-xs opacity-80">
+                      Lagos or outside Lagos
+                    </p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() =>
-                      setFulfilment("pickup")
+                      chooseFulfilment("pickup")
                     }
                     className={`rounded-2xl p-4 text-left ring-1 transition ${
                       fulfilment === "pickup"
@@ -791,61 +918,67 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <label className="text-sm">
-                State
-
-                <select
-                  value={state}
-                  onChange={(event) =>
-                    setState(event.target.value)
-                  }
-                  className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3"
-                >
-                  {NIGERIAN_STATES.map(
-                    (nigerianState) => (
-                      <option key={nigerianState}>
-                        {nigerianState}
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
-
               {fulfilment === "delivery" && (
                 <label className="text-sm">
-                  City
+                  Delivery area
 
                   <select
-                    required
-                    value={city}
+                    value={state}
                     onChange={(event) =>
-                      setCity(event.target.value)
+                      chooseDeliveryArea(
+                        event.target.value
+                      )
                     }
                     className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3"
                   >
-                    <option value="">
-                      Select your city
+                    <option value="Lagos">
+                      Lagos
                     </option>
 
-                    {DELIVERY_CITIES.map(
-                      (deliveryCity) => (
-                        <option
-                          key={deliveryCity}
-                          value={deliveryCity}
-                        >
-                          {deliveryCity}
-                        </option>
-                      )
-                    )}
+                    <option value="Outside Lagos">
+                      Outside Lagos
+                    </option>
                   </select>
                 </label>
               )}
+
+              {fulfilment === "delivery" &&
+                zone === "lagos" && (
+                  <label className="text-sm">
+                    City
+
+                    <select
+                      required
+                      value={city}
+                      onChange={(event) =>
+                        setCity(event.target.value)
+                      }
+                      className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3"
+                    >
+                      <option value="">
+                        Select your city
+                      </option>
+
+                      {DELIVERY_CITIES.map(
+                        (deliveryCity) => (
+                          <option
+                            key={deliveryCity}
+                            value={deliveryCity}
+                          >
+                            {deliveryCity}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+                )}
 
               {fulfilment === "delivery" && (
                 <label className="text-sm">
                   Delivery address
 
                   <textarea
+                    id="delivery-address"
                     required
                     value={address}
                     onChange={(event) =>
@@ -895,7 +1028,9 @@ export default function CheckoutPage() {
             <p className="break-words border-t border-cream-100 p-4 text-sm text-cocoa-700/70 sm:p-5">
               {fulfilment === "pickup"
                 ? `Pickup at ${settings.address}`
-                : `Deliver to ${address}, ${city}, ${state}`}
+                : zone === "outside"
+                  ? `Outside Lagos delivery · ${address}`
+                  : `Deliver to ${address}, ${city}, ${state}`}
             </p>
           )}
         </section>
@@ -922,7 +1057,7 @@ export default function CheckoutPage() {
               onSubmit={payNow}
               className="grid gap-4 border-t border-cream-100 p-4 sm:p-5"
             >
-              <div className="rounded-2xl bg-terracotta-500 p-4 text-left text-white ring-1 ring-terracotta-500">
+              <div className="rounded-2xl bg-terracotta-500 p-4 text-white ring-1 ring-terracotta-500">
                 <p className="flex items-center gap-2 font-medium">
                   <ShieldCheck size={16} />
                   Secure payment via Paystack

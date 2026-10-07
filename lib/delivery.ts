@@ -36,18 +36,19 @@ export const DELIVERY_FEES: Record<string, number> = {
   Ajah: 8000,
   Sangotedo: 8000,
   Ikate: 6000,
-  Agugi: 7000,
+  Agungi: 7000,
 };
 
-export const DELIVERY_CITIES = Object.keys(
-  DELIVERY_FEES
-);
+export const DELIVERY_CITIES =
+  Object.keys(DELIVERY_FEES);
 
 export function zoneFromState(state: string): Zone {
-  return state === "Lagos" ? "lagos" : "outside";
+  return state === "Lagos"
+    ? "lagos"
+    : "outside";
 }
 
-export function quoteDelivery(opts: {
+export function quoteDelivery(options: {
   settings: StoreSettings;
   fulfilment: Fulfilment;
   zone: Zone;
@@ -55,10 +56,16 @@ export function quoteDelivery(opts: {
   city?: string;
 }) {
   const {
+    settings,
     fulfilment,
+    zone,
     subtotal,
     city,
-  } = opts;
+  } = options;
+
+  // The settings object remains part of the quote API
+  // for compatibility with the admin delivery settings.
+  void settings;
 
   if (fulfilment === "pickup") {
     return {
@@ -69,9 +76,15 @@ export function quoteDelivery(opts: {
     };
   }
 
-  const deliveryFee = city
-    ? DELIVERY_FEES[city] ?? 0
-    : 0;
+  /*
+   * Lagos delivery has a known city fee.
+   * Outside-Lagos delivery uses an external service,
+   * so its fee is communicated separately by phone or WhatsApp.
+   */
+  const deliveryFee =
+    zone === "lagos" && city
+      ? DELIVERY_FEES[city] ?? 0
+      : 0;
 
   return {
     deliveryFee,

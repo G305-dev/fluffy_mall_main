@@ -12,7 +12,6 @@ import {
 } from "@/lib/delivery";
 import {
   CartItem,
-  Fulfilment,
   Order,
   PayMethod,
 } from "@/lib/types";
@@ -27,6 +26,11 @@ import {
   roundMoney,
 } from "@/lib/promotions";
 
+const ALLOWED_DELIVERY_STATES = [
+  "Lagos",
+  "Outside Lagos",
+] as const;
+
 export async function POST(req: NextRequest) {
   const session = readCustomerSession(
     req.cookies.get(CUSTOMER_COOKIE)?.value
@@ -35,18 +39,22 @@ export async function POST(req: NextRequest) {
   if (!session) {
     return NextResponse.json(
       {
-        error: "You must sign in before placing an order.",
+        error:
+          "You must sign in before placing an order.",
       },
       { status: 401 }
     );
   }
 
-  const account = await findCustomerAccount(session.email);
+  const account = await findCustomerAccount(
+    session.email
+  );
 
   if (!account) {
     return NextResponse.json(
       {
-        error: "Your customer account could not be found.",
+        error:
+          "Your customer account could not be found.",
       },
       { status: 401 }
     );
@@ -56,12 +64,12 @@ export async function POST(req: NextRequest) {
 
   const items = (body.items || []) as CartItem[];
 
-  const fulfilment: Fulfilment =
+  const fulfilment =
     body.fulfilment === "pickup"
       ? "pickup"
       : "delivery";
 
-  // Paystack is the only supported checkout provider.
+  // Paystack is the only checkout provider.
   const method: PayMethod = "paystack";
 
   const customer =
@@ -86,17 +94,71 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const city = String(customer.city || "").trim();
+  const requestedState = String(
+    customer.state || "Lagos"
+  ).trim();
 
   if (
     fulfilment === "delivery" &&
+    !ALLOWED_DELIVERY_STATES.includes(
+      requestedState as
+        (typeof ALLOWED_DELIVERY_STATES)[number]
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Please select Lagos or Outside Lagos.",
+      },
+      { status: 400 }
+    );
+  }
+
+  /*
+   * Pickup does not use a delivery area.
+   * Store it as Lagos internally for compatibility.
+   */
+  const state =
+    fulfilment === "pickup"
+      ? "Lagos"
+      : requestedState;
+
+  const zone = zoneFromState(state);
+
+  /*
+   * Lagos delivery requires a valid city.
+   * Outside Lagos delivery does not require a city.
+   */
+  const city =
+    fulfilment === "delivery" &&
+    zone === "lagos"
+      ? String(customer.city || "").trim()
+      : "";
+
+  if (
+    fulfilment === "delivery" &&
+    zone === "lagos" &&
     !DELIVERY_CITIES.some(
       (deliveryCity) => deliveryCity === city
     )
   ) {
     return NextResponse.json(
       {
-        error: "Please select a valid delivery city.",
+        error:
+          "Please select a valid Lagos delivery city.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (
+    fulfilment === "delivery" &&
+    !String(customer.address || "").trim()
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Please add your delivery address.",
       },
       { status: 400 }
     );
@@ -130,7 +192,10 @@ export async function POST(req: NextRequest) {
       name: product.name,
       variantName: variant?.name,
       unitPrice,
-      qty: Math.max(1, Number(item.qty) || 1),
+      qty: Math.max(
+        1,
+        Number(item.qty) || 1
+      ),
       image: product.images[0],
     };
   });
@@ -143,10 +208,6 @@ export async function POST(req: NextRequest) {
 
   const settings = await getSettings();
 
-  const zone = zoneFromState(
-    customer.state || "Lagos"
-  );
-
   const quote = quoteDelivery({
     settings,
     fulfilment,
@@ -157,11 +218,12 @@ export async function POST(req: NextRequest) {
 
   /*
    * Delivery and pickup adjustments are not discounted.
-   * Only the product subtotal receives the new-customer
-   * discount.
+   * Only the product subtotal receives the discount.
    */
   const discountClaimed =
-    await claimNewCustomerDiscount(session.email);
+    await claimNewCustomerDiscount(
+      session.email
+    );
 
   const discount = discountClaimed
     ? roundMoney(
@@ -189,13 +251,21 @@ export async function POST(req: NextRequest) {
       // Always use the authenticated account email.
       email: session.email,
 
-      address: customer.address || "",
-      state: customer.state || "Lagos",
+      address: String(
+        customer.address || ""
+      ).trim(),
+
+      state,
+
       city:
-        fulfilment === "delivery"
+        fulfilment === "delivery" &&
+        zone === "lagos"
           ? city
           : "",
-      notes: customer.notes || "",
+
+      notes: String(
+        customer.notes || ""
+      ).trim(),
     },
 
     items: resolved,
