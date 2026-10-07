@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 const slides = [
   {
@@ -38,6 +42,20 @@ export default function HeroSlideshow() {
     };
   }, [isPaused]);
 
+  function previousSlide() {
+    setActiveSlide(
+      (current) =>
+        (current - 1 + slides.length) %
+        slides.length
+    );
+  }
+
+  function nextSlide() {
+    setActiveSlide(
+      (current) => (current + 1) % slides.length
+    );
+  }
+
   return (
     <div
       className="absolute inset-0 overflow-hidden bg-cocoa-900"
@@ -55,19 +73,6 @@ export default function HeroSlideshow() {
               : "opacity-0"
           }`}
         >
-          {/* Blurred background fills the entire desktop area. */}
-          <Image
-            src={slide.src}
-            alt=""
-            aria-hidden="true"
-            fill
-            priority={index === 0}
-            quality={90}
-            sizes="100vw"
-            className="scale-110 object-cover object-center opacity-50 blur-2xl"
-          />
-
-          {/* Main image stays fully visible on desktop. */}
           <Image
             src={slide.src}
             alt={slide.alt}
@@ -75,12 +80,52 @@ export default function HeroSlideshow() {
             priority={index === 0}
             quality={100}
             sizes="100vw"
-            className="object-cover object-center md:object-contain"
+            className="object-cover object-center"
           />
         </div>
       ))}
 
-      <div className="absolute inset-0 bg-gradient-to-r from-cocoa-900/75 via-cocoa-900/35 to-cocoa-900/10" />
+      {/* Light overlay for readability of the homepage text */}
+      <div className="absolute inset-0 bg-gradient-to-r from-cocoa-900/75 via-cocoa-900/35 to-transparent" />
+
+      <button
+        type="button"
+        onClick={previousSlide}
+        aria-label="Previous slide"
+        className="absolute left-0 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-r-full bg-white/90 text-cocoa-800 shadow-sm transition hover:bg-white sm:h-12 sm:w-12"
+      >
+        <ChevronLeft size={22} />
+      </button>
+
+      <button
+        type="button"
+        onClick={nextSlide}
+        aria-label="Next slide"
+        className="absolute right-0 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-l-full bg-white/90 text-cocoa-800 shadow-sm transition hover:bg-white sm:h-12 sm:w-12"
+      >
+        <ChevronRight size={22} />
+      </button>
+
+      <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/35 px-3 py-2 backdrop-blur-sm">
+        {slides.map((slide, index) => (
+          <button
+            key={slide.src}
+            type="button"
+            onClick={() => setActiveSlide(index)}
+            aria-label={`Go to slide ${index + 1}`}
+            aria-current={
+              index === activeSlide
+                ? "true"
+                : undefined
+            }
+            className={`h-2.5 rounded-full transition-all ${
+              index === activeSlide
+                ? "w-7 bg-white"
+                : "w-2.5 bg-white/60 hover:bg-white"
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
