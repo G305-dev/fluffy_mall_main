@@ -19,34 +19,41 @@ type CategoryInfo = {
 
 const sectionStyles = [
   {
-    background: "bg-[#7650e8]",
+    background: "bg-[#f97316]",
     text: "text-white",
-    mutedText: "text-white/80",
+    mutedText: "text-white/85",
+    action:
+      "bg-white text-cocoa-800 hover:bg-cream-50",
+    control:
+      "bg-white/95 text-cocoa-800 hover:bg-white",
   },
   {
-    background: "bg-[#e97642]",
-    text: "text-white",
-    mutedText: "text-white/80",
-  },
-  {
-    background: "bg-[#27736d]",
-    text: "text-white",
-    mutedText: "text-white/80",
-  },
-  {
-    background: "bg-[#d6a43c]",
+    background:
+      "bg-white ring-1 ring-cream-200",
     text: "text-cocoa-900",
-    mutedText: "text-cocoa-900/75",
+    mutedText: "text-cocoa-700/70",
+    action:
+      "bg-cocoa-900 text-white hover:bg-cocoa-800",
+    control:
+      "bg-cocoa-900 text-white hover:bg-cocoa-800",
   },
   {
-    background: "bg-[#506f9f]",
+    background: "bg-black",
     text: "text-white",
     mutedText: "text-white/80",
+    action:
+      "bg-white text-cocoa-800 hover:bg-cream-50",
+    control:
+      "bg-white/95 text-cocoa-800 hover:bg-white",
   },
   {
-    background: "bg-[#935c78]",
+    background: "bg-[#f97316]",
     text: "text-white",
-    mutedText: "text-white/80",
+    mutedText: "text-white/85",
+    action:
+      "bg-white text-cocoa-800 hover:bg-cream-50",
+    control:
+      "bg-white/95 text-cocoa-800 hover:bg-white",
   },
 ];
 
