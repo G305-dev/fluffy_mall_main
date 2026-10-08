@@ -39,14 +39,15 @@ const sectionStyles = [
       "bg-cocoa-900 text-white hover:bg-cocoa-800",
   },
   {
-    background: "bg-black",
-    text: "text-white",
-    mutedText: "text-white/80",
-    action:
-      "bg-white text-cocoa-800 hover:bg-cream-50",
-    control:
-      "bg-white/95 text-cocoa-800 hover:bg-white",
-  },
+  background:
+    "bg-[#fff9f2] ring-1 ring-cream-200",
+  text: "text-cocoa-900",
+  mutedText: "text-cocoa-700/70",
+  action:
+    "bg-cocoa-900 text-white hover:bg-cocoa-800",
+  control:
+    "bg-cocoa-900 text-white hover:bg-cocoa-800",
+},
   {
     background:
       "bg-[#fff9f2] ring-1 ring-cream-200",
@@ -83,7 +84,7 @@ export default function CategoryProductRail({
 
   return (
     <section
-      className={`overflow-hidden rounded-[1.75rem] p-4 shadow-soft sm:p-6 lg:p-7 ${style.background}`}
+     className={`overflow-hidden p-4 shadow-soft sm:p-6 lg:p-7 ${style.background}`}
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
@@ -131,11 +132,14 @@ export default function CategoryProductRail({
         >
           {products.map((product) => (
             <div
-              key={product.id}
-              className="w-[205px] shrink-0 snap-start sm:w-[225px] lg:w-[240px]"
-            >
-              <ProductCard product={product} />
-            </div>
+                  key={product.id}
+                  className="h-[470px] w-[205px] shrink-0 snap-start sm:h-[500px] sm:w-[225px] lg:h-[520px] lg:w-[240px]"
+                >
+                  <ProductCard
+                    product={product}
+                    square
+                  />
+             </div>
           ))}
         </div>
 

@@ -28,82 +28,83 @@ export default async function HomePage() {
     <div>
       <NewsletterPopup />
 
-     {/* Mobile and tablet hero — previous layout */}
-<section className="relative min-h-[560px] overflow-hidden sm:min-h-[650px] lg:hidden">
-  <HeroSlideshow variant="background" />
+      {/* Mobile and tablet hero */}
+      <section className="relative min-h-[560px] overflow-hidden sm:min-h-[650px] lg:hidden">
+        <HeroSlideshow variant="background" />
 
-  <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-24">
-    <p className="animate-hero animate-hero-1 text-[10px] uppercase leading-relaxed tracking-[0.18em] text-gold-400 sm:text-xs sm:tracking-[0.28em]">
-      Lagos · @fluffy_nyummy_mall
-    </p>
+        <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-24">
+          <p className="animate-hero animate-hero-1 text-[10px] uppercase leading-relaxed tracking-[0.18em] text-gold-400 sm:text-xs sm:tracking-[0.28em]">
+            Lagos · @fluffy_nyummy_mall
+          </p>
 
-    <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-4xl leading-tight text-cream-50 sm:text-6xl">
-      Home, kitchen &amp; gifting.
-    </h1>
+          <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-4xl leading-tight text-cream-50 sm:text-6xl">
+            Home, kitchen &amp; gifting.
+          </h1>
 
-    <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-base text-cream-200 sm:text-lg">
-      {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
-    </p>
+          <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-base text-cream-200 sm:text-lg">
+            {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
+          </p>
 
-    <div className="animate-hero animate-hero-4 mt-8 grid gap-3 min-[430px]:flex min-[430px]:flex-wrap">
-      <Link
-        href="/shop"
-        className="btn-pop rounded-full bg-terracotta-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg"
-      >
-        Shop the catalog
-      </Link>
+          <div className="animate-hero animate-hero-4 mt-8 grid gap-3 min-[430px]:flex min-[430px]:flex-wrap">
+            <Link
+              href="/shop"
+              className="btn-pop rounded-full bg-terracotta-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg"
+            >
+              Shop the catalog
+            </Link>
 
-      <Link
-        href="/contact"
-        className="btn-pop rounded-full bg-white/10 px-6 py-3 text-center text-sm font-semibold text-cream-50 ring-1 ring-white/30"
-      >
-        Visit 30A Oseni Street
-      </Link>
-    </div>
-  </div>
-</section>
-
-{/* Desktop hero — separated text and slideshow */}
-<section className="hidden bg-cream-100 lg:block">
-  <div className="mx-auto max-w-6xl px-8 py-8">
-    <div className="grid overflow-hidden rounded-[2rem] bg-cream-100 shadow-card ring-1 ring-cream-200 lg:grid-cols-[0.9fr_1.1fr]">
-      <div className="flex min-h-[560px] flex-col justify-center bg-white px-12 py-20">
-        <p className="animate-hero animate-hero-1 text-xs uppercase tracking-[0.28em] text-gold-600">
-          Lagos · @fluffy_nyummy_mall
-        </p>
-
-        <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-5xl leading-tight text-cocoa-800 xl:text-6xl">
-          Home, kitchen &amp; gifting.
-        </h1>
-
-        <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-lg leading-relaxed text-cocoa-700">
-          {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
-        </p>
-
-        <div className="animate-hero animate-hero-4 mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/shop"
-            className="btn-pop rounded-full bg-terracotta-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg"
-          >
-            Shop the catalog
-          </Link>
-
-          <Link
-            href="/contact"
-            className="btn-pop rounded-full bg-cocoa-800 px-6 py-3 text-center text-sm font-semibold text-cream-50"
-          >
-            Visit 30A Oseni Street
-          </Link>
+            <Link
+              href="/contact"
+              className="btn-pop rounded-full bg-white/10 px-6 py-3 text-center text-sm font-semibold text-cream-50 ring-1 ring-white/30"
+            >
+              Visit 30A Oseni Street
+            </Link>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="min-h-[560px]">
-        <HeroSlideshow variant="panel" />
-      </div>
-    </div>
-  </div>
-</section>
+      {/* Desktop hero with separated text and slideshow */}
+      <section className="hidden bg-cream-100 lg:block">
+        <div className="mx-auto max-w-6xl px-8 py-8">
+          <div className="grid overflow-hidden rounded-[2rem] bg-cream-100 shadow-card ring-1 ring-cream-200 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="flex min-h-[560px] flex-col justify-center bg-white px-12 py-20">
+              <p className="animate-hero animate-hero-1 text-xs uppercase tracking-[0.28em] text-gold-600">
+                Lagos · @fluffy_nyummy_mall
+              </p>
 
+              <h1 className="animate-hero animate-hero-2 mt-4 max-w-xl font-display text-5xl leading-tight text-cocoa-800 xl:text-6xl">
+                Home, kitchen &amp; gifting.
+              </h1>
+
+              <p className="animate-hero animate-hero-3 mt-5 max-w-lg text-lg leading-relaxed text-cocoa-700">
+                {settings.tagline}. Browse prices, pay securely with Paystack, or order on WhatsApp.
+              </p>
+
+              <div className="animate-hero animate-hero-4 mt-8 flex flex-wrap gap-3">
+                <Link
+                  href="/shop"
+                  className="btn-pop rounded-full bg-terracotta-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg"
+                >
+                  Shop the catalog
+                </Link>
+
+                <Link
+                  href="/contact"
+                  className="btn-pop rounded-full bg-cocoa-800 px-6 py-3 text-center text-sm font-semibold text-cream-50"
+                >
+                  Visit 30A Oseni Street
+                </Link>
+              </div>
+            </div>
+
+            <div className="min-h-[560px]">
+              <HeroSlideshow variant="panel" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Scrolling announcement bar */}
       <div className="overflow-hidden border-y border-cream-200 bg-terracotta-500 text-white">
         <div className="animate-marquee flex w-max gap-10 whitespace-nowrap py-2.5 text-sm">
           {Array.from({ length: 2 }).map((_, index) => (
@@ -114,6 +115,7 @@ export default async function HomePage() {
               <span>
                 5% off your first signed-in order for new customers
               </span>
+
               <span>
                 Home, kitchen &amp; gifting essentials
               </span>
@@ -134,6 +136,7 @@ export default async function HomePage() {
         </div>
       </div>
 
+      {/* Category links */}
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14 lg:px-8">
         <div className="reveal flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -178,7 +181,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Jumia-style product rows for every category */}
+      {/* Jumia-style product rails */}
       <section className="mx-auto max-w-6xl px-4 pb-10 sm:px-6 lg:px-8">
         <div className="space-y-6">
           {CATEGORIES.map((category, index) => {
@@ -205,6 +208,26 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Bestsellers immediately after the final category rail */}
+      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <h2 className="reveal font-display text-3xl text-cocoa-800">
+          Store bestsellers
+        </h2>
+
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 md:grid-cols-4">
+          {bestsellers.map((product, index) => (
+            <div
+              key={product.id}
+              className="reveal"
+              data-reveal-delay={index * 90}
+            >
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Featured products */}
       <section className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8">
         <h2 className="reveal font-display text-3xl text-cocoa-800">
           Featured for launch
@@ -223,6 +246,7 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Store benefits */}
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <div className="grid gap-4 md:grid-cols-3">
           <div className="reveal hover-lift rounded-3xl bg-cocoa-800 p-6 text-cream-50">
@@ -266,24 +290,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <h2 className="reveal font-display text-3xl text-cocoa-800">
-          Store bestsellers
-        </h2>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 md:grid-cols-4">
-          {bestsellers.map((product, index) => (
-            <div
-              key={product.id}
-              className="reveal"
-              data-reveal-delay={index * 90}
-            >
-              <ProductCard product={product} />
-            </div>
-          ))}
-        </div>
-      </section>
-
+      {/* Physical store */}
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
         <div className="reveal overflow-hidden rounded-[2rem] bg-white shadow-card ring-1 ring-cream-200 md:grid md:grid-cols-2">
           <div className="p-5 sm:p-8 lg:p-10">
