@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/components/CartProvider";
 import { naira } from "@/lib/format";
+import CheckoutPolicyModal from "@/components/CheckoutPolicyModal";
 import {
   DELIVERY_CITIES,
   quoteDelivery,
@@ -564,6 +565,7 @@ export default function CheckoutPage() {
   if (!gatePassed) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+          <CheckoutPolicyModal />
         <main className="min-w-0">
           <h1 className="font-display text-3xl text-cocoa-800 sm:text-4xl">
             Ready to checkout?
@@ -687,6 +689,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <CheckoutPolicyModal />
       {outsideDeliveryNoticeOpen && (
         <div
           className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 px-4 py-6"
