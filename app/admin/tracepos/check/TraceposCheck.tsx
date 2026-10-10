@@ -33,15 +33,30 @@ type CheckResult = {
   duplicateWebsiteCodes: string[];
 };
 
+type SyncResult = {
+  updated?: number;
+  unchanged?: number;
+  unmatchedWebsiteItems?: number;
+  unmappedWebsiteItems?: number;
+  ambiguousWebsiteItems?: number;
+  unmatchedTraceposItems?: number;
+  invalidTraceposStock?: number;
+};
+
 export default function TraceposCheck() {
   const [result, setResult] =
     useState<CheckResult | null>(null);
+
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
+  const [syncMessage, setSyncMessage] =
+    useState("");
 
   async function runCheck() {
     setLoading(true);
     setError("");
+    setSyncMessage("");
     setResult(null);
 
     try {
@@ -72,18 +87,85 @@ export default function TraceposCheck() {
     }
   }
 
+  async function syncStock() {
+    setSyncing(true);
+    setError("");
+    setSyncMessage("");
+
+    try {
+      const response = await fetch(
+        "/api/admin/tracepos/sync-stock",
+        {
+          method: "POST",
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Tracepos stock synchronization failed."
+        );
+      }
+
+      const syncResult =
+        (data.result || {}) as SyncResult;
+
+      setSyncMessage(
+        `Stock sync completed. Updated ${
+          syncResult.updated ?? 0
+        } website stock value${
+          syncResult.updated === 1 ? "" : "s"
+        }.`
+      );
+
+      await runCheck();
+    } catch (syncError) {
+      setError(
+        syncError instanceof Error
+          ? syncError.message
+          : "Tracepos stock synchronization failed."
+      );
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const disabled = loading || syncing;
+
   return (
     <div className="space-y-5">
-      <button
-        type="button"
-        onClick={runCheck}
-        disabled={loading}
-        className="rounded-full bg-cocoa-800 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-      >
-        {loading
-          ? "Checking Tracepos..."
-          : "Check Tracepos products"}
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={runCheck}
+          disabled={disabled}
+          className="rounded-full bg-cocoa-800 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {loading
+            ? "Checking Tracepos..."
+            : "Check Tracepos products"}
+        </button>
+
+        <button
+          type="button"
+          onClick={syncStock}
+          disabled={disabled}
+          className="rounded-full bg-terracotta-500 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {syncing
+            ? "Syncing website stock..."
+            : "Sync website stock"}
+        </button>
+      </div>
+
+      {syncMessage && (
+        <p className="rounded-xl bg-green-50 p-4 text-sm text-green-700">
+          {syncMessage}
+        </p>
+      )}
 
       {error && (
         <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
@@ -98,6 +180,7 @@ export default function TraceposCheck() {
               <p className="text-xs text-stone-500">
                 Matched
               </p>
+
               <p className="mt-1 text-2xl font-semibold">
                 {result.summary.matched}
               </p>
@@ -107,6 +190,7 @@ export default function TraceposCheck() {
               <p className="text-xs text-stone-500">
                 Website not matched
               </p>
+
               <p className="mt-1 text-2xl font-semibold">
                 {result.summary.unmatchedWebsite}
               </p>
@@ -116,6 +200,7 @@ export default function TraceposCheck() {
               <p className="text-xs text-stone-500">
                 Tracepos not matched
               </p>
+
               <p className="mt-1 text-2xl font-semibold">
                 {result.summary.unmatchedTracepos}
               </p>
@@ -135,9 +220,11 @@ export default function TraceposCheck() {
                 >
                   <span>
                     {item.productName}
+
                     {item.variantName
                       ? ` — ${item.variantName}`
                       : ""}
+
                     {" · "}
                     <strong>{item.code}</strong>
                   </span>
@@ -169,9 +256,11 @@ export default function TraceposCheck() {
                   className="border-b border-cream-100 pb-2"
                 >
                   {item.productName}
+
                   {item.variantName
                     ? ` — ${item.variantName}`
                     : ""}
+
                   {" · "}
                   <strong>{item.code}</strong>
                 </div>
