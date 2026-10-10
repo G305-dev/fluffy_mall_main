@@ -133,7 +133,7 @@ export default function CategoryProductRail({
           {products.map((product) => (
             <div
                 key={product.id}
-                className="h-[470px] w-[205px] shrink-0 snap-start sm:h-[500px] sm:w-[225px] lg:h-[520px] lg:w-[240px]"
+               className="h-[400px] w-[205px] shrink-0 snap-start sm:h-[440px] sm:w-[225px] lg:h-[480px] lg:w-[240px]"
               >
                 <ProductCard
                   product={product}
