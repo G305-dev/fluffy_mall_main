@@ -1,5 +1,11 @@
-import type { Metadata, Viewport } from "next";
-import { Fraunces, Outfit } from "next/font/google";
+import type {
+  Metadata,
+  Viewport,
+} from "next";
+import {
+  Fraunces,
+  Outfit,
+} from "next/font/google";
 
 // @ts-ignore - Next.js processes global CSS imports at build time.
 import "./globals.css";
@@ -9,6 +15,7 @@ import Header from "@/components/Header";
 import StoreFooter from "@/components/StoreFooter";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import Reveal from "@/components/Reveal";
+import NewCustomerWelcomePopup from "@/components/NewCustomerWelcomePopup";
 import { WishlistProvider } from "@/components/WishlistProvider";
 
 const fraunces = Fraunces({
@@ -32,21 +39,25 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://fluffynyummystore.com"),
+  metadataBase: new URL(
+    "https://fluffynyummystore.com"
+  ),
 
   title: {
-    default: "Fluffy'n'Yummy Mall | Home, Kitchen & Gifting — Lagos",
-    template: "%s | Fluffy'n'Yummy Mall",
+    default:
+      "Fluffy'n'Yummy Mall | Home, Kitchen & Gifting — Lagos",
+    template:
+      "%s | Fluffy'n'Yummy Mall",
   },
 
   description:
-    "Shop household, kitchen and gifting essentials from Fluffy'n'Yummy Mall, Anthony Village, Lagos. Nationwide delivery, Paystack checkout, bank transfer and WhatsApp ordering.",
+    "Shop household, kitchen and gifting essentials from Fluffy'n'Yummy Mall, Anthony Village, Lagos. Nationwide delivery and Paystack checkout.",
 
   icons: {
-  icon: "/icon.png",
-  shortcut: "/icon.png",
-  apple: "/icon.png",
-},
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
 
   openGraph: {
     title: "Fluffy'n'Yummy Mall",
@@ -86,12 +97,15 @@ export default function RootLayout({
           <WishlistProvider>
             <Header />
 
-            <main className="min-h-[70vh]">{children}</main>
+            <NewCustomerWelcomePopup />
+
+            <main className="min-h-[70vh]">
+              {children}
+            </main>
 
             <StoreFooter />
             <WhatsAppFloat />
 
-            {/* Current CSS scroll-reveal animation */}
             <Reveal />
           </WishlistProvider>
         </CartProvider>

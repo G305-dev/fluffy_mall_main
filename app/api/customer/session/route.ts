@@ -35,6 +35,7 @@ export async function GET(
         authenticated: false,
         email: null,
         newCustomerDiscountEligible: false,
+        showNewCustomerWelcome: false,
         newCustomerDiscountPercent:
           NEW_CUSTOMER_DISCOUNT_PERCENT,
       },
@@ -48,17 +49,13 @@ export async function GET(
     session.email
   );
 
-  /*
-   * If the signed cookie refers to an account
-   * that no longer exists, treat the customer as
-   * logged out and expire the cookie.
-   */
   if (!account) {
     const response = NextResponse.json(
       {
         authenticated: false,
         email: null,
         newCustomerDiscountEligible: false,
+        showNewCustomerWelcome: false,
         newCustomerDiscountPercent:
           NEW_CUSTOMER_DISCOUNT_PERCENT,
       },
@@ -85,12 +82,25 @@ export async function GET(
     return response;
   }
 
+  const newCustomerDiscountEligible =
+    Boolean(
+      account.newCustomerOfferEligible &&
+        !account.newCustomerDiscountUsedAt
+    );
+
+  const showNewCustomerWelcome =
+    Boolean(
+      account.newCustomerOfferEligible &&
+        !account.newCustomerDiscountUsedAt &&
+        !account.newCustomerWelcomeShownAt
+    );
+
   return NextResponse.json(
     {
       authenticated: true,
       email: account.email,
-      newCustomerDiscountEligible:
-        !account.newCustomerDiscountUsedAt,
+      newCustomerDiscountEligible,
+      showNewCustomerWelcome,
       newCustomerDiscountPercent:
         NEW_CUSTOMER_DISCOUNT_PERCENT,
     },

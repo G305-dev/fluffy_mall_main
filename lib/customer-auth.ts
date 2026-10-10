@@ -6,7 +6,8 @@ import {
 } from "crypto";
 import { getDb, COLLECTIONS } from "./mongo";
 
-export const CUSTOMER_COOKIE = "fny_customer_v2";
+export const CUSTOMER_COOKIE =
+  "fny_customer_v2";
 
 const CUSTOMER_SECRET =
   process.env.CUSTOMER_SESSION_SECRET ||
@@ -21,6 +22,8 @@ export type CustomerAccount = {
   email: string;
   passwordHash: string;
   createdAt: string;
+  newCustomerOfferEligible?: boolean;
+  newCustomerWelcomeShownAt?: string;
   newCustomerDiscountUsedAt?: string;
 };
 
@@ -81,6 +84,12 @@ export async function createCustomerAccount(
     email: normalizedEmail,
     passwordHash,
     createdAt: new Date().toISOString(),
+
+    /*
+     * Only accounts created after this offer was
+     * introduced are eligible for the offer.
+     */
+    newCustomerOfferEligible: true,
   };
 
   try {
@@ -115,6 +124,11 @@ export async function createGoogleCustomerAccount(
       ...rest
     } = existing;
 
+    /*
+     * Existing Google customers remain existing
+     * customers and do not receive the new-customer
+     * welcome offer.
+     */
     return rest as CustomerAccount;
   }
 
@@ -122,6 +136,7 @@ export async function createGoogleCustomerAccount(
     email: normalizedEmail,
     passwordHash: "google",
     createdAt: new Date().toISOString(),
+    newCustomerOfferEligible: true,
   };
 
   await collection.insertOne(account);
@@ -163,10 +178,7 @@ export function verifyCustomerPassword(
 
 /**
  * Atomically claims the one-time new-customer
- * discount for an account.
- *
- * Returns true only for the request that successfully
- * claims the discount.
+ * discount for an eligible account.
  */
 export async function claimNewCustomerDiscount(
   email: string
@@ -178,6 +190,13 @@ export async function claimNewCustomerDiscount(
     .findOneAndUpdate(
       {
         email: normalizeEmail(email),
+
+        /*
+         * Existing accounts without this field
+         * cannot claim the new-customer discount.
+         */
+        newCustomerOfferEligible: true,
+
         $or: [
           {
             newCustomerDiscountUsedAt: {
@@ -195,6 +214,70 @@ export async function claimNewCustomerDiscount(
       {
         $set: {
           newCustomerDiscountUsedAt:
+            new Date().toISOString(),
+        },
+      },
+      {
+        returnDocument: "after",
+        includeResultMetadata: false,
+      }
+    );
+
+  return Boolean(updated);
+}
+
+/**
+ * Marks the welcome popup as shown for an eligible
+ * customer. This does not claim the discount.
+ */
+export async function markCustomerWelcomeShown(
+  email: string
+): Promise<boolean> {
+  const db = await getDb();
+
+  const updated = await db
+    .collection(COLLECTIONS.CUSTOMERS)
+    .findOneAndUpdate(
+      {
+        email: normalizeEmail(email),
+        newCustomerOfferEligible: true,
+
+        $and: [
+          {
+            $or: [
+              {
+                newCustomerDiscountUsedAt: {
+                  $exists: false,
+                },
+              },
+              {
+                newCustomerDiscountUsedAt: null,
+              },
+              {
+                newCustomerDiscountUsedAt: "",
+              },
+            ],
+          },
+          {
+            $or: [
+              {
+                newCustomerWelcomeShownAt: {
+                  $exists: false,
+                },
+              },
+              {
+                newCustomerWelcomeShownAt: null,
+              },
+              {
+                newCustomerWelcomeShownAt: "",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        $set: {
+          newCustomerWelcomeShownAt:
             new Date().toISOString(),
         },
       },

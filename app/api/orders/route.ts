@@ -31,7 +31,9 @@ const ALLOWED_DELIVERY_STATES = [
   "Outside Lagos",
 ] as const;
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest
+) {
   const session = readCustomerSession(
     req.cookies.get(CUSTOMER_COOKIE)?.value
   );
@@ -69,7 +71,9 @@ export async function POST(req: NextRequest) {
       ? "pickup"
       : "delivery";
 
-  // Paystack is the only checkout provider.
+  /*
+   * Paystack is the only checkout provider.
+   */
   const method: PayMethod = "paystack";
 
   const customer =
@@ -88,7 +92,8 @@ export async function POST(req: NextRequest) {
   if (!customer.name || !customer.phone) {
     return NextResponse.json(
       {
-        error: "Name and phone are required",
+        error:
+          "Name and phone are required",
       },
       { status: 400 }
     );
@@ -116,7 +121,6 @@ export async function POST(req: NextRequest) {
 
   /*
    * Pickup does not use a delivery area.
-   * Store it as Lagos internally for compatibility.
    */
   const state =
     fulfilment === "pickup"
@@ -125,10 +129,6 @@ export async function POST(req: NextRequest) {
 
   const zone = zoneFromState(state);
 
-  /*
-   * Lagos delivery requires a valid city.
-   * Outside Lagos delivery does not require a city.
-   */
   const city =
     fulfilment === "delivery" &&
     zone === "lagos"
@@ -217,8 +217,9 @@ export async function POST(req: NextRequest) {
   });
 
   /*
-   * Delivery and pickup adjustments are not discounted.
-   * Only the product subtotal receives the discount.
+   * Only eligible new customer accounts can claim
+   * the discount. The claim is atomic and happens
+   * when this order is created.
    */
   const discountClaimed =
     await claimNewCustomerDiscount(
@@ -248,7 +249,9 @@ export async function POST(req: NextRequest) {
       name: String(customer.name).trim(),
       phone: String(customer.phone).trim(),
 
-      // Always use the authenticated account email.
+      /*
+       * Always use the authenticated account email.
+       */
       email: session.email,
 
       address: String(
@@ -291,5 +294,7 @@ export async function POST(req: NextRequest) {
 
   await saveOrder(order);
 
-  return NextResponse.json({ order });
+  return NextResponse.json({
+    order,
+  });
 }
