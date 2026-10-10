@@ -43,15 +43,63 @@ type SyncResult = {
   invalidTraceposStock?: number;
 };
 
+type SearchResult = {
+  xid: string;
+  id: string;
+  name: string;
+  itemCode: string;
+  sku: string;
+  stock: number;
+};
+
+type ApiResponse = {
+  error?: string;
+  results?: SearchResult[];
+  result?: SyncResult;
+  [key: string]: unknown;
+};
+
+async function readApiResponse(
+  response: Response
+): Promise<ApiResponse> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    throw new Error(
+      `The server returned an empty response. HTTP ${response.status}.`
+    );
+  }
+
+  try {
+    return JSON.parse(text) as ApiResponse;
+  } catch {
+    const preview = text
+      .replace(/\s+/g, " ")
+      .slice(0, 160);
+
+    throw new Error(
+      `The Tracepos admin endpoint returned HTML instead of JSON. HTTP ${response.status}. Response: ${preview}`
+    );
+  }
+}
+
 export default function TraceposCheck() {
   const [result, setResult] =
     useState<CheckResult | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [searching, setSearching] = useState(false);
+
   const [error, setError] = useState("");
   const [syncMessage, setSyncMessage] =
     useState("");
+
+  const [searchQuery, setSearchQuery] =
+    useState("");
+
+  const [searchResults, setSearchResults] =
+    useState<SearchResult[]>([]);
 
   async function runCheck() {
     setLoading(true);
@@ -67,7 +115,8 @@ export default function TraceposCheck() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await readApiResponse(response);
 
       if (!response.ok) {
         throw new Error(
@@ -75,7 +124,7 @@ export default function TraceposCheck() {
         );
       }
 
-      setResult(data);
+      setResult(data as unknown as CheckResult);
     } catch (checkError) {
       setError(
         checkError instanceof Error
@@ -101,7 +150,8 @@ export default function TraceposCheck() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await readApiResponse(response);
 
       if (!response.ok) {
         throw new Error(
@@ -111,17 +161,19 @@ export default function TraceposCheck() {
       }
 
       const syncResult =
-        (data.result || {}) as SyncResult;
+        data.result || {};
+
+      await runCheck();
 
       setSyncMessage(
         `Stock sync completed. Updated ${
           syncResult.updated ?? 0
         } website stock value${
-          syncResult.updated === 1 ? "" : "s"
+          syncResult.updated === 1
+            ? ""
+            : "s"
         }.`
       );
-
-      await runCheck();
     } catch (syncError) {
       setError(
         syncError instanceof Error
@@ -133,11 +185,58 @@ export default function TraceposCheck() {
     }
   }
 
-  const disabled = loading || syncing;
+  async function searchTraceposProducts() {
+    const query = searchQuery.trim();
+
+    if (query.length < 2) {
+      setError(
+        "Enter at least two characters to search."
+      );
+      return;
+    }
+
+    setSearching(true);
+    setError("");
+    setSearchResults([]);
+
+    try {
+      const response = await fetch(
+        `/api/admin/tracepos/search?q=${encodeURIComponent(
+          query
+        )}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data =
+        await readApiResponse(response);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Tracepos product search failed."
+        );
+      }
+
+      setSearchResults(data.results || []);
+    } catch (searchError) {
+      setError(
+        searchError instanceof Error
+          ? searchError.message
+          : "Tracepos product search failed."
+      );
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  const disabled =
+    loading || syncing || searching;
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={runCheck}
@@ -161,6 +260,34 @@ export default function TraceposCheck() {
         </button>
       </div>
 
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) =>
+            setSearchQuery(event.target.value)
+          }
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              searchTraceposProducts();
+            }
+          }}
+          placeholder="Search Tracepos name, code, SKU or XID"
+          className="min-w-0 flex-1 rounded-full border border-cream-300 bg-white px-4 py-3 text-sm outline-none focus:border-terracotta-500 focus:ring-2 focus:ring-terracotta-200"
+        />
+
+        <button
+          type="button"
+          onClick={searchTraceposProducts}
+          disabled={disabled}
+          className="rounded-full bg-gold-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {searching
+            ? "Searching..."
+            : "Search Tracepos"}
+        </button>
+      </div>
+
       {syncMessage && (
         <p className="rounded-xl bg-green-50 p-4 text-sm text-green-700">
           {syncMessage}
@@ -172,6 +299,66 @@ export default function TraceposCheck() {
           {error}
         </p>
       )}
+
+      {searchResults.length > 0 && (
+        <section className="rounded-2xl bg-white p-5 ring-1 ring-cream-200">
+          <h2 className="font-semibold text-cocoa-800">
+            Tracepos search results
+          </h2>
+
+          <div className="mt-4 space-y-3">
+            {searchResults.map((product) => (
+              <div
+                key={
+                  product.xid ||
+                  product.id ||
+                  `${product.name}-${product.itemCode}`
+                }
+                className="rounded-xl border border-cream-200 bg-cream-50 p-4"
+              >
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-cocoa-800">
+                      {product.name ||
+                        "Unnamed product"}
+                    </p>
+
+                    <p className="mt-1 text-xs text-stone-600">
+                      Item code:{" "}
+                      {product.itemCode || "None"}
+                    </p>
+
+                    <p className="text-xs text-stone-600">
+                      SKU: {product.sku || "None"}
+                    </p>
+
+                    <p className="break-all text-xs text-stone-600">
+                      Product XID:{" "}
+                      <strong>
+                        {product.xid || "Missing"}
+                      </strong>
+                    </p>
+                  </div>
+
+                  <div className="text-sm text-cocoa-800">
+                    Stock:{" "}
+                    <strong>{product.stock}</strong>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {searchQuery.trim().length >= 2 &&
+        !searching &&
+        searchResults.length === 0 && (
+          <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+            No Tracepos products matched “
+            {searchQuery}”.
+          </p>
+        )}
 
       {result && (
         <>
