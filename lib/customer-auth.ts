@@ -6,7 +6,7 @@ import {
 } from "crypto";
 import { getDb, COLLECTIONS } from "./mongo";
 
-export const CUSTOMER_COOKIE = "fny_customer";
+export const CUSTOMER_COOKIE = "fny_customer_v2";
 
 const CUSTOMER_SECRET =
   process.env.CUSTOMER_SESSION_SECRET ||
