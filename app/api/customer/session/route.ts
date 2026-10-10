@@ -12,13 +12,19 @@ import {
 } from "@/lib/promotions";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const noStoreHeaders = {
   "Cache-Control":
-    "no-store, no-cache, must-revalidate",
+    "private, no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+  Vary: "Cookie",
 };
 
-export async function GET(req: NextRequest) {
+export async function GET(
+  req: NextRequest
+) {
   const session = readCustomerSession(
     req.cookies.get(CUSTOMER_COOKIE)?.value
   );
@@ -42,14 +48,44 @@ export async function GET(req: NextRequest) {
     session.email
   );
 
+  if (!account) {
+    const response = NextResponse.json(
+      {
+        authenticated: false,
+        email: null,
+        newCustomerDiscountEligible: false,
+        newCustomerDiscountPercent:
+          NEW_CUSTOMER_DISCOUNT_PERCENT,
+      },
+      {
+        headers: noStoreHeaders,
+      }
+    );
+
+    response.cookies.set(
+      CUSTOMER_COOKIE,
+      "",
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        secure:
+          process.env.NODE_ENV ===
+          "production",
+        maxAge: 0,
+        expires: new Date(0),
+        path: "/",
+      }
+    );
+
+    return response;
+  }
+
   return NextResponse.json(
     {
-      authenticated: Boolean(account),
-      email: account?.email || null,
-      newCustomerDiscountEligible: Boolean(
-        account &&
-          !account.newCustomerDiscountUsedAt
-      ),
+      authenticated: true,
+      email: account.email,
+      newCustomerDiscountEligible:
+        !account.newCustomerDiscountUsedAt,
       newCustomerDiscountPercent:
         NEW_CUSTOMER_DISCOUNT_PERCENT,
     },

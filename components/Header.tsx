@@ -76,19 +76,29 @@ export default function Header() {
   }, [open]);
 
   useEffect(() => {
+    let cancelled = false;
+
     fetch("/api/customer/session", {
       credentials: "include",
       cache: "no-store",
     })
       .then((response) => response.json())
       .then((data) => {
-        setAuthenticated(
-          Boolean(data.authenticated)
-        );
+        if (!cancelled) {
+          setAuthenticated(
+            Boolean(data.authenticated)
+          );
+        }
       })
       .catch(() => {
-        setAuthenticated(false);
+        if (!cancelled) {
+          setAuthenticated(false);
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
   if (pathname?.startsWith("/admin")) {
@@ -107,40 +117,18 @@ export default function Header() {
     );
   }
 
-  async function logout() {
-    try {
-      const response = await fetch(
-        "/api/customer/logout",
-        {
-          method: "POST",
-          credentials: "include",
-          cache: "no-store",
-        }
-      );
+  function logout() {
+    setAuthenticated(false);
+    setOpen(false);
 
-      if (!response.ok) {
-        throw new Error(
-          `Logout failed with HTTP ${response.status}.`
-        );
-      }
-
-      setAuthenticated(false);
-      setOpen(false);
-
-      /*
-       * Full navigation ensures that the header
-       * performs a fresh session check after the
-       * customer cookie has been deleted.
-       */
-      window.location.replace(
-        "/?loggedOut=1"
-      );
-    } catch (error) {
-      console.error(
-        "Customer logout failed:",
-        error
-      );
-    }
+    /*
+     * Navigate directly to the server logout route.
+     * The server clears the customer cookie and
+     * redirects back to the homepage.
+     */
+    window.location.assign(
+      "/api/customer/logout"
+    );
   }
 
   return (
