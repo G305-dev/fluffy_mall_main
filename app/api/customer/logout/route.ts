@@ -5,74 +5,8 @@ import {
 import { CUSTOMER_COOKIE } from "@/lib/customer-auth";
 import { sessionCookieOptions } from "@/lib/cookies";
 
-const COOKIE_PATHS = [
-  "/",
-  "/api",
-  "/api/customer",
-  "/login",
-  "/checkout",
-];
-
-function clearCustomerCookie(
-  req: NextRequest,
-  response: NextResponse
-) {
-  const expires = new Date(0);
-
-  response.cookies.delete(CUSTOMER_COOKIE);
-
-  for (const path of COOKIE_PATHS) {
-    /*
-     * Clear the normal production cookie.
-     */
-    response.cookies.set(
-      CUSTOMER_COOKIE,
-      "",
-      {
-        httpOnly: true,
-        sameSite: "lax",
-        secure:
-          process.env.NODE_ENV ===
-          "production",
-        maxAge: 0,
-        expires,
-        path,
-      }
-    );
-
-    /*
-     * Clear sandbox/iframe cookies.
-     */
-    response.cookies.set(
-      CUSTOMER_COOKIE,
-      "",
-      {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        partitioned: true,
-        maxAge: 0,
-        expires,
-        path,
-      }
-    );
-
-    /*
-     * Clear cookies created using the current
-     * session-cookie configuration.
-     */
-    response.cookies.set(
-      CUSTOMER_COOKIE,
-      "",
-      {
-        ...sessionCookieOptions(req, 0),
-        maxAge: 0,
-        expires,
-        path,
-      }
-    );
-  }
-}
+const LEGACY_CUSTOMER_COOKIE =
+  "fny_customer";
 
 function logoutResponse(req: NextRequest) {
   const response = NextResponse.redirect(
@@ -80,7 +14,30 @@ function logoutResponse(req: NextRequest) {
     303
   );
 
-  clearCustomerCookie(req, response);
+  const expiredCookieOptions = {
+    ...sessionCookieOptions(req, 0),
+    maxAge: 0,
+    expires: new Date(0),
+    path: "/",
+  };
+
+  /*
+   * Clear the current customer cookie.
+   */
+  response.cookies.set(
+    CUSTOMER_COOKIE,
+    "",
+    expiredCookieOptions
+  );
+
+  /*
+   * Clear the previous customer cookie name.
+   */
+  response.cookies.set(
+    LEGACY_CUSTOMER_COOKIE,
+    "",
+    expiredCookieOptions
+  );
 
   response.headers.set(
     "Cache-Control",
