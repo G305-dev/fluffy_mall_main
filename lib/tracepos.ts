@@ -39,6 +39,34 @@ function getTraceposConfig() {
   };
 }
 
+function getRequiredTraceposSetting(
+  names: string[],
+  label: string
+) {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+
+    if (value) {
+      return value;
+    }
+  }
+
+  throw new Error(
+    `${label} is not configured.`
+  );
+}
+
+export function getTraceposWebsiteCustomerId() {
+  return getRequiredTraceposSetting(
+    [
+      "TRACEPOS_WEBSITE_CUSTOMER_XID",
+      "TRACEPOS_WEBSITE_CUSTOMER_ID",
+      "TRACEPOS_CUSTOMER_ID",
+    ],
+    "Tracepos website customer XID"
+  );
+}
+
 export function normalizeTraceposCode(
   value: unknown
 ) {
@@ -100,7 +128,7 @@ export async function fetchTraceposProducts(): Promise<
           errorBody?.error ||
           detail;
       } catch {
-        // Tracepos may return HTML for a 403.
+        // Tracepos may return HTML for an error.
       }
 
       throw new Error(
@@ -160,12 +188,15 @@ export type TraceposSaleLine = {
   product_id: string;
   quantity: number;
   unit_price: number;
+  discount?: number;
 };
 
 export async function createTraceposSale(input: {
-  orderReference: string;
+  userId: string;
+  invoiceNumber: string;
   orderDate: string;
   items: TraceposSaleLine[];
+  shipping: number;
   notes: string;
 }) {
   const {
@@ -173,11 +204,19 @@ export async function createTraceposSale(input: {
     headers,
   } = getTraceposConfig();
 
+  if (!input.items.length) {
+    throw new Error(
+      "Cannot create a Tracepos sale without products."
+    );
+  }
+
   const requestBody = {
-    order_reference: input.orderReference,
+    user_id: input.userId,
     order_date: input.orderDate,
-    items: input.items,
+    invoice_number: input.invoiceNumber,
     notes: input.notes,
+    shipping: input.shipping,
+    product_items: input.items,
   };
 
   const response = await fetch(

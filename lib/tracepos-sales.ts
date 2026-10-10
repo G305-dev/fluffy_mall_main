@@ -11,6 +11,7 @@ import {
 import {
   createTraceposSale,
   fetchTraceposProducts,
+  getTraceposWebsiteCustomerId,
   normalizeTraceposCode,
 } from "@/lib/tracepos";
 
@@ -27,6 +28,14 @@ function addWebsiteCodeCount(
   counts.set(
     code,
     (counts.get(code) || 0) + 1
+  );
+}
+
+function roundMoney(value: number) {
+  return (
+    Math.round(
+      (value + Number.EPSILON) * 100
+    ) / 100
   );
 }
 
@@ -116,13 +125,17 @@ export async function syncPaidOrderToTracepos(
         continue;
       }
 
-      traceposByCode.set(code, traceposProduct);
+      traceposByCode.set(
+        code,
+        traceposProduct
+      );
     }
 
     const saleItems: Array<{
       product_id: string;
       quantity: number;
       unit_price: number;
+      lineSubtotal: number;
     }> = [];
 
     for (const item of order.items) {
@@ -198,20 +211,12 @@ export async function syncPaidOrderToTracepos(
         );
       }
 
-      /*
-       * The live Tracepos product response contains
-       * xid rather than id.
-       *
-       * The top-level xid is the product identifier.
-       * Do not use details.xid.
-       */
       const traceposProductId =
-        traceposProduct.xid ||
-        traceposProduct.id;
+        traceposProduct.xid;
 
       if (!traceposProductId) {
         throw new Error(
-          `Tracepos product identifier is missing for code: ${websiteCode}`
+          `Tracepos product XID is missing for code: ${websiteCode}`
         );
       }
 
@@ -241,31 +246,144 @@ export async function syncPaidOrderToTracepos(
         product_id: traceposProductId,
         quantity,
         unit_price: unitPrice,
+        lineSubtotal: roundMoney(
+          unitPrice * quantity
+        ),
       });
+    }
+
+    if (!saleItems.length) {
+      throw new Error(
+        "No sale items were prepared for Tracepos."
+      );
+    }
+
+    const productSubtotal = roundMoney(
+      saleItems.reduce(
+        (sum, item) =>
+          sum + item.lineSubtotal,
+        0
+      )
+    );
+
+    if (productSubtotal <= 0) {
+      throw new Error(
+        "Tracepos product subtotal must be greater than zero."
+      );
+    }
+
+    const rawDiscount = Number(
+      order.discount || 0
+    );
+
+    const requestedDiscount =
+      Number.isFinite(rawDiscount)
+        ? Math.max(0, rawDiscount)
+        : 0;
+
+    const appliedDiscount = Math.min(
+      roundMoney(requestedDiscount),
+      productSubtotal
+    );
+
+    let allocatedDiscount = 0;
+
+    const traceposItems = saleItems.map(
+      (item, index) => {
+        let lineDiscount = 0;
+
+        if (appliedDiscount > 0) {
+          if (
+            index === saleItems.length - 1
+          ) {
+            lineDiscount = roundMoney(
+              appliedDiscount -
+                allocatedDiscount
+            );
+          } else {
+            lineDiscount = roundMoney(
+              appliedDiscount *
+                (item.lineSubtotal /
+                  productSubtotal)
+            );
+
+            lineDiscount = Math.min(
+              lineDiscount,
+              item.lineSubtotal
+            );
+          }
+
+          allocatedDiscount = roundMoney(
+            allocatedDiscount + lineDiscount
+          );
+        }
+
+        return {
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount: lineDiscount,
+        };
+      }
+    );
+
+    const shipping = roundMoney(
+      Math.max(
+        0,
+        Number(order.deliveryFee) || 0
+      )
+    );
+
+    const orderTotal = roundMoney(
+      Number(order.total)
+    );
+
+    const expectedTotal = roundMoney(
+      productSubtotal -
+        appliedDiscount +
+        shipping
+    );
+
+    if (
+      !Number.isFinite(orderTotal) ||
+      orderTotal <= 0
+    ) {
+      throw new Error(
+        "Website order total is invalid."
+      );
+    }
+
+    if (
+      Math.abs(
+        expectedTotal - orderTotal
+      ) > 0.01
+    ) {
+      throw new Error(
+        `Tracepos total mismatch. Expected ${expectedTotal}, received ${orderTotal}.`
+      );
     }
 
     const traceposResponse =
       await createTraceposSale({
-        orderReference,
-        orderDate: order.createdAt.slice(0, 10),
-        items: saleItems,
+        userId:
+          getTraceposWebsiteCustomerId(),
+        invoiceNumber: orderReference,
+        orderDate: order.createdAt,
+        items: traceposItems,
+        shipping,
         notes: `Fluffy N Yummy website order ${orderReference}`,
       });
 
     const invoiceNumber = String(
-      traceposResponse?.data?.invoice_number || ""
+      traceposResponse?.invoice_number ||
+        traceposResponse?.data?.invoice_number ||
+        ""
     );
 
-    /*
-     * Mark the sale as synced immediately after
-     * Tracepos accepts it.
-     *
-     * This prevents a stock-refresh failure from
-     * causing the sale to be submitted again.
-     */
     await markTraceposSaleSynced(order.id, {
       orderReference,
-      invoiceNumber: invoiceNumber || undefined,
+      invoiceNumber:
+        invoiceNumber || undefined,
     });
 
     let stockRefresh:
@@ -280,10 +398,6 @@ export async function syncPaidOrderToTracepos(
       | string
       | undefined;
 
-    /*
-     * Refresh website stock from Tracepos after
-     * the successful sale.
-     */
     try {
       stockRefresh =
         await syncWebsiteStockFromTracepos();
