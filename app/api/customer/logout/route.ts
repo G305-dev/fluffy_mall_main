@@ -13,20 +13,17 @@ const COOKIE_PATHS = [
   "/checkout",
 ];
 
-function expireCustomerCookies(
+function clearCustomerCookie(
   req: NextRequest,
   response: NextResponse
 ) {
   const expires = new Date(0);
 
-  /*
-   * Clear the default cookie.
-   */
   response.cookies.delete(CUSTOMER_COOKIE);
 
   for (const path of COOKIE_PATHS) {
     /*
-     * Clear normal production cookies.
+     * Clear the normal production cookie.
      */
     response.cookies.set(
       CUSTOMER_COOKIE,
@@ -69,8 +66,8 @@ function expireCustomerCookies(
       "",
       {
         ...sessionCookieOptions(req, 0),
-        expires,
         maxAge: 0,
+        expires,
         path,
       }
     );
@@ -83,7 +80,7 @@ function logoutResponse(req: NextRequest) {
     303
   );
 
-  expireCustomerCookies(req, response);
+  clearCustomerCookie(req, response);
 
   response.headers.set(
     "Cache-Control",
@@ -93,16 +90,10 @@ function logoutResponse(req: NextRequest) {
   return response;
 }
 
-/*
- * Direct browser navigation uses GET.
- */
 export function GET(req: NextRequest) {
   return logoutResponse(req);
 }
 
-/*
- * Keep POST available for any existing callers.
- */
 export function POST(req: NextRequest) {
   return logoutResponse(req);
 }

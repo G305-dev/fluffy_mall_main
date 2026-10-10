@@ -48,6 +48,11 @@ export async function GET(
     session.email
   );
 
+  /*
+   * If the signed cookie refers to an account
+   * that no longer exists, treat the customer as
+   * logged out and expire the cookie.
+   */
   if (!account) {
     const response = NextResponse.json(
       {
