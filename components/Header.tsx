@@ -1,3 +1,5 @@
+// components/Header.tsx
+
 "use client";
 
 import Image from "next/image";
@@ -16,15 +18,22 @@ import {
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import { useCart } from "./CartProvider";
-import { usePathname, useRouter } from "next/navigation";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
 import { useWishlist } from "./WishlistProvider";
 
 export default function Header() {
   const { count } = useCart();
-  const { count: wishlistCount } = useWishlist();
+  const { count: wishlistCount } =
+    useWishlist();
+
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authenticated, setAuthenticated] =
+    useState(false);
+
   const pathname = usePathname();
   const router = useRouter();
 
@@ -33,38 +42,54 @@ export default function Header() {
   }, [pathname]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
-    const previousOverflow = document.body.style.overflow;
+    const previousOverflow =
+      document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
 
-    const closeOnEscape = (event: KeyboardEvent) => {
+    const closeOnEscape = (
+      event: KeyboardEvent
+    ) => {
       if (event.key === "Escape") {
         setOpen(false);
       }
     };
 
-    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener(
+      "keydown",
+      closeOnEscape
+    );
 
     return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
+      document.body.style.overflow =
+        previousOverflow;
+
+      window.removeEventListener(
+        "keydown",
+        closeOnEscape
+      );
     };
   }, [open]);
 
- useEffect(() => {
-  fetch("/api/customer/session", {
-    credentials: "include",
-    cache: "no-store",
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      setAuthenticated(Boolean(data.authenticated));
+  useEffect(() => {
+    fetch("/api/customer/session", {
+      credentials: "include",
+      cache: "no-store",
     })
-    .catch(() => {
-      setAuthenticated(false);
-    });
-}, [pathname]);
+      .then((response) => response.json())
+      .then((data) => {
+        setAuthenticated(
+          Boolean(data.authenticated)
+        );
+      })
+      .catch(() => {
+        setAuthenticated(false);
+      });
+  }, [pathname]);
 
   if (pathname?.startsWith("/admin")) {
     return null;
@@ -76,45 +101,55 @@ export default function Header() {
     const query = q.trim();
 
     router.push(
-      query ? `/shop?q=${encodeURIComponent(query)}` : "/shop"
+      query
+        ? `/shop?q=${encodeURIComponent(query)}`
+        : "/shop"
     );
   }
 
- async function logout() {
-  try {
-    const response = await fetch(
-      "/api/customer/logout",
-      {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
+  async function logout() {
+    try {
+      const response = await fetch(
+        "/api/customer/logout",
+        {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Logout failed with HTTP ${response.status}.`
+        );
       }
-    );
 
-    if (!response.ok) {
-      throw new Error("Logout failed.");
+      setAuthenticated(false);
+      setOpen(false);
+
+      /*
+       * Full navigation ensures that the header
+       * performs a fresh session check after the
+       * customer cookie has been deleted.
+       */
+      window.location.replace(
+        "/?loggedOut=1"
+      );
+    } catch (error) {
+      console.error(
+        "Customer logout failed:",
+        error
+      );
     }
-
-    setAuthenticated(false);
-    setOpen(false);
-
-    /*
-     * Force a full navigation so the header performs
-     * a fresh session check with the deleted cookie.
-     */
-    window.location.replace("/");
-  } catch {
-    setAuthenticated(false);
-    setOpen(false);
   }
-}
 
   return (
     <header className="sticky top-0 z-50 border-b border-cream-200 bg-[#fff9f2]/90 backdrop-blur-md">
       <div className="bg-cocoa-800 text-cream-100">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2 text-[10px] tracking-wide sm:px-6 sm:text-xs lg:px-8">
           <p className="truncate">
-            5% off your first signed-in order for new customers
+            5% off your first signed-in order for
+            new customers
           </p>
 
           <Link
@@ -128,6 +163,7 @@ export default function Header() {
 
       <div className="mx-auto flex max-w-6xl items-center gap-1.5 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 lg:px-8">
         <button
+          type="button"
           className="relative z-[101] shrink-0 rounded-full p-2 text-cocoa-800 hover:bg-cream-100 lg:hidden"
           onClick={() => setOpen(true)}
           aria-label="Open menu"
@@ -167,7 +203,9 @@ export default function Header() {
 
           <input
             value={q}
-            onChange={(event) => setQ(event.target.value)}
+            onChange={(event) =>
+              setQ(event.target.value)
+            }
             placeholder="Search pots, blenders, gifts…"
             className="w-full rounded-full border border-cream-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none ring-terracotta-400 focus:ring-2"
           />
@@ -209,6 +247,7 @@ export default function Header() {
             aria-label="Wishlist"
           >
             <Heart size={22} />
+
             {wishlistCount > 0 && (
               <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-terracotta-500 px-1 text-[10px] font-semibold text-white">
                 {wishlistCount}
@@ -218,6 +257,7 @@ export default function Header() {
 
           {authenticated ? (
             <button
+              type="button"
               onClick={logout}
               className="hidden items-center gap-1 rounded-full px-3 py-2 text-sm text-cocoa-700 hover:bg-cream-100 lg:flex"
             >
@@ -276,7 +316,9 @@ export default function Header() {
               role="dialog"
               aria-modal="true"
               aria-label="Store menu"
-              onClick={(event) => event.stopPropagation()}
+              onClick={(event) =>
+                event.stopPropagation()
+              }
             >
               <div className="mb-6 flex items-center justify-between border-b border-cream-200 pb-4">
                 <p className="font-display text-2xl text-cocoa-800">
@@ -284,6 +326,7 @@ export default function Header() {
                 </p>
 
                 <button
+                  type="button"
                   onClick={() => setOpen(false)}
                   aria-label="Close menu"
                   className="rounded-full p-2 text-cocoa-800 hover:bg-cream-100"
@@ -292,10 +335,15 @@ export default function Header() {
                 </button>
               </div>
 
-              <form onSubmit={onSearch} className="mb-5">
+              <form
+                onSubmit={onSearch}
+                className="mb-5"
+              >
                 <input
                   value={q}
-                  onChange={(event) => setQ(event.target.value)}
+                  onChange={(event) =>
+                    setQ(event.target.value)
+                  }
                   placeholder="Search products"
                   className="w-full rounded-full border border-cream-300 bg-white px-4 py-2.5 text-sm"
                 />
@@ -321,6 +369,7 @@ export default function Header() {
                     >
                       {category.emoji}
                     </span>
+
                     {category.name}
                   </Link>
                 ))}
@@ -358,6 +407,7 @@ export default function Header() {
 
                 {authenticated ? (
                   <button
+                    type="button"
                     onClick={logout}
                     className="flex items-center gap-2 rounded-xl px-3 py-3 text-left text-cocoa-800 hover:bg-cream-100"
                   >

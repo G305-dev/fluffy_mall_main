@@ -12,37 +12,64 @@ export function POST(req: NextRequest) {
 
   const expires = new Date(0);
 
-  /*
-   * Delete the cookie using the same options used
-   * when the customer logged in.
-   */
-  response.cookies.set(
-    CUSTOMER_COOKIE,
-    "",
-    {
-      ...sessionCookieOptions(req, 0),
-      expires,
-    }
-  );
+  const paths = [
+    "/",
+    "/api",
+    "/api/customer",
+    "/login",
+    "/checkout",
+  ];
 
-  /*
-   * Also clear an older partitioned version that
-   * may have been created by the previous cookie
-   * configuration.
-   */
-  response.cookies.set(
-    CUSTOMER_COOKIE,
-    "",
-    {
-      httpOnly: true,
-      sameSite: "none",
-      secure: true,
-      partitioned: true,
-      maxAge: 0,
-      expires,
-      path: "/",
-    }
-  );
+  for (const path of paths) {
+    /*
+     * Clear the normal production cookie.
+     */
+    response.cookies.set(
+      CUSTOMER_COOKIE,
+      "",
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        secure:
+          process.env.NODE_ENV ===
+          "production",
+        maxAge: 0,
+        expires,
+        path,
+      }
+    );
+
+    /*
+     * Clear the sandbox/iframe cookie.
+     */
+    response.cookies.set(
+      CUSTOMER_COOKIE,
+      "",
+      {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        partitioned: true,
+        maxAge: 0,
+        expires,
+        path,
+      }
+    );
+
+    /*
+     * Clear the cookie using the current request
+     * cookie configuration as well.
+     */
+    response.cookies.set(
+      CUSTOMER_COOKIE,
+      "",
+      {
+        ...sessionCookieOptions(req, 0),
+        expires,
+        path,
+      }
+    );
+  }
 
   return response;
 }
