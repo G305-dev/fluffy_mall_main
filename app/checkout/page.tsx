@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import { useCart } from "@/components/CartProvider";
 import { naira } from "@/lib/format";
 import CheckoutPolicyModal from "@/components/CheckoutPolicyModal";
@@ -60,18 +67,30 @@ export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Customers must sign in before checkout.
-  const [gatePassed, setGatePassed] = useState(false);
-  const [signInEmail, setSignInEmail] = useState("");
+  const [gatePassed, setGatePassed] =
+    useState(false);
+
+  const [signInEmail, setSignInEmail] =
+    useState("");
+
   const [signInPassword, setSignInPassword] =
     useState("");
-  const [signInBusy, setSignInBusy] = useState(false);
-  const [signInError, setSignInError] = useState(
-    () => searchParams.get("authError") || ""
-  );
-  const [signedInAs, setSignedInAs] = useState("");
-  const [showSignInPassword, setShowSignInPassword] =
+
+  const [signInBusy, setSignInBusy] =
     useState(false);
+
+  const [signInError, setSignInError] =
+    useState(
+      () => searchParams.get("authError") || ""
+    );
+
+  const [signedInAs, setSignedInAs] =
+    useState("");
+
+  const [
+    showSignInPassword,
+    setShowSignInPassword,
+  ] = useState(false);
 
   const [
     newCustomerDiscountEligible,
@@ -85,20 +104,33 @@ export default function CheckoutPage() {
     NEW_CUSTOMER_DISCOUNT_PERCENT
   );
 
-  // Stepped checkout.
-  const [step, setStep] = useState<Step>(1);
-  const [maxStep, setMaxStep] = useState<Step>(1);
+  const [step, setStep] =
+    useState<Step>(1);
 
-  // Step 1 — contact.
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [maxStep, setMaxStep] =
+    useState<Step>(1);
 
-  // Step 2 — delivery.
-  const [state, setState] = useState("Lagos");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [notes, setNotes] = useState("");
+  const [name, setName] =
+    useState("");
+
+  const [phone, setPhone] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [state, setState] =
+    useState("Lagos");
+
+  const [address, setAddress] =
+    useState("");
+
+  const [city, setCity] =
+    useState("");
+
+  const [notes, setNotes] =
+    useState("");
+
   const [fulfilment, setFulfilment] =
     useState<Fulfilment>("delivery");
 
@@ -107,10 +139,13 @@ export default function CheckoutPage() {
     setOutsideDeliveryNoticeOpen,
   ] = useState(false);
 
-  // Step 3 — payment.
   const method: PayMethod = "paystack";
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+
+  const [busy, setBusy] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   const [settings, setSettings] =
     useState<StoreSettings>(
@@ -120,7 +155,9 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/settings")
       .then((response) =>
-        response.ok ? response.json() : null
+        response.ok
+          ? response.json()
+          : null
       )
       .then((data) => {
         if (data?.settings) {
@@ -128,19 +165,25 @@ export default function CheckoutPage() {
         }
       })
       .catch(() => {
-        // Keep the bundled settings fallback.
+        // Keep bundled settings.
       });
   }, []);
 
   useEffect(() => {
     fetch("/api/customer/session", {
       cache: "no-store",
+      credentials: "include",
     })
       .then((response) =>
-        response.ok ? response.json() : null
+        response.ok
+          ? response.json()
+          : null
       )
       .then((data) => {
-        if (data?.authenticated && data?.email) {
+        if (
+          data?.authenticated &&
+          data?.email
+        ) {
           setEmail(data.email);
           setSignedInAs(data.email);
           setGatePassed(true);
@@ -160,7 +203,9 @@ export default function CheckoutPage() {
           Number.isFinite(percent) &&
           percent > 0
         ) {
-          setNewCustomerDiscountPercent(percent);
+          setNewCustomerDiscountPercent(
+            percent
+          );
         }
       })
       .catch(() => {
@@ -205,7 +250,8 @@ export default function CheckoutPage() {
     newCustomerDiscountEligible
       ? roundMoney(
           subtotal *
-            (newCustomerDiscountPercent / 100)
+            (newCustomerDiscountPercent /
+              100)
         )
       : 0;
 
@@ -216,8 +262,10 @@ export default function CheckoutPage() {
     )
   );
 
-  async function signIn(e: React.FormEvent) {
-    e.preventDefault();
+  async function signIn(
+    event: React.FormEvent
+  ) {
+    event.preventDefault();
     setSignInBusy(true);
     setSignInError("");
 
@@ -227,8 +275,10 @@ export default function CheckoutPage() {
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             email: signInEmail,
             password: signInPassword,
@@ -242,6 +292,8 @@ export default function CheckoutPage() {
         router.push(
           `/signup?email=${encodeURIComponent(
             signInEmail
+          )}&next=${encodeURIComponent(
+            "/checkout"
           )}`
         );
         return;
@@ -257,6 +309,7 @@ export default function CheckoutPage() {
         "/api/customer/session",
         {
           cache: "no-store",
+          credentials: "include",
         }
       );
 
@@ -285,8 +338,16 @@ export default function CheckoutPage() {
         Number.isFinite(percent) &&
         percent > 0
       ) {
-        setNewCustomerDiscountPercent(percent);
+        setNewCustomerDiscountPercent(
+          percent
+        );
       }
+
+      window.dispatchEvent(
+        new Event(
+          "fny:customer-auth-changed"
+        )
+      );
 
       setGatePassed(true);
     } catch (signInErrorValue) {
@@ -307,13 +368,15 @@ export default function CheckoutPage() {
   }
 
   function continueToDelivery(
-    e: React.FormEvent
+    event: React.FormEvent
   ) {
-    e.preventDefault();
+    event.preventDefault();
     setError("");
 
     if (!name.trim() || !phone.trim()) {
-      setError("Name and phone number are required.");
+      setError(
+        "Name and phone number are required."
+      );
       return;
     }
 
@@ -324,9 +387,9 @@ export default function CheckoutPage() {
   }
 
   function continueToPayment(
-    e: React.FormEvent
+    event: React.FormEvent
   ) {
-    e.preventDefault();
+    event.preventDefault();
     setError("");
 
     if (
@@ -334,7 +397,9 @@ export default function CheckoutPage() {
       zone === "lagos" &&
       !city
     ) {
-      setError("Please select your Lagos city.");
+      setError(
+        "Please select your Lagos city."
+      );
       return;
     }
 
@@ -342,7 +407,9 @@ export default function CheckoutPage() {
       fulfilment === "delivery" &&
       !address.trim()
     ) {
-      setError("Please add a delivery address.");
+      setError(
+        "Please add a delivery address."
+      );
       return;
     }
 
@@ -357,7 +424,6 @@ export default function CheckoutPage() {
     setError("");
 
     if (nextFulfilment === "pickup") {
-      // Pickup has no delivery area selector.
       setState("Lagos");
       setCity("");
       setOutsideDeliveryNoticeOpen(false);
@@ -392,32 +458,38 @@ export default function CheckoutPage() {
     }, 0);
   }
 
-  async function payNow(e: React.FormEvent) {
-    e.preventDefault();
+  async function payNow(
+    event: React.FormEvent
+  ) {
+    event.preventDefault();
     setError("");
     setBusy(true);
 
     try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          customer: {
-            name,
-            phone,
-            email,
-            address,
-            state,
-            city,
-            notes,
+      const response = await fetch(
+        "/api/orders",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
           },
-          items,
-          fulfilment,
-          method,
-        }),
-      });
+          body: JSON.stringify({
+            customer: {
+              name,
+              phone,
+              email,
+              address,
+              state,
+              city,
+              notes,
+            },
+            items,
+            fulfilment,
+            method,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -469,6 +541,7 @@ export default function CheckoutPage() {
           >
             <span className="min-w-0 break-words">
               {item.name}
+
               {item.variantName
                 ? ` (${item.variantName})`
                 : ""}{" "}
@@ -526,7 +599,9 @@ export default function CheckoutPage() {
                 ? "To be communicated"
                 : quote.freeDelivery
                   ? "Free"
-                  : naira(quote.deliveryFee)}
+                  : naira(
+                      quote.deliveryFee
+                    )}
           </dd>
         </div>
 
@@ -565,7 +640,8 @@ export default function CheckoutPage() {
   if (!gatePassed) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-          <CheckoutPolicyModal />
+        <CheckoutPolicyModal />
+
         <main className="min-w-0">
           <h1 className="font-display text-3xl text-cocoa-800 sm:text-4xl">
             Ready to checkout?
@@ -596,7 +672,9 @@ export default function CheckoutPage() {
                   required
                   value={signInEmail}
                   onChange={(event) =>
-                    setSignInEmail(event.target.value)
+                    setSignInEmail(
+                      event.target.value
+                    )
                   }
                   placeholder="you@example.com"
                   className="mt-2 w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3"
@@ -617,7 +695,9 @@ export default function CheckoutPage() {
                     minLength={8}
                     value={signInPassword}
                     onChange={(event) =>
-                      setSignInPassword(event.target.value)
+                      setSignInPassword(
+                        event.target.value
+                      )
                     }
                     className="w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3 pr-11"
                   />
@@ -646,6 +726,7 @@ export default function CheckoutPage() {
               </label>
 
               <button
+                type="submit"
                 disabled={signInBusy}
                 className="btn-pop mt-5 w-full rounded-full bg-cocoa-800 px-7 py-3 text-sm font-semibold text-cream-50 disabled:opacity-60"
               >
@@ -664,7 +745,9 @@ export default function CheckoutPage() {
               <p className="mt-4 text-center text-sm text-cocoa-700/70">
                 New here?{" "}
                 <Link
-                  href="/signup"
+                  href={`/signup?next=${encodeURIComponent(
+                    "/checkout"
+                  )}`}
                   className="font-semibold text-terracotta-600"
                 >
                   Create an account
@@ -689,7 +772,8 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <CheckoutPolicyModal />
+      <CheckoutPolicyModal />
+
       {outsideDeliveryNoticeOpen && (
         <div
           className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 px-4 py-6"
@@ -716,7 +800,9 @@ export default function CheckoutPage() {
             <div className="mt-7 grid gap-3">
               <button
                 type="button"
-                onClick={proceedFromOutsideDelivery}
+                onClick={
+                  proceedFromOutsideDelivery
+                }
                 className="w-full rounded-none bg-terracotta-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-terracotta-600"
               >
                 Proceed to payment
@@ -724,7 +810,9 @@ export default function CheckoutPage() {
 
               <button
                 type="button"
-                onClick={goBackFromOutsideDelivery}
+                onClick={
+                  goBackFromOutsideDelivery
+                }
                 className="w-full rounded-none border border-cream-300 px-5 py-3 text-sm font-semibold text-cocoa-800 transition hover:bg-cream-100"
               >
                 Go back
@@ -749,7 +837,10 @@ export default function CheckoutPage() {
               <StepBadge
                 n={1}
                 active={step === 1}
-                done={maxStep > 1 && step !== 1}
+                done={
+                  maxStep > 1 &&
+                  step !== 1
+                }
               />
 
               <h2 className="font-display text-lg leading-tight text-cocoa-800 sm:text-xl">
@@ -759,6 +850,7 @@ export default function CheckoutPage() {
 
             {step !== 1 && maxStep > 1 && (
               <button
+                type="button"
                 onClick={() => goTo(1)}
                 className="text-sm font-medium text-terracotta-600"
               >
@@ -826,7 +918,10 @@ export default function CheckoutPage() {
               )}
 
               <div className="sm:col-span-2">
-                <button className="btn-pop rounded-full bg-cocoa-800 px-5 py-3 text-sm font-semibold text-cream-50 sm:px-7">
+                <button
+                  type="submit"
+                  className="btn-pop rounded-full bg-cocoa-800 px-5 py-3 text-sm font-semibold text-cream-50 sm:px-7"
+                >
                   Continue to delivery
                 </button>
               </div>
@@ -850,7 +945,10 @@ export default function CheckoutPage() {
               <StepBadge
                 n={2}
                 active={step === 2}
-                done={maxStep > 2 && step !== 2}
+                done={
+                  maxStep > 2 &&
+                  step !== 2
+                }
               />
 
               <h2 className="font-display text-lg leading-tight text-cocoa-800 sm:text-xl">
@@ -860,6 +958,7 @@ export default function CheckoutPage() {
 
             {step !== 2 && maxStep > 2 && (
               <button
+                type="button"
                 onClick={() => goTo(2)}
                 className="text-sm font-medium text-terracotta-600"
               >
@@ -882,7 +981,9 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      chooseFulfilment("delivery")
+                      chooseFulfilment(
+                        "delivery"
+                      )
                     }
                     className={`rounded-2xl p-4 text-left ring-1 transition ${
                       fulfilment === "delivery"
@@ -902,7 +1003,9 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      chooseFulfilment("pickup")
+                      chooseFulfilment(
+                        "pickup"
+                      )
                     }
                     className={`rounded-2xl p-4 text-left ring-1 transition ${
                       fulfilment === "pickup"
@@ -954,7 +1057,9 @@ export default function CheckoutPage() {
                       required
                       value={city}
                       onChange={(event) =>
-                        setCity(event.target.value)
+                        setCity(
+                          event.target.value
+                        )
                       }
                       className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3"
                     >
@@ -985,7 +1090,9 @@ export default function CheckoutPage() {
                     required
                     value={address}
                     onChange={(event) =>
-                      setAddress(event.target.value)
+                      setAddress(
+                        event.target.value
+                      )
                     }
                     rows={3}
                     className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3"
@@ -1020,7 +1127,10 @@ export default function CheckoutPage() {
                   Back
                 </button>
 
-                <button className="btn-pop rounded-full bg-cocoa-800 px-5 py-3 text-sm font-semibold text-cream-50 sm:px-7">
+                <button
+                  type="submit"
+                  className="btn-pop rounded-full bg-cocoa-800 px-5 py-3 text-sm font-semibold text-cream-50 sm:px-7"
+                >
                   Continue to payment
                 </button>
               </div>
@@ -1104,12 +1214,15 @@ export default function CheckoutPage() {
                 </button>
 
                 <button
+                  type="submit"
                   disabled={busy}
                   className="btn-pop min-w-0 rounded-full bg-terracotta-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60 sm:px-8"
                 >
                   {busy
                     ? "Processing…"
-                    : `Pay now · ${naira(checkoutTotal)}`}
+                    : `Pay now · ${naira(
+                        checkoutTotal
+                      )}`}
                 </button>
               </div>
 

@@ -74,6 +74,14 @@ function getSearchSuggestions(
   ).slice(0, 8);
 }
 
+function getSuggestionUrl(
+  suggestion: SearchSuggestion
+) {
+  return `/shop/${suggestion.categorySlug}?subcategory=${encodeURIComponent(
+    suggestion.subcategory
+  )}`;
+}
+
 function RelatedSearchSuggestions({
   query,
   onSelect,
@@ -102,9 +110,9 @@ function RelatedSearchSuggestions({
             {suggestions.map((suggestion) => (
               <Link
                 key={`${suggestion.categorySlug}-${suggestion.subcategory}`}
-                href={`/shop/${suggestion.categorySlug}?subcategory=${encodeURIComponent(
-                  suggestion.subcategory
-                )}`}
+                href={getSuggestionUrl(
+                  suggestion
+                )}
                 onClick={onSelect}
                 className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-cream-100"
               >
@@ -144,9 +152,17 @@ function RelatedSearchSuggestions({
 }
 
 export default function Header() {
-  const { count } = useCart();
-  const { count: wishlistCount } =
-    useWishlist();
+  const {
+    count,
+    resetForLogout:
+      resetCartForLogout,
+  } = useCart();
+
+  const {
+    count: wishlistCount,
+    resetForLogout:
+      resetWishlistForLogout,
+  } = useWishlist();
 
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -229,6 +245,22 @@ export default function Header() {
 
     const query = q.trim();
 
+    const exactSuggestion =
+      SUBCATEGORY_SUGGESTIONS.find(
+        (suggestion) =>
+          normalizeSearchText(
+            suggestion.subcategory
+          ) === normalizeSearchText(query)
+      );
+
+    if (exactSuggestion) {
+      setQ("");
+      router.push(
+        getSuggestionUrl(exactSuggestion)
+      );
+      return;
+    }
+
     router.push(
       query
         ? `/shop?q=${encodeURIComponent(query)}`
@@ -241,13 +273,20 @@ export default function Header() {
     setOpen(false);
   }
 
-  function logout() {
+  async function logout() {
+    resetCartForLogout();
+    resetWishlistForLogout();
     setAuthenticated(false);
     setOpen(false);
 
-    window.location.assign(
-      "/api/customer/logout"
-    );
+    try {
+      await fetch("/api/customer/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      window.location.assign("/");
+    }
   }
 
   return (
