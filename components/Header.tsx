@@ -22,6 +22,127 @@ import {
 } from "next/navigation";
 import { useWishlist } from "./WishlistProvider";
 
+type SearchSuggestion = {
+  categorySlug: string;
+  categoryName: string;
+  subcategory: string;
+};
+
+const SUBCATEGORY_SUGGESTIONS: SearchSuggestion[] =
+  CATEGORIES.flatMap((category) =>
+    category.subcategories.map((subcategory) => ({
+      categorySlug: category.slug,
+      categoryName: category.name,
+      subcategory,
+    }))
+  );
+
+function normalizeSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getSearchSuggestions(
+  query: string
+) {
+  const normalizedQuery =
+    normalizeSearchText(query);
+
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  const queryWords =
+    normalizedQuery.split(" ");
+
+  return SUBCATEGORY_SUGGESTIONS.filter(
+    (suggestion) => {
+      const searchableText =
+        normalizeSearchText(
+          `${suggestion.subcategory} ${suggestion.categoryName}`
+        );
+
+      return (
+        searchableText.includes(normalizedQuery) ||
+        queryWords.every((word) =>
+          searchableText.includes(word)
+        )
+      );
+    }
+  ).slice(0, 8);
+}
+
+function RelatedSearchSuggestions({
+  query,
+  onSelect,
+}: {
+  query: string;
+  onSelect: () => void;
+}) {
+  const suggestions =
+    getSearchSuggestions(query);
+
+  const trimmedQuery = query.trim();
+
+  if (!trimmedQuery) {
+    return null;
+  }
+
+  return (
+    <div className="absolute left-0 right-0 top-full z-[70] mt-2 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-cream-200">
+      {suggestions.length > 0 && (
+        <div className="p-2">
+          <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-600">
+            Related searches
+          </p>
+
+          <div className="grid gap-1">
+            {suggestions.map((suggestion) => (
+              <Link
+                key={`${suggestion.categorySlug}-${suggestion.subcategory}`}
+                href={`/shop/${suggestion.categorySlug}?subcategory=${encodeURIComponent(
+                  suggestion.subcategory
+                )}`}
+                onClick={onSelect}
+                className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-cream-100"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-cocoa-800">
+                    {suggestion.subcategory}
+                  </span>
+
+                  <span className="block truncate text-xs text-cocoa-700/60">
+                    {suggestion.categoryName}
+                  </span>
+                </span>
+
+                <span
+                  aria-hidden="true"
+                  className="text-lg text-terracotta-500"
+                >
+                  →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Link
+        href={`/shop?q=${encodeURIComponent(
+          trimmedQuery
+        )}`}
+        onClick={onSelect}
+        className="block border-t border-cream-200 px-4 py-3 text-sm font-semibold text-terracotta-600 hover:bg-cream-50"
+      >
+        Search all products for “{trimmedQuery}”
+      </Link>
+    </div>
+  );
+}
+
 export default function Header() {
   const { count } = useCart();
   const { count: wishlistCount } =
@@ -115,15 +236,15 @@ export default function Header() {
     );
   }
 
+  function clearSearch() {
+    setQ("");
+    setOpen(false);
+  }
+
   function logout() {
     setAuthenticated(false);
     setOpen(false);
 
-    /*
-     * Navigate directly to the server logout route.
-     * The server clears the customer cookie and
-     * redirects back to the homepage.
-     */
     window.location.assign(
       "/api/customer/logout"
     );
@@ -131,20 +252,20 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-cream-200 bg-[#fff9f2]/90 backdrop-blur-md">
-     <div className="bg-cocoa-800 text-cream-100">
-  <div className="relative mx-auto flex max-w-6xl items-center justify-center px-3 py-2 text-[10px] tracking-wide sm:px-6 sm:text-xs lg:px-8">
-    <p className="w-full text-center">
-      5% off your first signed-in order for new customers
-    </p>
+      <div className="bg-cocoa-800 text-cream-100">
+        <div className="relative mx-auto flex max-w-6xl items-center justify-center px-3 py-2 text-[10px] tracking-wide sm:px-6 sm:text-xs lg:px-8">
+          <p className="w-full text-center">
+            5% off your first signed-in order for new customers
+          </p>
 
-    <Link
-      href="/track"
-      className="absolute right-3 hidden shrink-0 underline-offset-2 hover:underline sm:block lg:right-8"
-    >
-      Track an order
-    </Link>
-  </div>
-</div>
+          <Link
+            href="/track"
+            className="absolute right-3 hidden shrink-0 underline-offset-2 hover:underline sm:block lg:right-8"
+          >
+            Track an order
+          </Link>
+        </div>
+      </div>
 
       <div className="mx-auto flex max-w-6xl items-center gap-1.5 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 lg:px-8">
         <button
@@ -192,7 +313,13 @@ export default function Header() {
               setQ(event.target.value)
             }
             placeholder="Search pots, blenders, gifts…"
+            aria-label="Search products"
             className="w-full rounded-full border border-cream-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none ring-terracotta-400 focus:ring-2"
+          />
+
+          <RelatedSearchSuggestions
+            query={q}
+            onSelect={clearSearch}
           />
         </form>
 
@@ -322,7 +449,7 @@ export default function Header() {
 
               <form
                 onSubmit={onSearch}
-                className="mb-5"
+                className="relative mb-5"
               >
                 <input
                   value={q}
@@ -330,7 +457,13 @@ export default function Header() {
                     setQ(event.target.value)
                   }
                   placeholder="Search products"
+                  aria-label="Search products"
                   className="w-full rounded-full border border-cream-300 bg-white px-4 py-2.5 text-sm"
+                />
+
+                <RelatedSearchSuggestions
+                  query={q}
+                  onSelect={clearSearch}
                 />
               </form>
 
