@@ -107,9 +107,9 @@ export default async function CategoryPage({
             </h2>
 
             <nav
-              aria-label={`${category.name} subcategories`}
-              className="mt-4 space-y-1"
-            >
+  aria-label={`${category.name} subcategories`}
+  className="mt-4 max-h-[calc(100vh-13rem)] space-y-1 overflow-y-scroll overscroll-contain pr-2"
+>
               <Link
                 href={`/shop/${category.slug}`}
                 className={`block rounded-lg px-3 py-2 text-sm transition ${
