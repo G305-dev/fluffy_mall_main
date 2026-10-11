@@ -131,21 +131,20 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-cream-200 bg-[#fff9f2]/90 backdrop-blur-md">
-      <div className="bg-cocoa-800 text-cream-100">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2 text-[10px] tracking-wide sm:px-6 sm:text-xs lg:px-8">
-          <p className="truncate">
-            5% off your first signed-in order for
-            new customers
-          </p>
+     <div className="bg-cocoa-800 text-cream-100">
+  <div className="relative mx-auto flex max-w-6xl items-center justify-center px-3 py-2 text-[10px] tracking-wide sm:px-6 sm:text-xs lg:px-8">
+    <p className="w-full text-center">
+      5% off your first signed-in order for new customers
+    </p>
 
-          <Link
-            href="/track"
-            className="hidden shrink-0 underline-offset-2 hover:underline sm:block"
-          >
-            Track an order
-          </Link>
-        </div>
-      </div>
+    <Link
+      href="/track"
+      className="absolute right-3 hidden shrink-0 underline-offset-2 hover:underline sm:block lg:right-8"
+    >
+      Track an order
+    </Link>
+  </div>
+</div>
 
       <div className="mx-auto flex max-w-6xl items-center gap-1.5 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 lg:px-8">
         <button
