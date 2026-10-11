@@ -2,7 +2,6 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
-import { randomBytes } from "crypto";
 import {
   CUSTOMER_COOKIE,
   createGoogleCustomerAccount,
@@ -10,22 +9,54 @@ import {
 } from "@/lib/customer-auth";
 import { sessionCookieOptions } from "@/lib/cookies";
 
+function allowedNext(value?: string) {
+  return value === "/checkout"
+    ? "/checkout"
+    : "/";
+}
+
+function errorRedirect(
+  appUrl: string,
+  next: string,
+  message: string
+) {
+  const url = new URL(next, appUrl);
+
+  url.searchParams.set(
+    "authError",
+    message
+  );
+
+  return NextResponse.redirect(url);
+}
+
 export async function GET(
-  req: NextRequest
+  request: NextRequest
 ) {
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
-    req.nextUrl.origin;
+    request.nextUrl.origin;
+
+  const next = allowedNext(
+    request.cookies.get(
+      "fny_google_next"
+    )?.value
+  );
 
   const code =
-    req.nextUrl.searchParams.get("code");
+    request.nextUrl.searchParams.get(
+      "code"
+    );
 
   const state =
-    req.nextUrl.searchParams.get("state");
+    request.nextUrl.searchParams.get(
+      "state"
+    );
 
-  const savedState = req.cookies.get(
-    "fny_google_state"
-  )?.value;
+  const savedState =
+    request.cookies.get(
+      "fny_google_state"
+    )?.value;
 
   const clientId =
     process.env.GOOGLE_CLIENT_ID;
@@ -40,11 +71,10 @@ export async function GET(
     !clientId ||
     !clientSecret
   ) {
-    return NextResponse.redirect(
-      new URL(
-        "/checkout?authError=Google+sign-in+could+not+be+completed",
-        appUrl
-      )
+    return errorRedirect(
+      appUrl,
+      next,
+      "Google sign-in could not be completed"
     );
   }
 
@@ -69,11 +99,10 @@ export async function GET(
   );
 
   if (!tokenResponse.ok) {
-    return NextResponse.redirect(
-      new URL(
-        "/checkout?authError=Google+sign-in+failed",
-        appUrl
-      )
+    return errorRedirect(
+      appUrl,
+      next,
+      "Google sign-in failed"
     );
   }
 
@@ -97,11 +126,10 @@ export async function GET(
     !profile.email ||
     profile.email_verified === false
   ) {
-    return NextResponse.redirect(
-      new URL(
-        "/checkout?authError=Google+email+could+not+be+verified",
-        appUrl
-      )
+    return errorRedirect(
+      appUrl,
+      next,
+      "Google email could not be verified"
     );
   }
 
@@ -110,27 +138,36 @@ export async function GET(
       profile.email
     );
 
-  const response = NextResponse.redirect(
-    new URL("/checkout", appUrl)
-  );
+  const response =
+    NextResponse.redirect(
+      new URL(next, appUrl)
+    );
 
   response.cookies.set(
     CUSTOMER_COOKIE,
     createCustomerSession(account.email),
     sessionCookieOptions(
-      req,
+      request,
       60 * 60 * 24 * 30
     )
   );
 
+  const expiredCookieOptions = {
+    maxAge: 0,
+    expires: new Date(0),
+    path: "/",
+  };
+
   response.cookies.set(
     "fny_google_state",
     "",
-    {
-      maxAge: 0,
-      expires: new Date(0),
-      path: "/",
-    }
+    expiredCookieOptions
+  );
+
+  response.cookies.set(
+    "fny_google_next",
+    "",
+    expiredCookieOptions
   );
 
   return response;

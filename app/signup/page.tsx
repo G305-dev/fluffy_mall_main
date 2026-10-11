@@ -40,9 +40,8 @@ export default function SignupPage() {
     searchParams.get("next") || "";
 
   const next =
-    requested.startsWith("/") &&
-    !requested.startsWith("//")
-      ? requested
+    requested === "/checkout"
+      ? "/checkout"
       : "/";
 
   async function submit(
@@ -67,6 +66,7 @@ export default function SignupPage() {
             "Content-Type":
               "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             email,
             password,
@@ -255,7 +255,9 @@ export default function SignupPage() {
         </p>
 
         <a
-          href="/api/customer/google"
+          href={`/api/customer/google?next=${encodeURIComponent(
+            next
+          )}`}
           className="mt-4 block rounded-full border border-cream-300 px-5 py-3 text-center text-sm font-semibold text-cocoa-800"
         >
           Continue with Google

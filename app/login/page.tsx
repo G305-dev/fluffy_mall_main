@@ -194,7 +194,9 @@ export default function LoginPage() {
           </span>
 
           <a
-            href="/api/customer/google"
+            href={`/api/customer/google?next=${encodeURIComponent(
+              next
+            )}`}
             className="rounded-full border border-cream-300 px-4 py-2 font-medium text-cocoa-800"
           >
             Continue with Google
