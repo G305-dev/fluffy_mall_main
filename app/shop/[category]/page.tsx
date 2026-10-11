@@ -1,4 +1,5 @@
 import ProductCard from "@/components/ProductCard";
+import MobileCategorySubcategories from "@/components/MobileCategorySubcategories";
 import {
   CATEGORIES,
   categoryName,
@@ -43,11 +44,12 @@ export default async function CategoryPage({
     notFound();
   }
 
-  const activeSubcategory = category.subcategories.includes(
-    searchParams.subcategory || ""
-  )
-    ? searchParams.subcategory || ""
-    : "";
+  const activeSubcategory =
+    category.subcategories.includes(
+      searchParams.subcategory || ""
+    )
+      ? searchParams.subcategory || ""
+      : "";
 
   const allProducts = await getProducts();
 
@@ -77,8 +79,24 @@ export default async function CategoryPage({
         ← All products
       </Link>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)] lg:items-start">
-        <aside className="h-fit lg:sticky lg:top-24">
+      <div className="mt-5">
+        <h1 className="break-words font-display text-3xl text-cocoa-800 sm:text-4xl">
+          {category.name}
+        </h1>
+
+        <p className="mt-2 text-sm text-cocoa-700/70">
+          {category.blurb}
+        </p>
+      </div>
+
+      <MobileCategorySubcategories
+        categoryName={category.name}
+        subcategories={category.subcategories}
+        activeSubcategory={activeSubcategory}
+      />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)] lg:items-start">
+        <aside className="hidden h-fit lg:sticky lg:top-24 lg:block">
           <div className="rounded-2xl bg-white p-5 ring-1 ring-cream-200">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cocoa-800">
               Category
@@ -131,41 +149,31 @@ export default async function CategoryPage({
         </aside>
 
         <main className="min-w-0">
-          <div>
-            <h1 className="break-words font-display text-3xl text-cocoa-800 sm:text-4xl">
-              {category.name}
-            </h1>
+          <div className="flex items-center justify-between gap-3 border-b border-cream-200 pb-4">
+            <div>
+              {activeSubcategory && (
+                <p className="text-sm text-cocoa-700">
+                  Showing products in{" "}
+                  <strong>
+                    {activeSubcategory}
+                  </strong>
+                </p>
+              )}
 
-            <p className="mt-2 text-sm text-cocoa-700/70">
-              {category.blurb}
-            </p>
+              {!activeSubcategory && (
+                <p className="text-sm text-cocoa-700/70">
+                  Browse all products in{" "}
+                  {category.name}.
+                </p>
+              )}
+            </div>
 
-            {activeSubcategory && (
-              <p className="mt-3 text-sm text-cocoa-700">
-                Showing products in{" "}
-                <strong>
-                  {activeSubcategory}
-                </strong>
-              </p>
-            )}
-          </div>
-
-          <div className="mt-6 flex items-center justify-between gap-3 border-b border-cream-200 pb-4">
-            <p className="text-sm text-cocoa-700/70">
+            <p className="shrink-0 text-sm text-cocoa-700/70">
               {products.length}{" "}
               {products.length === 1
                 ? "item"
                 : "items"}
             </p>
-
-            {activeSubcategory && (
-              <Link
-                href={`/shop/${category.slug}`}
-                className="text-sm font-medium text-terracotta-600 hover:underline"
-              >
-                Clear filter
-              </Link>
-            )}
           </div>
 
           {products.length > 0 ? (
