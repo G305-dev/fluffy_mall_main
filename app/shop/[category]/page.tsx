@@ -1,36 +1,203 @@
 import ProductCard from "@/components/ProductCard";
-import { CATEGORIES, categoryName } from "@/lib/categories";
+import {
+  CATEGORIES,
+  categoryName,
+} from "@/lib/categories";
 import { getProducts } from "@/lib/db";
 import { CategorySlug } from "@/lib/types";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
 export function generateStaticParams() {
-  return CATEGORIES.map((c) => ({ category: c.slug }));
+  return CATEGORIES.map((category) => ({
+    category: category.slug,
+  }));
 }
 
-export function generateMetadata({ params }: { params: { category: string } }) {
-  return { title: categoryName(params.category) };
+export function generateMetadata({
+  params,
+}: {
+  params: { category: string };
+}) {
+  return {
+    title: categoryName(params.category),
+  };
 }
 
-export default async function CategoryPage({ params }: { params: { category: string } }) {
-  const cat = CATEGORIES.find((c) => c.slug === params.category);
-  if (!cat) notFound();
-  const products = (await getProducts()).filter((p) => p.category === (params.category as CategorySlug));
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: {
+    category: string;
+  };
+  searchParams: {
+    subcategory?: string;
+  };
+}) {
+  const category = CATEGORIES.find(
+    (item) => item.slug === params.category
+  );
+
+  if (!category) {
+    notFound();
+  }
+
+  const activeSubcategory = category.subcategories.includes(
+    searchParams.subcategory || ""
+  )
+    ? searchParams.subcategory || ""
+    : "";
+
+  const allProducts = await getProducts();
+
+  const products = allProducts
+    .filter(
+      (product) =>
+        product.category ===
+        (params.category as CategorySlug)
+    )
+    .filter((product) => {
+      if (!activeSubcategory) {
+        return true;
+      }
+
+      return (
+        product.subcategory ===
+        activeSubcategory
+      );
+    });
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <Link href="/shop" className="text-sm text-terracotta-600">
+      <Link
+        href="/shop"
+        className="text-sm text-terracotta-600 hover:underline"
+      >
         ← All products
       </Link>
-      <h1 className="mt-3 break-words font-display text-3xl text-cocoa-800 sm:text-4xl">{cat.name}</h1>
-      <p className="mt-2 text-sm text-cocoa-700/70">{cat.blurb}</p>
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {products.map((p, i) => (
-          <div key={p.id} className="reveal" data-reveal-delay={(i % 4) * 80}>
-            <ProductCard product={p} />
+
+      <div className="mt-5 grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)] lg:items-start">
+        <aside className="h-fit lg:sticky lg:top-24">
+          <div className="rounded-2xl bg-white p-5 ring-1 ring-cream-200">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cocoa-800">
+              Category
+            </p>
+
+            <h2 className="mt-4 text-lg font-semibold text-cocoa-900">
+              {category.name}
+            </h2>
+
+            <nav
+              aria-label={`${category.name} subcategories`}
+              className="mt-4 space-y-1"
+            >
+              <Link
+                href={`/shop/${category.slug}`}
+                className={`block rounded-lg px-3 py-2 text-sm transition ${
+                  !activeSubcategory
+                    ? "bg-cream-100 font-semibold text-cocoa-900"
+                    : "text-cocoa-700 hover:bg-cream-50"
+                }`}
+              >
+                All {category.name}
+              </Link>
+
+              {category.subcategories.map(
+                (subcategory) => {
+                  const selected =
+                    activeSubcategory ===
+                    subcategory;
+
+                  return (
+                    <Link
+                      key={subcategory}
+                      href={`/shop/${category.slug}?subcategory=${encodeURIComponent(
+                        subcategory
+                      )}`}
+                      className={`block rounded-lg px-3 py-2 text-sm transition ${
+                        selected
+                          ? "bg-cream-100 font-semibold text-cocoa-900"
+                          : "text-cocoa-700 hover:bg-cream-50"
+                      }`}
+                    >
+                      {subcategory}
+                    </Link>
+                  );
+                }
+              )}
+            </nav>
           </div>
-        ))}
+        </aside>
+
+        <main className="min-w-0">
+          <div>
+            <h1 className="break-words font-display text-3xl text-cocoa-800 sm:text-4xl">
+              {category.name}
+            </h1>
+
+            <p className="mt-2 text-sm text-cocoa-700/70">
+              {category.blurb}
+            </p>
+
+            {activeSubcategory && (
+              <p className="mt-3 text-sm text-cocoa-700">
+                Showing products in{" "}
+                <strong>
+                  {activeSubcategory}
+                </strong>
+              </p>
+            )}
+          </div>
+
+          <div className="mt-6 flex items-center justify-between gap-3 border-b border-cream-200 pb-4">
+            <p className="text-sm text-cocoa-700/70">
+              {products.length}{" "}
+              {products.length === 1
+                ? "item"
+                : "items"}
+            </p>
+
+            {activeSubcategory && (
+              <Link
+                href={`/shop/${category.slug}`}
+                className="text-sm font-medium text-terracotta-600 hover:underline"
+              >
+                Clear filter
+              </Link>
+            )}
+          </div>
+
+          {products.length > 0 ? (
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+              {products.map((product, index) => (
+                <div
+                  key={product.id}
+                  className="reveal"
+                  data-reveal-delay={
+                    (index % 4) * 80
+                  }
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 rounded-2xl bg-white p-8 text-center ring-1 ring-cream-200">
+              <p className="text-sm text-cocoa-700/70">
+                No products are currently listed
+                in this subcategory.
+              </p>
+
+              <Link
+                href={`/shop/${category.slug}`}
+                className="mt-4 inline-flex rounded-full bg-cocoa-800 px-5 py-2.5 text-sm font-semibold text-white"
+              >
+                View all {category.name}
+              </Link>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
