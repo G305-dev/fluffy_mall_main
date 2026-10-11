@@ -6,7 +6,6 @@ import { CATEGORIES } from "@/lib/categories";
 import { CategorySlug } from "@/lib/types";
 import { Plus, X } from "lucide-react";
 
-
 type VariantDraft = {
   size: string;
   color: string;
@@ -54,16 +53,18 @@ function createEmptyForm(): FormState {
   return {
     name: "",
     price: "",
-    category: CATEGORIES[0].slug as CategorySlug,
-    subcategory: CATEGORIES[0].subcategories[0] || "",
+    category:
+      CATEGORIES[0].slug as CategorySlug,
+    subcategory:
+      CATEGORIES[0].subcategories[0] || "",
     stock: "",
     short: "",
-    traceposItemCode: "",
     description: "",
     deliveryNote: "",
     featured: false,
     bestseller: false,
     variants: [],
+    traceposItemCode: "",
   };
 }
 
@@ -76,10 +77,14 @@ function getClipboardImage(
     "image/webp",
   ];
 
-  const item = Array.from(event.clipboardData.items).find(
+  const item = Array.from(
+    event.clipboardData.items
+  ).find(
     (clipboardItem) =>
       clipboardItem.kind === "file" &&
-      allowedTypes.includes(clipboardItem.type)
+      allowedTypes.includes(
+        clipboardItem.type
+      )
   );
 
   return item?.getAsFile() ?? null;
@@ -100,52 +105,132 @@ async function readApiResponse(
   try {
     const parsed = JSON.parse(text);
 
-    if (!parsed || typeof parsed !== "object") {
-      throw new Error("The response was not an object.");
+    if (
+      !parsed ||
+      typeof parsed !== "object"
+    ) {
+      throw new Error(
+        "The response was not an object."
+      );
     }
 
     return parsed as ApiResponse;
   } catch {
     throw new Error(
-      `${name} returned invalid JSON. HTTP status: ${
-        response.status
-      }. Response: ${text.slice(0, 300)}`
+      `${name} returned invalid JSON. HTTP status: ${response.status}. Response: ${text.slice(
+        0,
+        300
+      )}`
     );
   }
 }
 
 export default function NewProductForm() {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<FormState>(createEmptyForm);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [form, setForm] =
+    useState<FormState>(createEmptyForm);
+
+  const [imageFiles, setImageFiles] =
+    useState<File[]>([]);
+
+  const [imagePreviews, setImagePreviews] =
+    useState<string[]>([]);
+
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] =
+    useState<string | null>(null);
+
   const router = useRouter();
 
   function reset() {
     setForm(createEmptyForm());
-    setFile(null);
-    setPreview(null);
+    setImageFiles([]);
+    setImagePreviews([]);
     setError(null);
   }
 
-  function onFileChange(
+  function onImageFilesChange(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
-    const selected = event.target.files?.[0] ?? null;
-
-    setFile(selected);
-    setPreview(
-      selected ? URL.createObjectURL(selected) : null
+    const selected = Array.from(
+      event.target.files || []
     );
+
+    event.target.value = "";
+
+    if (selected.length === 0) {
+      return;
+    }
+
+    setImageFiles(selected);
+
+    setImagePreviews(
+      selected.map((file) =>
+        URL.createObjectURL(file)
+      )
+    );
+  }
+
+  function onMainImagePaste(
+    event: React.ClipboardEvent<HTMLInputElement>
+  ) {
+    event.preventDefault();
+
+    const selected = getClipboardImage(event);
+
+    if (!selected) {
+      setError(
+        "Paste a JPEG, PNG or WEBP image."
+      );
+      return;
+    }
+
+    setError(null);
+
+    setImageFiles((current) => [
+      ...current,
+      selected,
+    ]);
+
+    setImagePreviews((current) => [
+      ...current,
+      URL.createObjectURL(selected),
+    ]);
+  }
+
+  function removeProductImage(index: number) {
+    if (imageFiles.length <= 1) {
+      setError(
+        "A product must have at least one image."
+      );
+      return;
+    }
+
+    setImageFiles((current) =>
+      current.filter(
+        (_, imageIndex) =>
+          imageIndex !== index
+      )
+    );
+
+    setImagePreviews((current) =>
+      current.filter(
+        (_, imageIndex) =>
+          imageIndex !== index
+      )
+    );
+
+    setError(null);
   }
 
   function onVariantFileChange(
     index: number,
     event: React.ChangeEvent<HTMLInputElement>
   ) {
-    const selected = event.target.files?.[0] ?? null;
+    const selected =
+      event.target.files?.[0] ?? null;
+
+    event.target.value = "";
 
     setForm((current) => ({
       ...current,
@@ -164,56 +249,48 @@ export default function NewProductForm() {
     }));
   }
 
-  function onMainImagePaste(
-  event: React.ClipboardEvent<HTMLInputElement>
-) {
-  event.preventDefault();
+  function onVariantImagePaste(
+    index: number,
+    event: React.ClipboardEvent<HTMLInputElement>
+  ) {
+    event.preventDefault();
 
-  const selected = getClipboardImage(event);
+    const selected = getClipboardImage(event);
 
-  if (!selected) {
-    setError("Paste a JPEG, PNG or WEBP image.");
-    return;
+    if (!selected) {
+      setError(
+        "Paste a JPEG, PNG or WEBP image."
+      );
+      return;
+    }
+
+    setError(null);
+
+    setForm((current) => ({
+      ...current,
+      variants: current.variants.map(
+        (variant, variantIndex) =>
+          variantIndex === index
+            ? {
+                ...variant,
+                file: selected,
+                preview: URL.createObjectURL(
+                  selected
+                ),
+              }
+            : variant
+      ),
+    }));
   }
-
-  setError(null);
-  setFile(selected);
-  setPreview(URL.createObjectURL(selected));
-}
-
-function onVariantImagePaste(
-  index: number,
-  event: React.ClipboardEvent<HTMLInputElement>
-) {
-  event.preventDefault();
-
-  const selected = getClipboardImage(event);
-
-  if (!selected) {
-    setError("Paste a JPEG, PNG or WEBP image.");
-    return;
-  }
-
-  setError(null);
-
-  setForm((current) => ({
-    ...current,
-    variants: current.variants.map(
-      (variant, variantIndex) =>
-        variantIndex === index
-          ? {
-              ...variant,
-              file: selected,
-              preview: URL.createObjectURL(selected),
-            }
-          : variant
-    ),
-  }));
-}
 
   function updateVariant(
     index: number,
-    field: "size" | "color" | "price" | "stock" | "traceposItemCode",
+    field:
+      | "size"
+      | "color"
+      | "price"
+      | "stock"
+      | "traceposItemCode",
     value: string
   ) {
     setForm((current) => ({
@@ -221,36 +298,80 @@ function onVariantImagePaste(
       variants: current.variants.map(
         (variant, variantIndex) =>
           variantIndex === index
-            ? { ...variant, [field]: value }
+            ? {
+                ...variant,
+                [field]: value,
+              }
             : variant
       ),
     }));
   }
 
   function addVariant() {
-  setForm((current) => ({
-    ...current,
-    variants: [
-      ...current.variants,
-      createEmptyVariant(),
-    ],
-  }));
-}
+    setForm((current) => ({
+      ...current,
+      variants: [
+        ...current.variants,
+        createEmptyVariant(),
+      ],
+    }));
+  }
+
   function removeVariant(index: number) {
     setForm((current) => ({
       ...current,
       variants: current.variants.filter(
-        (_, variantIndex) => variantIndex !== index
+        (_, variantIndex) =>
+          variantIndex !== index
       ),
     }));
   }
 
-  async function submit(event: React.FormEvent) {
+  async function uploadImage(
+    file: File,
+    label: string
+  ) {
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+
+    const response = await fetch(
+      "/api/admin/upload",
+      {
+        method: "POST",
+        body: uploadData,
+      }
+    );
+
+    const data = await readApiResponse(
+      response,
+      label
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || `${label} failed.`
+      );
+    }
+
+    if (!data.path) {
+      throw new Error(
+        `${label} did not return an image path.`
+      );
+    }
+
+    return data.path;
+  }
+
+  async function submit(
+    event: React.FormEvent
+  ) {
     event.preventDefault();
     setError(null);
 
-    if (!file) {
-      setError("Please choose the main product image.");
+    if (imageFiles.length === 0) {
+      setError(
+        "Please choose at least one product image."
+      );
       return;
     }
 
@@ -261,7 +382,10 @@ function onVariantImagePaste(
       return;
     }
 
-    if (!Number.isFinite(price) || price <= 0) {
+    if (
+      !Number.isFinite(price) ||
+      price <= 0
+    ) {
       setError("Enter a valid base price.");
       return;
     }
@@ -300,27 +424,38 @@ function onVariantImagePaste(
 
       if (!size && !color) {
         setError(
-          `Variant ${index + 1} needs a size or a color.`
+          `Variant ${
+            index + 1
+          } needs a size or a color.`
         );
         return;
       }
 
       if (!draft.file) {
         setError(
-          `Please choose an image for variant ${index + 1}.`
+          `Please choose an image for variant ${
+            index + 1
+          }.`
         );
         return;
       }
 
-      const variantPrice = Number(draft.price);
-      const variantStock = Number(draft.stock || 0);
+      const variantPrice = Number(
+        draft.price
+      );
+
+      const variantStock = Number(
+        draft.stock || 0
+      );
 
       if (
         !Number.isFinite(variantPrice) ||
         variantPrice <= 0
       ) {
         setError(
-          `Enter a valid price for variant ${index + 1}.`
+          `Enter a valid price for variant ${
+            index + 1
+          }.`
         );
         return;
       }
@@ -343,48 +478,29 @@ function onVariantImagePaste(
         price: variantPrice,
         stock: variantStock,
         file: draft.file,
-        traceposItemCode: draft.traceposItemCode.trim(),
+        traceposItemCode:
+          draft.traceposItemCode.trim(),
       });
     }
 
     setBusy(true);
 
     try {
-      /*
-       * Upload the main product image.
-       */
-      const mainUploadData = new FormData();
-      mainUploadData.append("file", file);
+      const imagePaths: string[] = [];
 
-      const mainUploadResponse = await fetch(
-        "/api/admin/upload",
-        {
-          method: "POST",
-          body: mainUploadData,
-        }
-      );
-
-      const mainUploadJson = await readApiResponse(
-        mainUploadResponse,
-        "Main image upload"
-      );
-
-      if (!mainUploadResponse.ok) {
-        throw new Error(
-          mainUploadJson.error ||
-            "Main image upload failed."
+      for (
+        let index = 0;
+        index < imageFiles.length;
+        index++
+      ) {
+        const path = await uploadImage(
+          imageFiles[index],
+          `Product image ${index + 1} upload`
         );
+
+        imagePaths.push(path);
       }
 
-      if (!mainUploadJson.path) {
-        throw new Error(
-          "Main image upload did not return an image path."
-        );
-      }
-
-      /*
-       * Upload each variant image separately.
-       */
       const variants: Array<{
         size: string;
         color: string;
@@ -399,50 +515,22 @@ function onVariantImagePaste(
         index < variantInputs.length;
         index++
       ) {
-        const variantInput = variantInputs[index];
-        const variantUploadData = new FormData();
+        const variantInput =
+          variantInputs[index];
 
-        variantUploadData.append(
-          "file",
-          variantInput.file
+        const image = await uploadImage(
+          variantInput.file,
+          `Variant ${index + 1} image upload`
         );
-
-        const variantUploadResponse = await fetch(
-          "/api/admin/upload",
-          {
-            method: "POST",
-            body: variantUploadData,
-          }
-        );
-
-        const variantUploadJson =
-          await readApiResponse(
-            variantUploadResponse,
-            `Variant ${index + 1} image upload`
-          );
-
-        if (!variantUploadResponse.ok) {
-          throw new Error(
-            variantUploadJson.error ||
-              `Variant ${index + 1} image upload failed.`
-          );
-        }
-
-        if (!variantUploadJson.path) {
-          throw new Error(
-            `Variant ${
-              index + 1
-            } image upload did not return an image path.`
-          );
-        }
 
         variants.push({
           size: variantInput.size,
           color: variantInput.color,
           price: variantInput.price,
           stock: variantInput.stock,
-          image: variantUploadJson.path,
-          traceposItemCode: variantInput.traceposItemCode,
+          image,
+          traceposItemCode:
+            variantInput.traceposItemCode,
         });
       }
 
@@ -454,29 +542,38 @@ function onVariantImagePaste(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            name: form.name.trim(),        
+            name: form.name.trim(),
+
             traceposItemCode:
               form.traceposItemCode.trim() ||
               undefined,
+
             price,
             category: form.category,
             subcategory: form.subcategory,
             stock: Number(form.stock || 0),
             short: form.short.trim(),
-            description: form.description.trim(),
-            deliveryNote: form.deliveryNote.trim(),
+            description:
+              form.description.trim(),
+            deliveryNote:
+              form.deliveryNote.trim(),
             featured: form.featured,
             bestseller: form.bestseller,
             variants,
-            image: mainUploadJson.path,
+
+            /*
+             * The first image is the main image.
+             */
+            images: imagePaths,
           }),
         }
       );
 
-      const createJson = await readApiResponse(
-        createResponse,
-        "Product creation"
-      );
+      const createJson =
+        await readApiResponse(
+          createResponse,
+          "Product creation"
+        );
 
       if (!createResponse.ok) {
         throw new Error(
@@ -544,6 +641,7 @@ function onVariantImagePaste(
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="text-sm">
           Product name
+
           <input
             required
             value={form.name}
@@ -556,41 +654,44 @@ function onVariantImagePaste(
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           />
         </label>
-        <label className="text-sm">
-      Tracepos item code
-      <input
-        value={form.traceposItemCode}
-        onChange={(event) =>
-          setForm({
-            ...form,
-            traceposItemCode: event.target.value,
-          })
-        }
-        placeholder="Exact scanner item code"
-        className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-      />
 
-      <span className="mt-1 block text-xs text-stone-500">
-        Use the exact code scanned in Tracepos.
-      </span>
-</label>
+        <label className="text-sm">
+          Tracepos item code
+
+          <input
+            value={form.traceposItemCode}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                traceposItemCode:
+                  event.target.value,
+              })
+            }
+            placeholder="Exact scanner item code"
+            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+          />
+        </label>
 
         <label className="text-sm">
           Category
+
           <select
             value={form.category}
             onChange={(event) => {
-              const category = CATEGORIES.find(
-                (item) =>
-                  item.slug === event.target.value
-              );
+              const category =
+                CATEGORIES.find(
+                  (item) =>
+                    item.slug ===
+                    event.target.value
+                );
 
               setForm({
                 ...form,
                 category:
                   event.target.value as CategorySlug,
                 subcategory:
-                  category?.subcategories[0] || "",
+                  category?.subcategories[0] ||
+                  "",
               });
             }}
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
@@ -608,19 +709,22 @@ function onVariantImagePaste(
 
         <label className="text-sm">
           Subcategory / product type
+
           <select
             value={form.subcategory}
             onChange={(event) =>
               setForm({
                 ...form,
-                subcategory: event.target.value,
+                subcategory:
+                  event.target.value,
               })
             }
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           >
             {(
               CATEGORIES.find(
-                (item) => item.slug === form.category
+                (item) =>
+                  item.slug === form.category
               )?.subcategories || []
             ).map((subcategory) => (
               <option
@@ -631,15 +735,11 @@ function onVariantImagePaste(
               </option>
             ))}
           </select>
-
-          <span className="mt-1 block text-xs text-stone-500">
-            Options change automatically when the main
-            category changes.
-          </span>
         </label>
 
         <label className="text-sm">
           Base price (₦)
+
           <input
             required
             type="number"
@@ -653,14 +753,11 @@ function onVariantImagePaste(
             }
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           />
-
-          <span className="mt-1 block text-xs text-stone-500">
-            Used for the main product image.
-          </span>
         </label>
 
         <label className="text-sm">
           Base stock
+
           <input
             type="number"
             min="0"
@@ -675,7 +772,76 @@ function onVariantImagePaste(
           />
         </label>
 
-        <div className="rounded-2xl border border-cream-200 bg-cream-50 p-4 sm:col-span-2">
+        <div className="sm:col-span-2">
+          <label className="text-sm">
+            Product images
+
+            <input
+              type="text"
+              readOnly
+              placeholder="Click here, then press Ctrl+V to add an image"
+              onPaste={onMainImagePaste}
+              aria-label="Paste product image"
+              className="mt-1 w-full rounded-lg border border-dashed border-cream-300 px-3 py-2 text-sm"
+            />
+
+            <p className="mt-1 text-xs text-stone-500">
+              Choose multiple files below. The first
+              image will be the main product image.
+            </p>
+
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp"
+              onChange={onImageFilesChange}
+              className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+            />
+          </label>
+
+          {imagePreviews.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              {imagePreviews.map(
+                (preview, index) => (
+                  <div
+                    key={`${preview}-${index}`}
+                    className="relative"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={preview}
+                      alt={`Product image ${
+                        index + 1
+                      } preview`}
+                      className="h-24 w-24 rounded-xl object-cover ring-1 ring-cream-300"
+                    />
+
+                    {index === 0 && (
+                      <span className="absolute left-1 top-1 rounded bg-cocoa-800 px-1.5 py-0.5 text-[10px] text-white">
+                        Main
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeProductImage(index)
+                      }
+                      className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-red-600 text-white"
+                      aria-label={`Remove product image ${
+                        index + 1
+                      }`}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="sm:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-cocoa-800">
@@ -683,8 +849,9 @@ function onVariantImagePaste(
               </h3>
 
               <p className="mt-1 text-xs text-stone-500">
-                Add as many size and color variants as needed.
-Each variant must have its own price, stock, and image.
+                Add as many size and color variants as
+                needed. Each variant needs its own
+                image.
               </p>
             </div>
 
@@ -699,173 +866,175 @@ Each variant must have its own price, stock, and image.
           </div>
 
           {form.variants.length === 0 ? (
-            <p className="mt-4 rounded-xl bg-white px-3 py-3 text-sm text-stone-500">
-              No variants added. This will be treated as a
-              single-option product.
+            <p className="mt-4 rounded-xl bg-cream-50 px-3 py-3 text-sm text-stone-500">
+              No variants added. This will be treated
+              as a single-option product.
             </p>
           ) : (
             <div className="mt-4 grid gap-3">
-              {form.variants.map((variant, index) => (
-                <div
-                  key={index}
-                  className="rounded-2xl bg-white p-3 ring-1 ring-cream-200"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gold-600">
-                      Variant {index + 1}
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        removeVariant(index)
-                      }
-                      className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800"
-                    >
-                      <X size={14} />
-                      Remove
-                    </button>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                    <label className="text-sm">
-                      Size
-                      <input
-                        value={variant.size}
-                        onChange={(event) =>
-                          updateVariant(
-                            index,
-                            "size",
-                            event.target.value
-                          )
-                        }
-                        placeholder="Small, Medium, Large"
-                        className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                      />
-                    </label>
-
-                    <label className="text-sm">
-                      Color
-                      <input
-                        value={variant.color}
-                        onChange={(event) =>
-                          updateVariant(
-                            index,
-                            "color",
-                            event.target.value
-                          )
-                        }
-                        placeholder="Red, Blue, Black"
-                        className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                      />
-                    </label>
-
-                    <label className="text-sm">
-                      Variant price (₦)
-                      <input
-                        type="number"
-                        min="1"
-                        value={variant.price}
-                        onChange={(event) =>
-                          updateVariant(
-                            index,
-                            "price",
-                            event.target.value
-                          )
-                        }
-                        className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                      />
-                    </label>
-
-                    <label className="text-sm">
-                      Variant stock
-                      <input
-                        type="number"
-                        min="0"
-                        value={variant.stock}
-                        onChange={(event) =>
-                          updateVariant(
-                            index,
-                            "stock",
-                            event.target.value
-                          )
-                        }
-                        className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                      />
-                    </label>
-                        <label className="text-sm">
-  Tracepos item code
-  <input
-    value={variant.traceposItemCode}
-    onChange={(event) =>
-      updateVariant(
-        index,
-        "traceposItemCode",
-        event.target.value
-      )
-    }
-    placeholder="Exact scanner code"
-    className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-  />
-</label>
-
-{/* Existing Variant image field stays below */}
-<label className="text-sm">
-  Variant image
-  <input
-    type="file"
-    accept="image/jpeg,image/png,image/webp"
-    onChange={(event) =>
-      onVariantFileChange(index, event)
-    }
-    className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-xs"
-  />
-</label>
-                    <label className="text-sm">
-                      Variant image
-                    
-                      <input
-                        type="text"
-                        readOnly
-                        placeholder="Click here, then press Ctrl+V"
-                        onPaste={(event) =>
-                          onVariantImagePaste(index, event)
-                        }
-                        aria-label={`Paste image for variant ${index + 1}`}
-                        className="mt-1 w-full rounded-lg border border-dashed border-cream-300 px-2 py-2 text-xs"
-                      />
-                    
-                      <p className="mt-1 text-xs text-stone-500">
-                        Or choose an image file:
+              {form.variants.map(
+                (variant, index) => (
+                  <div
+                    key={index}
+                    className="rounded-2xl bg-cream-50 p-3 ring-1 ring-cream-200"
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gold-600">
+                        Variant {index + 1}
                       </p>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeVariant(index)
+                        }
+                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800"
+                      >
+                        <X size={14} />
+                        Remove
+                      </button>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <label className="text-sm">
+                        Size
+
+                        <input
+                          value={variant.size}
+                          onChange={(event) =>
+                            updateVariant(
+                              index,
+                              "size",
+                              event.target.value
+                            )
+                          }
+                          placeholder="Small, Medium, Large"
+                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+                        />
+                      </label>
+
+                      <label className="text-sm">
+                        Color
+
+                        <input
+                          value={variant.color}
+                          onChange={(event) =>
+                            updateVariant(
+                              index,
+                              "color",
+                              event.target.value
+                            )
+                          }
+                          placeholder="Red, Blue, Black"
+                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+                        />
+                      </label>
+
+                      <label className="text-sm">
+                        Variant price (₦)
+
+                        <input
+                          type="number"
+                          min="1"
+                          value={variant.price}
+                          onChange={(event) =>
+                            updateVariant(
+                              index,
+                              "price",
+                              event.target.value
+                            )
+                          }
+                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+                        />
+                      </label>
+
+                      <label className="text-sm">
+                        Variant stock
+
+                        <input
+                          type="number"
+                          min="0"
+                          value={variant.stock}
+                          onChange={(event) =>
+                            updateVariant(
+                              index,
+                              "stock",
+                              event.target.value
+                            )
+                          }
+                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+                        />
+                      </label>
+
+                      <label className="text-sm">
+                        Tracepos item code
+
+                        <input
+                          value={
+                            variant.traceposItemCode
+                          }
+                          onChange={(event) =>
+                            updateVariant(
+                              index,
+                              "traceposItemCode",
+                              event.target.value
+                            )
+                          }
+                          placeholder="Exact scanner code"
+                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
+                        />
+                      </label>
+
+                      <label className="text-sm">
+                        Variant image
+
+                        <input
+                          type="text"
+                          readOnly
+                          placeholder="Click, then press Ctrl+V"
+                          onPaste={(event) =>
+                            onVariantImagePaste(
+                              index,
+                              event
+                            )
+                          }
+                          className="mt-1 w-full rounded-lg border border-dashed border-cream-300 px-2 py-2 text-xs"
+                        />
 
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
                           onChange={(event) =>
-                            onVariantFileChange(index, event)
+                            onVariantFileChange(
+                              index,
+                              event
+                            )
                           }
                           className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-xs"
                         />
-                      
+
                         {variant.preview && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={variant.preview}
-                            alt={`Variant ${index + 1} preview`}
+                            alt={`Variant ${
+                              index + 1
+                            } preview`}
                             className="mt-2 h-16 w-16 rounded-lg object-cover"
                           />
                         )}
                       </label>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           )}
         </div>
 
         <label className="text-sm sm:col-span-2">
           Short description
+
           <input
             value={form.short}
             onChange={(event) =>
@@ -881,6 +1050,7 @@ Each variant must have its own price, stock, and image.
 
         <label className="text-sm sm:col-span-2">
           Full description
+
           <textarea
             value={form.description}
             onChange={(event) =>
@@ -896,50 +1066,19 @@ Each variant must have its own price, stock, and image.
 
         <label className="text-sm sm:col-span-2">
           Additional delivery note
+
           <input
             value={form.deliveryNote}
             onChange={(event) =>
               setForm({
                 ...form,
-                deliveryNote: event.target.value,
+                deliveryNote:
+                  event.target.value,
               })
             }
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
             placeholder="For example: Large item — please confirm access."
           />
-        </label>
-
-        <label className="text-sm sm:col-span-2">
-          Main product image
-        
-          <input
-            type="text"
-            readOnly
-            placeholder="Click here, then press Ctrl+V to paste an image"
-            onPaste={onMainImagePaste}
-            aria-label="Paste main product image"
-            className="mt-1 w-full rounded-lg border border-dashed border-cream-300 px-3 py-2 text-sm"
-          />
-        
-          <p className="mt-1 text-xs text-stone-500">
-            Or choose an image file:
-          </p>
-        
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={onFileChange}
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-          />
-        
-          {preview && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={preview}
-              alt="Main product preview"
-              className="mt-3 h-24 w-24 rounded-xl object-cover"
-            />
-          )}
         </label>
 
         <div className="grid gap-3 sm:col-span-2 sm:flex sm:gap-6">
@@ -950,10 +1089,12 @@ Each variant must have its own price, stock, and image.
               onChange={(event) =>
                 setForm({
                   ...form,
-                  featured: event.target.checked,
+                  featured:
+                    event.target.checked,
                 })
               }
             />
+
             Featured on homepage
           </label>
 
@@ -964,10 +1105,12 @@ Each variant must have its own price, stock, and image.
               onChange={(event) =>
                 setForm({
                   ...form,
-                  bestseller: event.target.checked,
+                  bestseller:
+                    event.target.checked,
                 })
               }
             />
+
             Bestseller
           </label>
         </div>

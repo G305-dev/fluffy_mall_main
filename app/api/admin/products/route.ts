@@ -1,6 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
-import { getProducts, saveProducts } from "@/lib/db";
+import {
+  getProducts,
+  saveProducts,
+} from "@/lib/db";
 import { CATEGORIES } from "@/lib/categories";
 import type {
   CategorySlug,
@@ -11,7 +17,6 @@ import type {
 const DELIVERY_TIMES =
   "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days.";
 
-
 function slugify(text: string) {
   return text
     .toLowerCase()
@@ -19,6 +24,39 @@ function slugify(text: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
 }
+
+function parseProductImages(
+  input: unknown
+): string[] {
+  if (Array.isArray(input)) {
+    const images = input
+      .filter(
+        (value): value is string =>
+          typeof value === "string"
+      )
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (images.length === 0) {
+      throw new Error(
+        "At least one product image is required."
+      );
+    }
+
+    return Array.from(new Set(images));
+  }
+
+  const image = String(input ?? "").trim();
+
+  if (!image) {
+    throw new Error(
+      "At least one product image is required."
+    );
+  }
+
+  return [image];
+}
+
 function parseVariants(
   input: unknown,
   productId: string
@@ -30,7 +68,11 @@ function parseVariants(
   const variants: ProductVariant[] = [];
   const usedCombinations = new Set<string>();
 
-  for (let index = 0; index < input.length; index++) {
+  for (
+    let index = 0;
+    index < input.length;
+    index++
+  ) {
     const item = input[index];
 
     if (!item || typeof item !== "object") {
@@ -39,16 +81,30 @@ function parseVariants(
 
     const raw = item as Record<string, unknown>;
 
-    const size = String(raw.size ?? "").trim();
-    const color = String(raw.color ?? "").trim();
-    const image = String(raw.image ?? "").trim();
+    const size = String(
+      raw.size ?? ""
+    ).trim();
+
+    const color = String(
+      raw.color ?? ""
+    ).trim();
+
+    const image = String(
+      raw.image ?? ""
+    ).trim();
 
     const traceposItemCode =
-      String(raw.traceposItemCode ?? "").trim() ||
-      undefined;
+      String(
+        raw.traceposItemCode ?? ""
+      ).trim() || undefined;
 
-    const rawPrice = String(raw.price ?? "").trim();
-    const rawStock = String(raw.stock ?? "").trim();
+    const rawPrice = String(
+      raw.price ?? ""
+    ).trim();
+
+    const rawStock = String(
+      raw.stock ?? ""
+    ).trim();
 
     if (
       !size &&
@@ -76,13 +132,19 @@ function parseVariants(
     const price = Number(raw.price);
     const stock = Number(raw.stock ?? 0);
 
-    if (!Number.isFinite(price) || price <= 0) {
+    if (
+      !Number.isFinite(price) ||
+      price <= 0
+    ) {
       throw new Error(
         `Variant ${index + 1} has an invalid price.`
       );
     }
 
-    if (!Number.isFinite(stock) || stock < 0) {
+    if (
+      !Number.isFinite(stock) ||
+      stock < 0
+    ) {
       throw new Error(
         `Variant ${index + 1} has an invalid stock quantity.`
       );
@@ -91,9 +153,13 @@ function parseVariants(
     const combinationKey =
       `${size.toLowerCase()}|${color.toLowerCase()}`;
 
-    if (usedCombinations.has(combinationKey)) {
+    if (
+      usedCombinations.has(combinationKey)
+    ) {
       throw new Error(
-        `Variant ${index + 1} duplicates another size and color combination.`
+        `Variant ${
+          index + 1
+        } duplicates another size and color combination.`
       );
     }
 
@@ -101,7 +167,9 @@ function parseVariants(
 
     variants.push({
       id: `${productId}-variant-${index + 1}`,
-      name: [size, color].filter(Boolean).join(" / "),
+      name: [size, color]
+        .filter(Boolean)
+        .join(" / "),
       size: size || undefined,
       color: color || undefined,
       price,
@@ -113,7 +181,10 @@ function parseVariants(
 
   return variants;
 }
-export async function POST(req: NextRequest) {
+
+export async function POST(
+  req: NextRequest
+) {
   if (!isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -123,49 +194,82 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
 
-  const name = String(body.name || "").trim();
+  const name = String(
+    body.name || ""
+  ).trim();
 
   if (!name) {
     return NextResponse.json(
-      { error: "Product name is required." },
+      {
+        error: "Product name is required.",
+      },
       { status: 400 }
     );
   }
 
   const price = Number(body.price);
 
-  if (!Number.isFinite(price) || price <= 0) {
+  if (
+    !Number.isFinite(price) ||
+    price <= 0
+  ) {
     return NextResponse.json(
-      { error: "Enter a valid price." },
+      {
+        error: "Enter a valid price.",
+      },
       { status: 400 }
     );
   }
 
-  const category = String(body.category || "") as CategorySlug;
+  const category =
+    String(body.category || "") as CategorySlug;
 
-  if (!CATEGORIES.some((item) => item.slug === category)) {
+  if (
+    !CATEGORIES.some(
+      (item) => item.slug === category
+    )
+  ) {
     return NextResponse.json(
-      { error: "Unknown category." },
+      {
+        error: "Unknown category.",
+      },
       { status: 400 }
     );
   }
 
-  const image = String(body.image || "").trim();
+  let images: string[];
 
-  if (!image) {
+  try {
+    images = parseProductImages(
+      body.images !== undefined
+        ? body.images
+        : body.image
+    );
+  } catch (error) {
     return NextResponse.json(
-      { error: "Product image is required." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Product images are invalid.",
+      },
       { status: 400 }
     );
   }
 
   const products = await getProducts();
 
-  const baseSlug = slugify(name) || "product";
+  const baseSlug =
+    slugify(name) || "product";
+
   let slug = baseSlug;
   let counter = 2;
 
-  while (products.some((product) => product.slug === slug)) {
+  while (
+    products.some(
+      (product) => product.slug === slug
+    )
+  ) {
     slug = `${baseSlug}-${counter++}`;
   }
 
@@ -176,7 +280,10 @@ export async function POST(req: NextRequest) {
   let variants: ProductVariant[];
 
   try {
-    variants = parseVariants(body.variants, productId);
+    variants = parseVariants(
+      body.variants,
+      productId
+    );
   } catch (error) {
     return NextResponse.json(
       {
@@ -193,28 +300,52 @@ export async function POST(req: NextRequest) {
     id: productId,
     slug,
     name,
+
     traceposItemCode:
-  String(body.traceposItemCode ?? "").trim() ||
-  undefined,
+      String(
+        body.traceposItemCode ?? ""
+      ).trim() || undefined,
+
     price,
     category,
-    subcategory: String(body.subcategory || "").trim() || undefined,
+
+    subcategory:
+      String(
+        body.subcategory || ""
+      ).trim() || undefined,
+
     featured: Boolean(body.featured),
     bestseller: Boolean(body.bestseller),
-    stock: Math.max(0, Number(body.stock) || 0),
-    images: [image],
-    short: String(body.short || "").trim(),
-    description: String(body.description || "").trim(),
+
+    stock: Math.max(
+      0,
+      Number(body.stock) || 0
+    ),
+
+    images,
+
+    short: String(
+      body.short || ""
+    ).trim(),
+
+    description: String(
+      body.description || ""
+    ).trim(),
+
     variants,
+
     deliveryNote: [
       DELIVERY_TIMES,
-      String(body.deliveryNote || "").trim(),
+      String(
+        body.deliveryNote || ""
+      ).trim(),
     ]
       .filter(Boolean)
       .join(" "),
   };
 
   products.unshift(product);
+
   await saveProducts(products);
 
   return NextResponse.json(
@@ -223,7 +354,9 @@ export async function POST(req: NextRequest) {
   );
 }
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest
+) {
   if (!isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -245,7 +378,8 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  let variants = products[index].variants;
+  let variants =
+    products[index].variants;
 
   if (Array.isArray(body.variants)) {
     try {
@@ -273,17 +407,20 @@ export async function PATCH(req: NextRequest) {
     products[index].subcategory;
 
   if (body.category !== undefined) {
-    const requestedCategory = String(
-      body.category
-    ).trim() as CategorySlug;
+    const requestedCategory =
+      String(body.category).trim() as CategorySlug;
 
-    const categoryDefinition = CATEGORIES.find(
-      (item) => item.slug === requestedCategory
-    );
+    const categoryDefinition =
+      CATEGORIES.find(
+        (item) =>
+          item.slug === requestedCategory
+      );
 
     if (!categoryDefinition) {
       return NextResponse.json(
-        { error: "Unknown category." },
+        {
+          error: "Unknown category.",
+        },
         { status: 400 }
       );
     }
@@ -297,21 +434,25 @@ export async function PATCH(req: NextRequest) {
           nextSubcategory
         );
 
-      nextSubcategory = currentSubcategoryIsValid
-        ? nextSubcategory
-        : categoryDefinition.subcategories[0] ||
-          undefined;
+      nextSubcategory =
+        currentSubcategoryIsValid
+          ? nextSubcategory
+          : categoryDefinition.subcategories[0] ||
+            undefined;
     }
   }
 
   if (body.subcategory !== undefined) {
-    const categoryDefinition = CATEGORIES.find(
-      (item) => item.slug === nextCategory
-    );
+    const categoryDefinition =
+      CATEGORIES.find(
+        (item) =>
+          item.slug === nextCategory
+      );
 
-    const requestedSubcategory = String(
-      body.subcategory ?? ""
-    ).trim();
+    const requestedSubcategory =
+      String(
+        body.subcategory ?? ""
+      ).trim();
 
     if (
       requestedSubcategory &&
@@ -332,77 +473,105 @@ export async function PATCH(req: NextRequest) {
     nextSubcategory =
       requestedSubcategory || undefined;
   }
-  if (
-  body.variantItemCodes &&
-  typeof body.variantItemCodes === "object" &&
-  !Array.isArray(body.variantItemCodes)
-) {
-  const codes = body.variantItemCodes as Record<
-    string,
-    unknown
-  >;
 
-  variants = variants.map((variant) => {
-    if (!(variant.id in codes)) {
-      return variant;
+  if (
+    body.variantItemCodes &&
+    typeof body.variantItemCodes === "object" &&
+    !Array.isArray(body.variantItemCodes)
+  ) {
+    const codes =
+      body.variantItemCodes as Record<
+        string,
+        unknown
+      >;
+
+    variants = variants.map((variant) => {
+      if (!(variant.id in codes)) {
+        return variant;
+      }
+
+      return {
+        ...variant,
+        traceposItemCode:
+          String(
+            codes[variant.id] ?? ""
+          ).trim() || undefined,
+      };
+    });
+  }
+
+  let nextImages =
+    products[index].images || [];
+
+  if (body.images !== undefined) {
+    try {
+      nextImages = parseProductImages(
+        body.images
+      );
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Product images are invalid.",
+        },
+        { status: 400 }
+      );
     }
-
-    return {
-      ...variant,
-      traceposItemCode:
-        String(codes[variant.id] ?? "").trim() ||
-        undefined,
-    };
-  });
-}
-products[index] = {
-  ...products[index],
-
-  name:
-    body.name !== undefined
-      ? String(body.name).trim()
-      : products[index].name,
-
-  price: Number(
-    body.price ?? products[index].price
-  ),
-
-  stock: Number(
-    body.stock ?? products[index].stock
-  ),
-
-  category: nextCategory,
-  subcategory: nextSubcategory,
-
-  featured:
-    body.featured !== undefined
-      ? Boolean(body.featured)
-      : products[index].featured,
-
-  bestseller:
-    body.bestseller !== undefined
-      ? Boolean(body.bestseller)
-      : products[index].bestseller,
-
-  traceposItemCode:
-    body.traceposItemCode !== undefined
-      ? String(
-          body.traceposItemCode ?? ""
-        ).trim() || undefined
-      : products[index].traceposItemCode,
-
-  variants,
-};
-
-  if (
+  } else if (
     typeof body.image === "string" &&
     body.image.trim()
   ) {
-    products[index].images = [
+    /*
+     * Backward compatibility for old callers that
+     * still send one image.
+     */
+    nextImages = [
       body.image.trim(),
-      ...products[index].images.slice(1),
+      ...nextImages.slice(1),
     ];
   }
+
+  products[index] = {
+    ...products[index],
+
+    name:
+      body.name !== undefined
+        ? String(body.name).trim()
+        : products[index].name,
+
+    price: Number(
+      body.price ?? products[index].price
+    ),
+
+    stock: Number(
+      body.stock ?? products[index].stock
+    ),
+
+    category: nextCategory,
+    subcategory: nextSubcategory,
+
+    featured:
+      body.featured !== undefined
+        ? Boolean(body.featured)
+        : products[index].featured,
+
+    bestseller:
+      body.bestseller !== undefined
+        ? Boolean(body.bestseller)
+        : products[index].bestseller,
+
+    traceposItemCode:
+      body.traceposItemCode !== undefined
+        ? String(
+            body.traceposItemCode ?? ""
+          ).trim() || undefined
+        : products[index].traceposItemCode,
+
+    images: nextImages,
+    variants,
+  };
 
   await saveProducts(products);
 
@@ -411,7 +580,9 @@ products[index] = {
   });
 }
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE(
+  req: NextRequest
+) {
   if (!isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -421,7 +592,9 @@ export async function DELETE(req: NextRequest) {
 
   const body = await req.json();
   const id = String(body.id || "");
+
   const products = await getProducts();
+
   const index = products.findIndex(
     (product) => product.id === id
   );
@@ -433,7 +606,8 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  const [removed] = products.splice(index, 1);
+  const [removed] =
+    products.splice(index, 1);
 
   await saveProducts(products);
 
