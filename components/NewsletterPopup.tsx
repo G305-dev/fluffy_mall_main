@@ -1,6 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
 import { X } from "lucide-react";
 
 const STORAGE_KEY =
@@ -8,24 +12,30 @@ const STORAGE_KEY =
 
 type PopupStatus =
   | "closed"
-  | "subscribed"
-  | "dismissed";
+  | "subscribed";
 
 export default function NewsletterPopup() {
   const [open, setOpen] = useState(false);
+
   const [status, setStatus] =
     useState<PopupStatus>("closed");
 
   const [firstName, setFirstName] =
     useState("");
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [busy, setBusy] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
-    let timer: ReturnType<
-      typeof setTimeout
-    > | undefined;
+    let timer:
+      | ReturnType<typeof setTimeout>
+      | undefined;
 
     try {
       const existingStatus =
@@ -33,14 +43,18 @@ export default function NewsletterPopup() {
           STORAGE_KEY
         );
 
-      if (
-        existingStatus === "subscribed" ||
-        existingStatus === "dismissed"
-      ) {
+      /*
+       * Only a successful subscription should
+       * permanently stop the popup.
+       *
+       * A dismissed popup will appear again
+       * on the customer's next visit.
+       */
+      if (existingStatus === "subscribed") {
         return;
       }
     } catch {
-      // Continue if local storage is unavailable.
+      // Continue if localStorage is unavailable.
     }
 
     timer = setTimeout(() => {
@@ -67,22 +81,36 @@ export default function NewsletterPopup() {
     };
   }, [open]);
 
-  function closePopup(nextStatus: PopupStatus) {
+  function closePopup(
+    nextStatus: PopupStatus
+  ) {
     setOpen(false);
     setStatus(nextStatus);
 
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        nextStatus
-      );
-    } catch {
-      // Ignore storage errors.
+    /*
+     * Only save "subscribed".
+     * Do not save "closed" or "dismissed".
+     */
+    if (nextStatus === "subscribed") {
+      try {
+        window.localStorage.setItem(
+          STORAGE_KEY,
+          "subscribed"
+        );
+      } catch {
+        // Ignore storage errors.
+      }
     }
   }
 
   function dismiss() {
-    closePopup("dismissed");
+    /*
+     * Closing the popup does not permanently
+     * dismiss it. It will appear again on the
+     * customer's next site visit.
+     */
+    setOpen(false);
+    setStatus("closed");
   }
 
   async function submit(
@@ -98,7 +126,8 @@ export default function NewsletterPopup() {
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             name: firstName,
@@ -116,16 +145,11 @@ export default function NewsletterPopup() {
         );
       }
 
-      setStatus("subscribed");
-
-      try {
-        window.localStorage.setItem(
-          STORAGE_KEY,
-          "subscribed"
-        );
-      } catch {
-        // Ignore storage errors.
-      }
+      /*
+       * Only successful subscription saves
+       * the permanent local status.
+       */
+      closePopup("subscribed");
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -141,7 +165,8 @@ export default function NewsletterPopup() {
     return null;
   }
 
-  const successful = status === "subscribed";
+  const successful =
+    status === "subscribed";
 
   return (
     <div
@@ -175,7 +200,9 @@ export default function NewsletterPopup() {
 
             <button
               type="button"
-              onClick={() => closePopup("subscribed")}
+              onClick={() =>
+                closePopup("subscribed")
+              }
               className="mt-8 rounded-none bg-terracotta-500 px-6 py-3 text-base font-medium text-white transition hover:bg-terracotta-600"
             >
               Continue Shopping
@@ -198,7 +225,10 @@ export default function NewsletterPopup() {
               onSubmit={submit}
               className="mt-8 space-y-4"
             >
-              <label className="sr-only" htmlFor="newsletter-first-name">
+              <label
+                className="sr-only"
+                htmlFor="newsletter-first-name"
+              >
                 First name
               </label>
 
@@ -215,7 +245,10 @@ export default function NewsletterPopup() {
                 className="w-full rounded-md border border-cream-300 bg-white px-4 py-4 text-base text-cocoa-800 outline-none placeholder:text-cocoa-700/40 focus:border-terracotta-500 focus:ring-2 focus:ring-terracotta-500/20"
               />
 
-              <label className="sr-only" htmlFor="newsletter-email">
+              <label
+                className="sr-only"
+                htmlFor="newsletter-email"
+              >
                 Email address
               </label>
 
