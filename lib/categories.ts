@@ -1,70 +1,123 @@
-import { CategorySlug } from "./types";
+import type { CategorySlug } from "./types";
 
-export const CATEGORIES: {
+export type CategoryDefinition = {
   slug: CategorySlug;
   name: string;
   blurb: string;
   emoji: string;
   subcategories: string[];
-}[] = [
+};
+
+export const CATEGORIES: CategoryDefinition[] = [
   {
     slug: "kitchen-appliances",
     name: "Kitchen Appliances",
-    blurb: "Blenders, juicers, kettles & healthy cookware",
+    blurb: "Blenders, kettles, ovens and food-preparation machines",
+    emoji: "🍳",
+    subcategories: [
+      "Air Fryers",
+      "Blenders",
+      "Oven",
+      "Electric Chopper",
+      "Electric Kettle",
+      "Food Warmer",
+      "Breakfast Makers",
+      "Slow Juicer",
+      "Dehydrator",
+      "Gas Burner",
+      "Mixer",
+      "Food Processor",
+    ],
+  },
+  {
+    slug: "cookware",
+    name: "Cookware",
+    blurb: "Bakeware, pressure cookers and cooking moulds",
     emoji: "🍲",
     subcategories: [
-      "Electric Kettle", "Blenders", "Slow Juicer", "Breakfast Makers",
-      "Air Fryers", "Food Processor", "Electric Chopper", "Mixer", "Dehydrator",
+      "Bakeware",
+      "Pressure Cooker",
+      "Moulds",
     ],
   },
   {
-    slug: "cookware-utensils",
-    name: "Cookware & Utensils",
-    blurb: "Drainers, organisers, pots and tools",
+    slug: "kitchen-tools",
+    name: "Kitchen Tools",
+    blurb: "Sieves, chopping boards and kitchen scales",
     emoji: "🥄",
     subcategories: [
-      "Cookware", "Bakeware", "Cooking Spoon", "Spoon", "Chopping Board",
-      "Cutlery", "Utensils", "Sieve", "Straw", "Pressure Cooker", "Gas Burner",
-      "Tray / Trays", "Food Warmer", "Scale", "Woodens", "Mold",
+      "Sieve",
+      "Chopping Board",
+      "Scale",
     ],
   },
   {
-    slug: "home-organisation",
-    name: "Home Organisation",
-    blurb: "Pantry, shelves and acrylic storage",
+    slug: "dining-serveware",
+    name: "Dining & Serveware",
+    blurb: "Cutlery, dinnerware, glassware and serving items",
+    emoji: "🍽️",
+    subcategories: [
+      "Cutlery / Utensils",
+      "Dinnerware",
+      "Glassware",
+      "Trays",
+      "Spoons",
+      "Wooden Utensils",
+      "Straws",
+    ],
+  },
+  {
+    slug: "storage-organisation",
+    name: "Storage & Organisation",
+    blurb: "Pantry storage, racks, hangers and covers",
     emoji: "🧺",
     subcategories: [
-      "Food Storage", "Spice/Sauce Bottles", "Refrigerator Storage",
-      "Pantry Organizer", "Pantry", "Organisers", "Rack", "Hangers", "Cloth Dryer","Detergent Storage Container",
-      "Pant Hanger","Peg",
+      "Pantry / Storage Organiser",
+      "Hangers",
+      "Rack",
+      "Covers",
     ],
   },
   {
-    slug: "household-essentials",
-    name: "Household Essentials",
-    blurb: "Ladders, ironing boards, scales & mats",
-    emoji: "🏠",
+    slug: "cleaning-laundry",
+    name: "Cleaning & Laundry",
+    blurb: "Bins, cleaning tools, laundry and ironing essentials",
+    emoji: "🧹",
     subcategories: [
-      "Vacuum Cleaner", "Cleaning Tools", "Spray Bottles", "Waste Bin", "Mats",
-      "Ladders", "Iron", "Tools", "Glassware", "Dinnerware","ironing board",
+      "Waste Bin",
+      "Cleaning Tools",
+      "Laundry",
+      "Vacuum Cleaner",
+      "Clothes Dryer",
+      "Iron",
     ],
   },
   {
     slug: "bathroom",
     name: "Bathroom",
-    blurb: "Holders, organisers and vanity sets",
+    blurb: "Bathroom holders, racks and cleaning essentials",
     emoji: "🚿",
-    subcategories: ["Bath Series"],
+    subcategories: [
+      "Bath Series",
+    ],
   },
   {
-    slug: "corporate-gifts",
-    name: "Corporate Gifts & Souvenirs",
-    blurb: "Hampers, weddings and office branding",
-    emoji: "🎁",
-    subcategories: ["Cover", "Any future corporate gift items", "Any future souvenir items"],
+    slug: "home-utility",
+    name: "Home & Utility",
+    blurb: "Ladders, tools, mats and tables",
+    emoji: "🏠",
+    subcategories: [
+      "Ladders",
+      "Tools",
+      "Mats",
+      "Tables",
+    ],
   },
 ];
 
 export function categoryName(slug: string) {
-  return CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
+  return (
+    CATEGORIES.find((category) => category.slug === slug)?.name ??
+    slug
+  );
 }

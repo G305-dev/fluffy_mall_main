@@ -1,6 +1,7 @@
 import { getProducts } from "@/lib/db";
 import NewProductForm from "./NewProductForm";
 import ProductList from "./ProductList";
+import CategoryMigrationButton from "./CategoryMigrationButton";
 
 export default async function AdminProductsPage() {
   const products = await getProducts();
@@ -18,6 +19,7 @@ export default async function AdminProductsPage() {
 
       <div className="mt-6">
         <NewProductForm />
+        <CategoryMigrationButton />
       </div>
 
       <ProductList products={products} />

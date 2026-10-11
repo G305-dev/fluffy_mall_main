@@ -1,11 +1,13 @@
 export type CategorySlug =
   | "kitchen-appliances"
-  | "cookware-utensils"
-  | "home-organisation"
-  | "household-essentials"
+  | "cookware"
+  | "kitchen-tools"
+  | "dining-serveware"
+  | "storage-organisation"
+  | "cleaning-laundry"
   | "bathroom"
-  | "corporate-gifts";
-
+  | "home-utility";
+  
 export type ProductVariant = {
   id: string;
   name: string;
