@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 type UnresolvedProduct = {
   id: string;
@@ -22,8 +21,6 @@ export default function CategoryMigrationButton() {
   const [unresolved, setUnresolved] = useState<
     UnresolvedProduct[]
   >([]);
-
-  const router = useRouter();
 
   async function migrate() {
     const confirmed = window.confirm(
@@ -66,7 +63,19 @@ export default function CategoryMigrationButton() {
         } products need review.`
       );
 
-      router.refresh();
+      if (unresolvedProducts.length > 0) {
+        window.alert(
+          "Products needing review:\n\n" +
+            unresolvedProducts
+              .map(
+                (product) =>
+                  `Name: ${product.name}\n` +
+                  `ID: ${product.id}\n` +
+                  `Old category: ${product.category}`
+              )
+              .join("\n\n")
+        );
+      }
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -121,9 +130,11 @@ export default function CategoryMigrationButton() {
                 <p className="font-semibold">
                   {product.name}
                 </p>
+
                 <p>
                   Product ID: {product.id}
                 </p>
+
                 <p>
                   Old category: {product.category}
                 </p>
