@@ -100,7 +100,7 @@ export default function MobileCategorySubcategories({
           className="w-full appearance-none rounded-full border border-cream-300 bg-white px-4 py-3 pr-11 text-sm font-semibold text-cocoa-800 outline-none focus:border-terracotta-500 focus:ring-2 focus:ring-terracotta-200"
         >
           <option value="">
-            All {categoryName}
+              Subcategories
           </option>
 
           {subcategories.map((subcategory) => (

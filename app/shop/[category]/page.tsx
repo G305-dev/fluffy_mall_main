@@ -1,5 +1,6 @@
 import ProductCard from "@/components/ProductCard";
 import MobileCategorySubcategories from "@/components/MobileCategorySubcategories";
+import CategorySubcategoryDropdown from "@/components/CategorySubcategoryDropdown";
 import {
   CATEGORIES,
   categoryName,
@@ -44,11 +45,14 @@ export default async function CategoryPage({
     notFound();
   }
 
+  const requestedSubcategory =
+    searchParams.subcategory || "";
+
   const activeSubcategory =
     category.subcategories.includes(
-      searchParams.subcategory || ""
+      requestedSubcategory
     )
-      ? searchParams.subcategory || ""
+      ? requestedSubcategory
       : "";
 
   const allProducts = await getProducts();
@@ -106,45 +110,10 @@ export default async function CategoryPage({
               {category.name}
             </h2>
 
-            <nav
-  aria-label={`${category.name} subcategories`}
-  className="mt-4 max-h-[calc(100vh-13rem)] space-y-1 overflow-y-scroll overscroll-contain pr-2"
->
-              <Link
-                href={`/shop/${category.slug}`}
-                className={`block rounded-lg px-3 py-2 text-sm transition ${
-                  !activeSubcategory
-                    ? "bg-cream-100 font-semibold text-cocoa-900"
-                    : "text-cocoa-700 hover:bg-cream-50"
-                }`}
-              >
-                All {category.name}
-              </Link>
-
-              {category.subcategories.map(
-                (subcategory) => {
-                  const selected =
-                    activeSubcategory ===
-                    subcategory;
-
-                  return (
-                    <Link
-                      key={subcategory}
-                      href={`/shop/${category.slug}?subcategory=${encodeURIComponent(
-                        subcategory
-                      )}`}
-                      className={`block rounded-lg px-3 py-2 text-sm transition ${
-                        selected
-                          ? "bg-cream-100 font-semibold text-cocoa-900"
-                          : "text-cocoa-700 hover:bg-cream-50"
-                      }`}
-                    >
-                      {subcategory}
-                    </Link>
-                  );
-                }
-              )}
-            </nav>
+            <CategorySubcategoryDropdown
+              subcategories={category.subcategories}
+              activeSubcategory={activeSubcategory}
+            />
           </div>
         </aside>
 
