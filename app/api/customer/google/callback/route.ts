@@ -6,7 +6,9 @@ import {
   CUSTOMER_COOKIE,
   createGoogleCustomerAccount,
   createCustomerSession,
+  findCustomerAccount,
 } from "@/lib/customer-auth";
+import { sendWelcomeEmail } from "@/lib/email";
 import { sessionCookieOptions } from "@/lib/cookies";
 
 function allowedNext(value?: string) {
@@ -133,10 +135,45 @@ export async function GET(
     );
   }
 
+  const normalizedEmail = String(
+    profile.email
+  )
+    .trim()
+    .toLowerCase();
+
+  /*
+   * Check whether this is genuinely a new
+   * Google customer before creating the session.
+   */
+  const existingAccount =
+    await findCustomerAccount(
+      normalizedEmail
+    );
+
   const account =
     await createGoogleCustomerAccount(
-      profile.email
+      normalizedEmail
     );
+
+  if (!existingAccount) {
+    try {
+      const sent = await sendWelcomeEmail(
+        account.email
+      );
+
+      if (!sent) {
+        console.error(
+          "[google-signup] Welcome email was not sent:",
+          account.email
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[google-signup] Welcome email error:",
+        error
+      );
+    }
+  }
 
   const response =
     NextResponse.redirect(

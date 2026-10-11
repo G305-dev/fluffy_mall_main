@@ -43,10 +43,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const account = await createCustomerAccount(
-    email,
-    password
-  );
+  const account =
+    await createCustomerAccount(
+      email,
+      password
+    );
 
   if (!account) {
     return NextResponse.json(
@@ -58,13 +59,26 @@ export async function POST(req: Request) {
     );
   }
 
+  /*
+   * Do not fail account creation if
+   * Resend is temporarily unavailable.
+   */
   try {
-    await sendWelcomeEmail(account.email);
-  } catch {
-    /*
-     * Account creation should not fail because
-     * the email provider is unavailable.
-     */
+    const sent = await sendWelcomeEmail(
+      account.email
+    );
+
+    if (!sent) {
+      console.error(
+        "[signup] Welcome email was not sent:",
+        account.email
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[signup] Welcome email error:",
+      error
+    );
   }
 
   const response = NextResponse.json({
