@@ -170,7 +170,7 @@ export default function NewsletterPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 px-4 py-6"
+      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/65 px-4 py-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="newsletter-popup-title"
