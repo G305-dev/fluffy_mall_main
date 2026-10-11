@@ -27,9 +27,8 @@ export default function LoginPage() {
     searchParams.get("next") || "";
 
   const next =
-    requested.startsWith("/") &&
-    !requested.startsWith("//")
-      ? requested
+    requested === "/checkout"
+      ? "/checkout"
       : "/";
 
   async function submit(
@@ -48,6 +47,7 @@ export default function LoginPage() {
             "Content-Type":
               "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             email,
             password,
@@ -183,9 +183,7 @@ export default function LoginPage() {
 
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
           <Link
-            href={`/signup?next=${encodeURIComponent(
-              next
-            )}`}
+            href="/signup?next=%2F"
             className="font-semibold text-terracotta-600"
           >
             Create an account

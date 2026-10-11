@@ -44,9 +44,7 @@ function normalizeSearchText(value: string) {
     .trim();
 }
 
-function getSearchSuggestions(
-  query: string
-) {
+function getSearchSuggestions(query: string) {
   const normalizedQuery =
     normalizeSearchText(query);
 
@@ -255,9 +253,11 @@ export default function Header() {
 
     if (exactSuggestion) {
       setQ("");
+
       router.push(
         getSuggestionUrl(exactSuggestion)
       );
+
       return;
     }
 
@@ -417,7 +417,7 @@ export default function Header() {
             </button>
           ) : (
             <Link
-              href="/login"
+              href="/login?next=%2F"
               className="hidden items-center gap-1 rounded-full px-3 py-2 text-sm text-cocoa-700 hover:bg-cream-100 lg:flex"
             >
               <LogIn size={15} />
@@ -573,7 +573,7 @@ export default function Header() {
                   </button>
                 ) : (
                   <Link
-                    href="/login"
+                    href="/login?next=%2F"
                     className="flex items-center gap-2 rounded-xl px-3 py-3 text-cocoa-800 hover:bg-cream-100"
                   >
                     <LogIn size={17} />
