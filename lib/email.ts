@@ -29,7 +29,8 @@ async function sendResendEmail({
   html,
 }: ResendEmailPayload) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
+  const from =process.env.RESEND_WELCOME_FROM_EMAIL ||
+  process.env.RESEND_FROM_EMAIL;
 
   if (!apiKey || !from || !to) {
     console.error(
