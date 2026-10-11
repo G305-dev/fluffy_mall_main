@@ -16,6 +16,7 @@ import StoreFooter from "@/components/StoreFooter";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import Reveal from "@/components/Reveal";
 import NewCustomerWelcomePopup from "@/components/NewCustomerWelcomePopup";
+import NewsletterPopup from "@/components/NewsletterPopup";
 import { WishlistProvider } from "@/components/WishlistProvider";
 
 const fraunces = Fraunces({
@@ -98,6 +99,7 @@ export default function RootLayout({
             <Header />
 
             <NewCustomerWelcomePopup />
+            <NewsletterPopup />
 
             <main className="min-h-[70vh]">
               {children}
