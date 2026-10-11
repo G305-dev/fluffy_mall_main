@@ -1,4 +1,5 @@
 import { getSubscribers } from "@/lib/subscribers";
+import SubscriberBroadcastForm from "./SubscriberBroadcastForm";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +10,24 @@ function formatDate(value: string) {
     return "Unknown date";
   }
 
-  return new Intl.DateTimeFormat("en-NG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return new Intl.DateTimeFormat(
+    "en-NG",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }
+  ).format(date);
 }
 
 export default async function AdminSubscribersPage() {
-  const subscribers = await getSubscribers();
+  const subscribers =
+    await getSubscribers();
+
+  const activeSubscribers =
+    subscribers.filter(
+      (subscriber) =>
+        !subscriber.unsubscribedAt
+    );
 
   return (
     <div>
@@ -31,15 +42,21 @@ export default async function AdminSubscribersPage() {
           </h1>
 
           <p className="mt-2 text-sm text-cocoa-700/70">
-            Customers who subscribed to product updates and special offers.
+            Send product updates and special offers to newsletter subscribers.
           </p>
         </div>
 
         <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-cocoa-800 ring-1 ring-cream-200">
-          {subscribers.length} subscriber
-          {subscribers.length === 1 ? "" : "s"}
+          {activeSubscribers.length} active subscriber
+          {activeSubscribers.length === 1
+            ? ""
+            : "s"}
         </div>
       </div>
+
+      <SubscriberBroadcastForm
+        activeCount={activeSubscribers.length}
+      />
 
       {subscribers.length === 0 ? (
         <div className="mt-8 rounded-3xl bg-white p-8 text-center ring-1 ring-cream-200">
@@ -66,37 +83,60 @@ export default async function AdminSubscribersPage() {
                   </th>
 
                   <th className="px-5 py-4 font-semibold">
+                    Status
+                  </th>
+
+                  <th className="px-5 py-4 font-semibold">
                     Subscribed
                   </th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-cream-100">
-                {subscribers.map((subscriber) => (
-                  <tr
-                    key={subscriber.email}
-                    className="transition hover:bg-cream-50"
-                  >
-                    <td className="px-5 py-4 font-medium text-cocoa-800">
-                      {subscriber.name}
-                    </td>
+                {subscribers.map((subscriber) => {
+                  const active =
+                    !subscriber.unsubscribedAt;
 
-                    <td className="px-5 py-4 text-cocoa-700">
-                      <a
-                        href={`mailto:${subscriber.email}`}
-                        className="break-all text-terracotta-600 hover:underline"
-                      >
-                        {subscriber.email}
-                      </a>
-                    </td>
+                  return (
+                    <tr
+                      key={subscriber.email}
+                      className="transition hover:bg-cream-50"
+                    >
+                      <td className="px-5 py-4 font-medium text-cocoa-800">
+                        {subscriber.name}
+                      </td>
 
-                    <td className="whitespace-nowrap px-5 py-4 text-cocoa-700/70">
-                      {formatDate(
-                        subscriber.subscribedAt
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      <td className="px-5 py-4 text-cocoa-700">
+                        <a
+                          href={`mailto:${subscriber.email}`}
+                          className="break-all text-terracotta-600 hover:underline"
+                        >
+                          {subscriber.email}
+                        </a>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span
+                          className={
+                            active
+                              ? "rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700"
+                              : "rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-500"
+                          }
+                        >
+                          {active
+                            ? "Active"
+                            : "Unsubscribed"}
+                        </span>
+                      </td>
+
+                      <td className="whitespace-nowrap px-5 py-4 text-cocoa-700/70">
+                        {formatDate(
+                          subscriber.subscribedAt
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

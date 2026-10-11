@@ -4,11 +4,27 @@ import {
 } from "@/lib/mongo";
 import type { Subscriber } from "@/lib/types";
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function toSubscriber(
+  document: Record<string, unknown>
+): Subscriber {
+  const {
+    _id,
+    ...subscriber
+  } = document;
+
+  return subscriber as Subscriber;
+}
+
 export async function addSubscriber(input: {
   name: string;
   email: string;
 }) {
   const db = await getDb();
+
   const collection = db.collection(
     COLLECTIONS.SUBSCRIBERS
   );
@@ -18,19 +34,25 @@ export async function addSubscriber(input: {
     { unique: true }
   );
 
-  const email = input.email
-    .trim()
-    .toLowerCase();
+  const email = normalizeEmail(
+    input.email
+  );
 
   const name = input.name.trim();
 
   const result = await collection.updateOne(
     { email },
     {
-      $setOnInsert: {
+      $set: {
         name,
         email,
-        subscribedAt: new Date().toISOString(),
+      },
+      $setOnInsert: {
+        subscribedAt:
+          new Date().toISOString(),
+      },
+      $unset: {
+        unsubscribedAt: "",
       },
     },
     { upsert: true }
@@ -52,12 +74,53 @@ export async function getSubscribers(): Promise<
     .sort({ subscribedAt: -1 })
     .toArray();
 
-  return documents.map((document) => {
-    const {
-      _id,
-      ...subscriber
-    } = document;
+  return documents.map(toSubscriber);
+}
 
-    return subscriber as Subscriber;
-  });
+export async function getActiveSubscribers(): Promise<
+  Subscriber[]
+> {
+  const db = await getDb();
+
+  const documents = await db
+    .collection(COLLECTIONS.SUBSCRIBERS)
+    .find({
+      $or: [
+        {
+          unsubscribedAt: {
+            $exists: false,
+          },
+        },
+        {
+          unsubscribedAt: null,
+        },
+        {
+          unsubscribedAt: "",
+        },
+      ],
+    })
+    .sort({ subscribedAt: -1 })
+    .toArray();
+
+  return documents.map(toSubscriber);
+}
+
+export async function unsubscribeSubscriber(
+  email: string
+) {
+  const db = await getDb();
+
+  return db
+    .collection(COLLECTIONS.SUBSCRIBERS)
+    .updateOne(
+      {
+        email: normalizeEmail(email),
+      },
+      {
+        $set: {
+          unsubscribedAt:
+            new Date().toISOString(),
+        },
+      }
+    );
 }

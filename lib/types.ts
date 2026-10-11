@@ -7,6 +7,8 @@ export type CategorySlug =
   | "cleaning-laundry"
   | "bathroom"
   | "home-utility";
+
+  
   
 export type ProductVariant = {
   id: string;
@@ -152,4 +154,5 @@ export type Subscriber = {
   name: string;
   email: string;
   subscribedAt: string;
+  unsubscribedAt?: string;
 };
