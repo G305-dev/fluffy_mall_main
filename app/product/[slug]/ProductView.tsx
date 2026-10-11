@@ -42,20 +42,28 @@ export default function ProductView({
   const [added, setAdded] = useState(false);
 
   const slides = useMemo<ProductSlide[]>(() => {
-    const mainImage = product.images[0];
+  const mainImage = product.images[0];
 
-    return [
-      {
-        id: "main-product",
-        image: mainImage,
-      },
-      ...product.variants.map((variant) => ({
-        id: variant.id,
-        image: variant.image || mainImage,
-        variant,
-      })),
-    ];
-  }, [product.images, product.variants]);
+  const productImageSlides = product.images.map(
+    (image, index) => ({
+      id: `product-image-${index}`,
+      image,
+    })
+  );
+
+  const variantSlides = product.variants.map(
+    (variant) => ({
+      id: `variant-image-${variant.id}`,
+      image: variant.image || mainImage,
+      variant,
+    })
+  );
+
+  return [
+    ...productImageSlides,
+    ...variantSlides,
+  ];
+}, [product.images, product.variants]);
 
   useEffect(() => {
     setSlideIndex(0);
@@ -105,9 +113,11 @@ if (!activeSlide) {
     );
   }
 
-  function selectVariant(index: number) {
-    setSlideIndex(index + 1);
-  }
+ function selectVariant(index: number) {
+  setSlideIndex(
+    product.images.length + index
+  );
+}
 
   function addToCart() {
     add(
@@ -343,7 +353,7 @@ if (!activeSlide) {
 
         <p className="mt-6 text-xs leading-relaxed text-cocoa-700/70">
           Sign in is required before checkout. Pay with
-          Paystack or the company bank accounts.
+          Paystack or order via WhatsApp.
         </p>
       </div>
     </div>
