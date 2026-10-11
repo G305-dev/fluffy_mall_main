@@ -40,7 +40,8 @@ export async function sendNewsletterEmail(input: {
     process.env.RESEND_API_KEY;
 
   const from =
-    process.env.RESEND_FROM_EMAIL;
+     process.env.RESEND_NEWSLETTER_FROM_EMAIL ||
+  process.env.RESEND_FROM_EMAIL;
 
   const baseUrl = (
     process.env.NEXT_PUBLIC_APP_URL ||
