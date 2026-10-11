@@ -1,21 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type UnresolvedProduct = {
+  id: string;
+  name: string;
+  category: string;
+};
 
 type MigrationResult = {
   updated?: number;
   unchanged?: number;
-  unresolved?: Array<{
-    id: string;
-    name: string;
-    category: string;
-  }>;
+  unresolved?: UnresolvedProduct[];
   error?: string;
 };
 
 export default function CategoryMigrationButton() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [unresolved, setUnresolved] = useState<
+    UnresolvedProduct[]
+  >([]);
+
+  const router = useRouter();
 
   async function migrate() {
     const confirmed = window.confirm(
@@ -28,6 +36,7 @@ export default function CategoryMigrationButton() {
 
     setBusy(true);
     setMessage(null);
+    setUnresolved([]);
 
     try {
       const response = await fetch(
@@ -46,14 +55,18 @@ export default function CategoryMigrationButton() {
         );
       }
 
-      const unresolvedCount =
-        result.unresolved?.length || 0;
+      const unresolvedProducts =
+        result.unresolved || [];
+
+      setUnresolved(unresolvedProducts);
 
       setMessage(
         `Updated ${result.updated || 0} products. ${
-          unresolvedCount
+          unresolvedProducts.length
         } products need review.`
       );
+
+      router.refresh();
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -91,6 +104,33 @@ export default function CategoryMigrationButton() {
         <p className="mt-3 text-xs text-cocoa-700">
           {message}
         </p>
+      )}
+
+      {unresolved.length > 0 && (
+        <div className="mt-4 rounded-xl bg-white p-3 ring-1 ring-red-200">
+          <p className="text-xs font-semibold text-red-700">
+            Products needing review
+          </p>
+
+          <ul className="mt-2 space-y-2">
+            {unresolved.map((product) => (
+              <li
+                key={product.id}
+                className="rounded-lg bg-red-50 p-2 text-xs text-red-800"
+              >
+                <p className="font-semibold">
+                  {product.name}
+                </p>
+                <p>
+                  Product ID: {product.id}
+                </p>
+                <p>
+                  Old category: {product.category}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
