@@ -10,6 +10,9 @@ import {
 import {
   NEW_CUSTOMER_DISCOUNT_PERCENT,
 } from "@/lib/promotions";
+import {
+  hasActiveSubscriber,
+} from "@/lib/subscribers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,6 +37,7 @@ export async function GET(
       {
         authenticated: false,
         email: null,
+        newsletterSubscribed: false,
         newCustomerDiscountEligible: false,
         showNewCustomerWelcome: false,
         newCustomerDiscountPercent:
@@ -54,6 +58,7 @@ export async function GET(
       {
         authenticated: false,
         email: null,
+        newsletterSubscribed: false,
         newCustomerDiscountEligible: false,
         showNewCustomerWelcome: false,
         newCustomerDiscountPercent:
@@ -95,10 +100,14 @@ export async function GET(
         !account.newCustomerWelcomeShownAt
     );
 
+  const newsletterSubscribed =
+    await hasActiveSubscriber(account.email);
+
   return NextResponse.json(
     {
       authenticated: true,
       email: account.email,
+      newsletterSubscribed,
       newCustomerDiscountEligible,
       showNewCustomerWelcome,
       newCustomerDiscountPercent:

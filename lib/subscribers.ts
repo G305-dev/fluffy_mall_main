@@ -63,6 +63,33 @@ export async function addSubscriber(input: {
   };
 }
 
+export async function hasActiveSubscriber(
+  email: string
+): Promise<boolean> {
+  const db = await getDb();
+
+  const subscriber = await db
+    .collection(COLLECTIONS.SUBSCRIBERS)
+    .findOne({
+      email: normalizeEmail(email),
+      $or: [
+        {
+          unsubscribedAt: {
+            $exists: false,
+          },
+        },
+        {
+          unsubscribedAt: null,
+        },
+        {
+          unsubscribedAt: "",
+        },
+      ],
+    });
+
+  return Boolean(subscriber);
+}
+
 export async function getSubscribers(): Promise<
   Subscriber[]
 > {

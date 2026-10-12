@@ -7,12 +7,17 @@ import {
 } from "react";
 import { X } from "lucide-react";
 
-const STORAGE_KEY =
-  "fny_newsletter_popup_status_v1";
-
 type PopupStatus =
   | "closed"
   | "subscribed";
+
+type SessionResponse = {
+  authenticated?: boolean;
+  newsletterSubscribed?: boolean;
+};
+
+const AUTH_CHANGED_EVENT =
+  "fny:customer-auth-changed";
 
 export default function NewsletterPopup() {
   const [open, setOpen] = useState(false);
@@ -33,38 +38,109 @@ export default function NewsletterPopup() {
     useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     let timer:
       | ReturnType<typeof setTimeout>
       | undefined;
 
-    try {
-      const existingStatus =
-        window.localStorage.getItem(
-          STORAGE_KEY
-        );
+    let requestVersion = 0;
 
-      /*
-       * Only a successful subscription should
-       * permanently stop the popup.
-       *
-       * A dismissed popup will appear again
-       * on the customer's next visit.
-       */
-      if (existingStatus === "subscribed") {
-        return;
-      }
-    } catch {
-      // Continue if localStorage is unavailable.
-    }
-
-    timer = setTimeout(() => {
-      setOpen(true);
-    }, 1200);
-
-    return () => {
+    function clearPopupTimer() {
       if (timer) {
         clearTimeout(timer);
+        timer = undefined;
       }
+    }
+
+    async function checkNewsletterEligibility() {
+      const currentVersion =
+        ++requestVersion;
+
+      clearPopupTimer();
+
+      /*
+       * Hide the popup while checking the
+       * current signed-in customer.
+       */
+      setOpen(false);
+      setStatus("closed");
+
+      try {
+        const response = await fetch(
+          "/api/customer/session",
+          {
+            credentials: "include",
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data =
+          (await response.json()) as SessionResponse;
+
+        if (
+          cancelled ||
+          currentVersion !== requestVersion
+        ) {
+          return;
+        }
+
+        /*
+         * Fail closed:
+         *
+         * - Guests do not see the popup.
+         * - Subscribed customers do not see it.
+         * - Missing subscription information does
+         *   not show a marketing popup.
+         */
+        if (
+          !data.authenticated ||
+          data.newsletterSubscribed !== false
+        ) {
+          return;
+        }
+
+        timer = setTimeout(() => {
+          if (
+            !cancelled &&
+            currentVersion === requestVersion
+          ) {
+            setStatus("closed");
+            setOpen(true);
+          }
+        }, 1200);
+      } catch {
+        /*
+         * Do not show the popup if the customer
+         * or subscription check fails.
+         */
+      }
+    }
+
+    function handleAuthChange() {
+      void checkNewsletterEligibility();
+    }
+
+    void checkNewsletterEligibility();
+
+    window.addEventListener(
+      AUTH_CHANGED_EVENT,
+      handleAuthChange
+    );
+
+    return () => {
+      cancelled = true;
+      requestVersion += 1;
+      clearPopupTimer();
+
+      window.removeEventListener(
+        AUTH_CHANGED_EVENT,
+        handleAuthChange
+      );
     };
   }, []);
 
@@ -86,28 +162,13 @@ export default function NewsletterPopup() {
   ) {
     setOpen(false);
     setStatus(nextStatus);
-
-    /*
-     * Only save "subscribed".
-     * Do not save "closed" or "dismissed".
-     */
-    if (nextStatus === "subscribed") {
-      try {
-        window.localStorage.setItem(
-          STORAGE_KEY,
-          "subscribed"
-        );
-      } catch {
-        // Ignore storage errors.
-      }
-    }
   }
 
   function dismiss() {
     /*
-     * Closing the popup does not permanently
-     * dismiss it. It will appear again on the
-     * customer's next site visit.
+     * Closing does not create a subscription.
+     * The popup can appear on a future visit if
+     * the customer is still not subscribed.
      */
     setOpen(false);
     setStatus("closed");
@@ -117,6 +178,7 @@ export default function NewsletterPopup() {
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+
     setError("");
     setBusy(true);
 
@@ -129,6 +191,7 @@ export default function NewsletterPopup() {
             "Content-Type":
               "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             name: firstName,
             email,
@@ -146,10 +209,10 @@ export default function NewsletterPopup() {
       }
 
       /*
-       * Only successful subscription saves
-       * the permanent local status.
+       * The server has now created or reactivated
+       * the customer's newsletter subscription.
        */
-      closePopup("subscribed");
+      setStatus("subscribed");
     } catch (submitError) {
       setError(
         submitError instanceof Error
