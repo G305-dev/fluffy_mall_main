@@ -1,158 +1,42 @@
 export type CategorySlug =
-  | "kitchen-appliances"
+  | "pantry-storage-organiser"
+  | "waste-bin"
   | "cookware"
-  | "kitchen-tools"
-  | "dining-serveware"
-  | "storage-organisation"
-  | "cleaning-laundry"
-  | "bathroom"
-  | "home-utility";
-
-  
-  
-export type ProductVariant = {
-  id: string;
-  name: string;
-  size?: string;
-  color?: string;
-  price: number;
-  stock: number;
-  image?: string;
-  traceposItemCode?: string;
-};
-
-export type Product = {
-  id: string;
-  slug: string;
-  name: string;
-  price: number;
-  compareAt?: number;
-  category: CategorySlug;
-  subcategory?: string;
-  featured: boolean;
-  bestseller: boolean;
-  stock: number;
-  images: string[];
-  short: string;
-  description: string;
-  variants: ProductVariant[];
-  deliveryNote: string;
-  traceposItemCode?: string;
-};
-
-export type CartItem = {
-  productId: string;
-  slug: string;
-  name: string;
-  image: string;
-  variantId?: string;
-  variantName?: string;
-  unitPrice: number;
-  qty: number;
-};
-
-export type Fulfilment = "delivery" | "pickup";
-
-export type Zone = "lagos" | "outside";
-
-export type PayMethod = "paystack";
-
-export type OrderStatus =
-  | "pending_payment"
-  | "paid"
-  | "processing"
-  | "out_for_delivery"
-  | "awaiting_pickup"
-  | "completed"
-  | "cancelled"
-  | "refunded";
-
-export type OrderItem = {
-  productId: string;
-  name: string;
-  variantId?: string;
-  variantName?: string;
-  unitPrice: number;
-  qty: number;
-  image: string;
-};
-
-export type Customer = {
-  name: string;
-  phone: string;
-  email?: string;
-  address?: string;
-  state: string;
-  city?: string;
-  notes?: string;
-};
-
-export type Payment = {
-  method: PayMethod;
-  status: "pending" | "paid" | "failed";
-  reference?: string;
-  amount: number;
-  paidAt?: string;
-};
-
-export type TraceposSaleStatus =
-  | "processing"
-  | "synced"
-  | "failed";
-
-export type Order = {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  customer: Customer;
-  items: OrderItem[];
-  fulfilment: Fulfilment;
-  zone: Zone;
-  subtotal: number;
-
-  discount?: number;
-  discountPercent?: number;
-
-  deliveryFee: number;
-  pickupDiscount: number;
-  total: number;
-  status: OrderStatus;
-  payment: Payment;
-  customerNotified?: boolean;
-
-  traceposSaleStatus?: TraceposSaleStatus;
-  traceposSaleReference?: string;
-  traceposSaleInvoiceNumber?: string;
-  traceposSaleAttemptedAt?: string;
-  traceposSaleSyncedAt?: string;
-  traceposSaleError?: string;
-};
-
-export type StoreSettings = {
-  storeName: string;
-  tagline: string;
-  address: string;
-  hours: string;
-  phones: string[];
-  instagram: string;
-  tiktok: string;
-  email: string;
-  lagosDeliveryFee: number;
-  outsideDeliveryFee: number;
-  lagosFreeThreshold: number;
-  outsideFreeThreshold: number;
-  pickupDiscountPercent: number;
-  pickupDiscountMin: number;
-  pickupDiscountMax: number;
-  openingHours: {
-    day: string;
-    hours: string;
-  }[];
-};
-
-export type Subscriber = {
-  name: string;
-  email: string;
-  subscribedAt: string;
-  unsubscribedAt?: string;
-};
+  | "air-fryers"
+  | "sieve"
+  | "bath-series"
+  | "laundry"
+  | "hangers"
+  | "blenders"
+  | "vacuum-cleaner"
+  | "iron"
+  | "oven"
+  | "electric-chopper"
+  | "cutlery-utensils"
+  | "cleaning-tools"
+  | "dinnerware"
+  | "ladders"
+  | "glassware"
+  | "tools"
+  | "clothes-dryer"
+  | "electric-kettle"
+  | "rack"
+  | "mats"
+  | "food-warmer"
+  | "trays"
+  | "spoons"
+  | "breakfast-makers"
+  | "slow-juicer"
+  | "wooden-utensils"
+  | "straws"
+  | "bakeware"
+  | "covers"
+  | "scale"
+  | "dehydrator"
+  | "gas-burner"
+  | "chopping-board"
+  | "pressure-cooker"
+  | "mixer"
+  | "food-processor"
+  | "moulds"
+  | "tables";
