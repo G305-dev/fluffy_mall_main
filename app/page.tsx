@@ -1,6 +1,4 @@
-import Image from "next/image";
 import Link from "next/link";
-import firstOrderBanner from "@/previews/first-order-5-percent-banner.jpg";
 import ProductCard from "@/components/ProductCard";
 import CategoryProductRail from "@/components/CategoryProductRail";
 import { CATEGORIES } from "@/lib/categories";
@@ -29,30 +27,6 @@ export default async function HomePage() {
   return (
     <div>
       <NewsletterPopup />
-
-      {/* New-customer offer above the hero */}
-      <section className="mx-auto max-w-6xl px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6 lg:px-8">
-        <Link
-          href="/shop"
-          aria-label="Shop now: 5% off your first signed-in order for new customers"
-          className="animate-hero animate-hero-1 group block overflow-hidden rounded-2xl bg-[#ff8a00] shadow-card ring-1 ring-cream-200"
-        >
-          <Image
-            src={firstOrderBanner}
-            alt=""
-            priority
-            sizes="(max-width: 1152px) 100vw, 1152px"
-            className="h-auto w-full transition-transform duration-500 group-hover:scale-[1.01] motion-reduce:transition-none"
-          />
-
-          <span className="block bg-cocoa-800 px-4 py-2 text-center text-xs font-semibold text-white sm:hidden">
-            5% off your first signed-in order for new customers
-            <span className="ml-2 text-gold-400">
-              Shop now →
-            </span>
-          </span>
-        </Link>
-      </section>
 
       {/* Mobile and tablet hero */}
       <section className="relative min-h-[560px] overflow-hidden sm:min-h-[650px] lg:hidden">
@@ -173,7 +147,7 @@ export default async function HomePage() {
             <div
               key={product.id}
               className="reveal"
-              data-reveal-delay={index * 90}
+              data-reveal-delay={(index % 4) * 90}
             >
               <ProductCard product={product} />
             </div>
