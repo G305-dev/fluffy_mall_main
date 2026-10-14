@@ -1,10 +1,7 @@
 import ProductCard from "@/components/ProductCard";
-import {
-  CATEGORIES,
-  categoryName,
-} from "@/lib/categories";
+import { CATEGORIES, categoryName } from "@/lib/categories";
+import { getAdminCategories } from "@/lib/admin-categories";
 import { getProducts } from "@/lib/db";
-import type { CategorySlug } from "@/lib/types";
 import {
   notFound,
   redirect,
@@ -102,14 +99,13 @@ export function generateStaticParams() {
   }));
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   params,
 }: {
   params: { category: string };
 }) {
-  return {
-    title: categoryName(params.category),
-  };
+  const category = (await getAdminCategories()).find((item) => item.slug === params.category);
+  return { title: category?.name || categoryName(params.category) };
 }
 
 export default async function CategoryPage({
@@ -123,7 +119,7 @@ export default async function CategoryPage({
     subcategory?: string;
   };
 }) {
-  const category = CATEGORIES.find(
+  const category = (await getAdminCategories()).find(
     (item) => item.slug === params.category
   );
 
@@ -171,7 +167,7 @@ export default async function CategoryPage({
   const products = allProducts.filter(
     (product) =>
       product.category ===
-      (category.slug as CategorySlug)
+      category.slug
   );
 
   return (

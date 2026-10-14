@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CATEGORIES } from "@/lib/categories";
+import { getAdminCategories } from "@/lib/admin-categories";
 import { getProducts } from "@/lib/db";
 import { naira } from "@/lib/format";
 import {
@@ -40,7 +40,7 @@ export default async function InventoryPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const products = await getProducts();
+  const [products, categories] = await Promise.all([getProducts(), getAdminCategories()]);
   const items = toInventoryItems(products);
   const totals = summarizeInventory(items);
 
@@ -50,7 +50,7 @@ export default async function InventoryPage({
     ? (requestedStatus as Filter)
     : "all";
   const requestedCategory = first(searchParams.category);
-  const availableCategories = CATEGORIES.filter((category) =>
+  const availableCategories = categories.filter((category) =>
     items.some((item) => item.category === category.slug)
   );
   const category = availableCategories.some((item) => item.slug === requestedCategory)

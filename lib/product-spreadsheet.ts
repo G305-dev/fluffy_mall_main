@@ -5,6 +5,7 @@ export const PRODUCT_COLUMNS = [
   "id", "slug", "name", "item_code", "category", "price", "compare_at",
   "stock", "image_urls", "short", "description", "delivery_note",
   "featured", "bestseller", "variants_json",
+  "barcode", "unit", "product_type", "purchase_cost",
 ] as const;
 
 export type ProductColumn = (typeof PRODUCT_COLUMNS)[number];
@@ -29,6 +30,10 @@ const ALIASES: Record<ProductColumn, string[]> = {
   featured: ["featured"],
   bestseller: ["bestseller", "best_seller"],
   variants_json: ["variants_json"],
+  barcode: ["barcode", "product_barcode"],
+  unit: ["unit", "measurement_unit"],
+  product_type: ["product_type", "type"],
+  purchase_cost: ["purchase_cost", "cost_price", "buying_price"],
 };
 
 function normalizeHeader(value: string) {
@@ -106,9 +111,17 @@ export async function readProductSheet(file: File): Promise<SpreadsheetRow[]> {
   if (rows.length > 1001) throw new Error("Import up to 1,000 products per file.");
 
   const headings = rows[0].map(normalizeHeader);
+  // A plain "barcode" column belongs to this website. Only interpret it as a
+  // legacy POS item code when the rest of the file clearly uses POS headers.
+  const legacyPosSheet = headings.includes("barcode") &&
+    ["item_description", "item_name"].some((heading) => headings.includes(heading)) &&
+    ["selling_price", "sales_price", "retail_price"].some((heading) => headings.includes(heading));
   const columns = {} as Record<ProductColumn, number>;
   for (const column of PRODUCT_COLUMNS) {
-    columns[column] = headings.findIndex((heading) => ALIASES[column].includes(heading));
+    const aliases = column === "item_code" && !legacyPosSheet
+      ? ALIASES.item_code.filter((alias) => alias !== "barcode")
+      : ALIASES[column];
+    columns[column] = headings.findIndex((heading) => aliases.includes(heading));
   }
   if (columns.name < 0 || columns.price < 0) {
     throw new Error("Required columns: name and price. Download the template for all supported columns.");
@@ -123,7 +136,7 @@ export async function readProductSheet(file: File): Promise<SpreadsheetRow[]> {
   });
 }
 
-function exportFields(product: Product): string[] {
+function exportFields(product: Product, purchaseCost?: number): string[] {
   return [
     product.id,
     product.slug,
@@ -140,6 +153,10 @@ function exportFields(product: Product): string[] {
     product.featured ? "true" : "false",
     product.bestseller ? "true" : "false",
     product.variants.length ? JSON.stringify(product.variants) : "",
+    product.barcode || "",
+    product.unit || "pcs",
+    product.productType || (product.variants.length ? "variable" : "standard"),
+    purchaseCost === undefined ? "" : String(purchaseCost),
   ];
 }
 
@@ -151,9 +168,10 @@ function csvCell(raw: string) {
 
 export async function writeProductSheet(
   products: Product[],
-  format: "csv" | "xlsx"
+  format: "csv" | "xlsx",
+  costs: Record<string, number> = {}
 ): Promise<string | Buffer> {
-  const rows = [Array.from(PRODUCT_COLUMNS), ...products.map(exportFields)];
+  const rows = [Array.from(PRODUCT_COLUMNS), ...products.map((product) => exportFields(product, costs[product.id]))];
   if (format === "csv") {
     return "\uFEFF" + rows.map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";
   }

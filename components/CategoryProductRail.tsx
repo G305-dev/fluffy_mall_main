@@ -8,10 +8,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
-import type { CategorySlug, Product } from "@/lib/types";
+import type { Product } from "@/lib/types";
 
 type CategoryInfo = {
-  slug: CategorySlug;
+  slug: string;
   name: string;
   blurb: string;
   emoji: string;

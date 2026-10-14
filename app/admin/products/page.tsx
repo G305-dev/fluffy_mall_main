@@ -1,13 +1,17 @@
 import { getProducts } from "@/lib/db";
+import { getAdminCategories } from "@/lib/admin-categories";
+import { getProductCosts } from "@/lib/product-costs";
 import NewProductForm from "./NewProductForm";
 import ProductList from "./ProductList";
 import ProductImportExport from "./ProductImportExport";
+import ProductBarcodeList from "./ProductBarcodeList";
 import CategoryMigrationButton from "./CategoryMigrationButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage() {
-  const products = await getProducts();
+  const [products, categories] = await Promise.all([getProducts(), getAdminCategories()]);
+  const costs = await getProductCosts(products.map((product) => product.id));
 
   return (
     <div>
@@ -21,12 +25,13 @@ export default async function AdminProductsPage() {
       </p>
 
       <div className="mt-6">
-        <ProductImportExport />
-        <NewProductForm />
+        <NewProductForm categories={categories} />
+        <ProductImportExport categories={categories} />
+        <ProductBarcodeList products={products} costs={costs} />
         <CategoryMigrationButton />
       </div>
 
-      <ProductList products={products} />
+      <ProductList products={products} categories={categories} costs={costs} />
     </div>
   );
 }

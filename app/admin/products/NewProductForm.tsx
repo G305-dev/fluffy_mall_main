@@ -1,592 +1,234 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CATEGORIES } from "@/lib/categories";
-import { CategorySlug } from "@/lib/types";
 import { Plus, X } from "lucide-react";
+import type { AdminCategory } from "@/lib/admin-categories";
+import { PRODUCT_UNITS, type ProductUnit } from "@/lib/product-units";
+import type { Product } from "@/lib/types";
 
 type VariantDraft = {
   size: string;
   color: string;
   price: string;
   stock: string;
-  file: File | null;
-  preview: string | null;
-  traceposItemCode: string;
+  barcode: string;
 };
 
 type FormState = {
+  productType: "standard" | "variable";
   name: string;
-  price: string;
-  category: CategorySlug;
+  category: string;
+  hasBarcode: boolean | null;
+  barcode: string;
+  purchaseCost: string;
+  sellingPrice: string;
   stock: string;
-  short: string;
+  unit: ProductUnit;
   description: string;
+  short: string;
   deliveryNote: string;
   featured: boolean;
   bestseller: boolean;
   variants: VariantDraft[];
-  traceposItemCode: string;
 };
 
-type ApiResponse = {
-  error?: string;
-  path?: string;
-  [key: string]: unknown;
-};
-
-function createEmptyVariant(): VariantDraft {
+function blankForm(category: string): FormState {
   return {
-    size: "",
-    color: "",
-    price: "",
-    stock: "",
-    file: null,
-    preview: null,
-    traceposItemCode: "",
+    productType: "standard", name: "", category,
+    hasBarcode: null, barcode: "", purchaseCost: "", sellingPrice: "",
+    stock: "", unit: "pcs", description: "", short: "", deliveryNote: "",
+    featured: false, bestseller: false, variants: [],
   };
 }
 
-function createEmptyForm(): FormState {
-  return {
-    name: "",
-    price: "",
-    category:
-      CATEGORIES[0].slug as CategorySlug,
-    stock: "",
-    short: "",
-    description: "",
-    deliveryNote: "",
-    featured: false,
-    bestseller: false,
-    variants: [],
-    traceposItemCode: "",
-  };
+function blankVariant(): VariantDraft {
+  return { size: "", color: "", price: "", stock: "", barcode: "" };
 }
 
-function getClipboardImage(
-  event: React.ClipboardEvent<HTMLElement>
-): File | null {
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ];
-
-  const item = Array.from(
-    event.clipboardData.items
-  ).find(
-    (clipboardItem) =>
-      clipboardItem.kind === "file" &&
-      allowedTypes.includes(
-        clipboardItem.type
-      )
+function Step({ number, title, children }: {
+  number: number;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-stone-100 bg-white p-4 sm:p-5">
+      <h3 className="mb-4 flex items-center gap-2 font-semibold text-cocoa-800">
+        <span className="grid h-7 w-7 place-items-center rounded-full bg-orange-100 text-xs text-orange-700">{number}</span>
+        {title}
+      </h3>
+      {children}
+    </section>
   );
-
-  return item?.getAsFile() ?? null;
 }
 
-async function readApiResponse(
-  response: Response,
-  name: string
-): Promise<ApiResponse> {
-  const text = await response.text();
-
-  if (!text.trim()) {
-    throw new Error(
-      `${name} returned an empty response. HTTP status: ${response.status}`
-    );
-  }
-
-  try {
-    const parsed = JSON.parse(text);
-
-    if (
-      !parsed ||
-      typeof parsed !== "object"
-    ) {
-      throw new Error(
-        "The response was not an object."
-      );
-    }
-
-    return parsed as ApiResponse;
-  } catch {
-    throw new Error(
-      `${name} returned invalid JSON. HTTP status: ${response.status}. Response: ${text.slice(
-        0,
-        300
-      )}`
-    );
-  }
+function BarcodeLabel({ value, caption }: { value: string; caption: string }) {
+  const href = `/api/admin/barcode?value=${encodeURIComponent(value)}`;
+  return (
+    <div className="rounded-xl border border-stone-200 bg-white p-3">
+      <p className="mb-2 text-xs font-medium text-stone-600">{caption}</p>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={href} alt={`Code 128 barcode for ${value}`} className="max-h-24 max-w-full" />
+      <p className="mt-2 break-all font-mono text-xs text-cocoa-800">{value}</p>
+      <a href={href} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-semibold text-orange-700 hover:underline">
+        Open label to print
+      </a>
+    </div>
+  );
 }
 
-export default function NewProductForm() {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] =
-    useState<FormState>(createEmptyForm);
-
-  const [imageFiles, setImageFiles] =
-    useState<File[]>([]);
-
-  const [imagePreviews, setImagePreviews] =
-    useState<string[]>([]);
-
-  const [busy, setBusy] = useState(false);
-  const [error, setError] =
-    useState<string | null>(null);
-
+export default function NewProductForm({ categories }: { categories: AdminCategory[] }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(() => blankForm(categories[0]?.slug || ""));
+  const [images, setImages] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [created, setCreated] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const next = images.map((file) => URL.createObjectURL(file));
+    setPreviews(next);
+    return () => next.forEach((url) => URL.revokeObjectURL(url));
+  }, [images]);
+
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((previous) => ({ ...previous, [key]: value }));
+  }
+
+  function updateVariant(index: number, key: keyof VariantDraft, value: string) {
+    setForm((previous) => ({
+      ...previous,
+      variants: previous.variants.map((variant, i) => i === index ? { ...variant, [key]: value } : variant),
+    }));
+  }
 
   function reset() {
-    setForm(createEmptyForm());
-    setImageFiles([]);
-    setImagePreviews([]);
-    setError(null);
+    setForm(blankForm(categories[0]?.slug || ""));
+    setImages([]);
+    setError("");
+    setCreated(null);
   }
 
-  function onImageFilesChange(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const selected = Array.from(
-      event.target.files || []
-    );
-
+  function chooseImages(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || []);
     event.target.value = "";
-
-    if (selected.length === 0) {
+    if (!files.length) return;
+    if (images.length + files.length > 8) {
+      setError("Choose up to eight product photos.");
       return;
     }
-
-    setImageFiles(selected);
-
-    setImagePreviews(
-      selected.map((file) =>
-        URL.createObjectURL(file)
-      )
-    );
-  }
-
-  function onMainImagePaste(
-    event: React.ClipboardEvent<HTMLInputElement>
-  ) {
-    event.preventDefault();
-
-    const selected = getClipboardImage(event);
-
-    if (!selected) {
-      setError(
-        "Paste a JPEG, PNG or WEBP image."
-      );
+    if (files.some((file) =>
+      !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024
+    )) {
+      setError("Photos must be JPEG, PNG or WEBP, up to 5 MB each.");
       return;
     }
-
-    setError(null);
-
-    setImageFiles((current) => [
-      ...current,
-      selected,
-    ]);
-
-    setImagePreviews((current) => [
-      ...current,
-      URL.createObjectURL(selected),
-    ]);
+    setImages((previous) => [...previous, ...files]);
+    setError("");
   }
 
-  function removeProductImage(index: number) {
-    if (imageFiles.length <= 1) {
-      setError(
-        "A product must have at least one image."
-      );
-      return;
+  function validate() {
+    if (!form.name.trim()) throw new Error("Enter the product name.");
+    if (!categories.some((category) => category.slug === form.category)) {
+      throw new Error("Select a category from the list.");
     }
-
-    setImageFiles((current) =>
-      current.filter(
-        (_, imageIndex) =>
-          imageIndex !== index
-      )
-    );
-
-    setImagePreviews((current) =>
-      current.filter(
-        (_, imageIndex) =>
-          imageIndex !== index
-      )
-    );
-
-    setError(null);
-  }
-
-  function onVariantFileChange(
-    index: number,
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const selected =
-      event.target.files?.[0] ?? null;
-
-    event.target.value = "";
-
-    setForm((current) => ({
-      ...current,
-      variants: current.variants.map(
-        (variant, variantIndex) =>
-          variantIndex === index
-            ? {
-                ...variant,
-                file: selected,
-                preview: selected
-                  ? URL.createObjectURL(selected)
-                  : null,
-              }
-            : variant
-      ),
-    }));
-  }
-
-  function onVariantImagePaste(
-    index: number,
-    event: React.ClipboardEvent<HTMLInputElement>
-  ) {
-    event.preventDefault();
-
-    const selected = getClipboardImage(event);
-
-    if (!selected) {
-      setError(
-        "Paste a JPEG, PNG or WEBP image."
-      );
-      return;
+    if (form.hasBarcode === null) throw new Error("Choose Yes or No for the barcode.");
+    if (form.hasBarcode && (!form.barcode.trim() ||
+      form.barcode.trim().length > 48 || !/^[\x20-\x7e]+$/.test(form.barcode.trim()))) {
+      throw new Error("Enter a Code 128 barcode using 1–48 printable English characters.");
     }
-
-    setError(null);
-
-    setForm((current) => ({
-      ...current,
-      variants: current.variants.map(
-        (variant, variantIndex) =>
-          variantIndex === index
-            ? {
-                ...variant,
-                file: selected,
-                preview: URL.createObjectURL(
-                  selected
-                ),
-              }
-            : variant
-      ),
-    }));
-  }
-
-  function updateVariant(
-    index: number,
-    field:
-      | "size"
-      | "color"
-      | "price"
-      | "stock"
-      | "traceposItemCode",
-    value: string
-  ) {
-    setForm((current) => ({
-      ...current,
-      variants: current.variants.map(
-        (variant, variantIndex) =>
-          variantIndex === index
-            ? {
-                ...variant,
-                [field]: value,
-              }
-            : variant
-      ),
-    }));
-  }
-
-  function addVariant() {
-    setForm((current) => ({
-      ...current,
-      variants: [
-        ...current.variants,
-        createEmptyVariant(),
-      ],
-    }));
-  }
-
-  function removeVariant(index: number) {
-    setForm((current) => ({
-      ...current,
-      variants: current.variants.filter(
-        (_, variantIndex) =>
-          variantIndex !== index
-      ),
-    }));
-  }
-
-  async function uploadImage(
-    file: File,
-    label: string
-  ) {
-    const uploadData = new FormData();
-    uploadData.append("file", file);
-
-    const response = await fetch(
-      "/api/admin/upload",
-      {
-        method: "POST",
-        body: uploadData,
+    if (form.purchaseCost.trim() === "" || !Number.isFinite(Number(form.purchaseCost)) || Number(form.purchaseCost) < 0) {
+      throw new Error("Enter the purchase cost (zero is allowed).");
+    }
+    if (!form.sellingPrice.trim() || !Number.isFinite(Number(form.sellingPrice)) || Number(form.sellingPrice) <= 0) {
+      throw new Error("Enter a selling price greater than zero.");
+    }
+    if (form.productType === "standard") {
+      if (form.stock.trim() === "" || !Number.isSafeInteger(Number(form.stock)) || Number(form.stock) < 0) {
+        throw new Error("Enter a whole-number stock quantity of zero or more.");
       }
-    );
-
-    const data = await readApiResponse(
-      response,
-      label
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        data.error || `${label} failed.`
-      );
-    }
-
-    if (!data.path) {
-      throw new Error(
-        `${label} did not return an image path.`
-      );
-    }
-
-    return data.path;
-  }
-
-  async function submit(
-    event: React.FormEvent
-  ) {
-    event.preventDefault();
-    setError(null);
-
-    if (imageFiles.length === 0) {
-      setError(
-        "Please choose at least one product image."
-      );
-      return;
-    }
-
-    const price = Number(form.price);
-
-    if (!form.name.trim()) {
-      setError("Product name is required.");
-      return;
-    }
-
-    if (
-      !Number.isFinite(price) ||
-      price <= 0
-    ) {
-      setError("Enter a valid base price.");
-      return;
-    }
-
-    const variantInputs: Array<{
-      size: string;
-      color: string;
-      price: number;
-      stock: number;
-      file: File;
-      traceposItemCode: string;
-    }> = [];
-
-    for (
-      let index = 0;
-      index < form.variants.length;
-      index++
-    ) {
-      const draft = form.variants[index];
-
-      const size = draft.size.trim();
-      const color = draft.color.trim();
-
-      const hasAnyValue = Boolean(
-        size ||
-          color ||
-          draft.price.trim() ||
-          draft.stock.trim() ||
-          draft.traceposItemCode.trim() ||
-          draft.file
-      );
-
-      if (!hasAnyValue) {
-        continue;
-      }
-
-      if (!size && !color) {
-        setError(
-          `Variant ${
-            index + 1
-          } needs a size or a color.`
-        );
-        return;
-      }
-
-      if (!draft.file) {
-        setError(
-          `Please choose an image for variant ${
-            index + 1
-          }.`
-        );
-        return;
-      }
-
-      const variantPrice = Number(
-        draft.price
-      );
-
-      const variantStock = Number(
-        draft.stock || 0
-      );
-
-      if (
-        !Number.isFinite(variantPrice) ||
-        variantPrice <= 0
-      ) {
-        setError(
-          `Enter a valid price for variant ${
-            index + 1
-          }.`
-        );
-        return;
-      }
-
-      if (
-        !Number.isFinite(variantStock) ||
-        variantStock < 0
-      ) {
-        setError(
-          `Enter a valid stock quantity for variant ${
-            index + 1
-          }.`
-        );
-        return;
-      }
-
-      variantInputs.push({
-        size,
-        color,
-        price: variantPrice,
-        stock: variantStock,
-        file: draft.file,
-        traceposItemCode:
-          draft.traceposItemCode.trim(),
+    } else {
+      if (!form.variants.length) throw new Error("Add at least one option for a variable product.");
+      const seen = new Set<string>();
+      form.variants.forEach((variant, index) => {
+        const label = `Option ${index + 1}`;
+        if (!variant.size.trim() && !variant.color.trim()) throw new Error(`${label} needs a size or colour.`);
+        const key = `${variant.size.trim().toLowerCase()}|${variant.color.trim().toLowerCase()}`;
+        if (seen.has(key)) throw new Error(`${label} repeats a size/colour combination.`);
+        seen.add(key);
+        if (variant.price.trim() && (!Number.isFinite(Number(variant.price)) || Number(variant.price) <= 0)) {
+          throw new Error(`${label} selling price must be greater than zero.`);
+        }
+        if (variant.stock.trim() === "" || !Number.isSafeInteger(Number(variant.stock)) || Number(variant.stock) < 0) {
+          throw new Error(`${label} stock must be a whole number of zero or more.`);
+        }
+        if (form.hasBarcode && variant.barcode.trim() &&
+          (variant.barcode.trim().length > 48 || !/^[\x20-\x7e]+$/.test(variant.barcode.trim()))) {
+          throw new Error(`${label} barcode must use printable English characters, up to 48.`);
+        }
       });
     }
+  }
 
-    setBusy(true);
+  async function uploadPhoto(file: File) {
+    const data = new FormData();
+    data.set("file", file);
+    const response = await fetch("/api/admin/upload", { method: "POST", body: data });
+    const result: { path?: string; error?: string } = await response.json();
+    if (!response.ok || !result.path) {
+      throw new Error(result.error || `Could not upload ${file.name}.`);
+    }
+    return result.path;
+  }
 
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setError("");
     try {
-      const imagePaths: string[] = [];
-
-      for (
-        let index = 0;
-        index < imageFiles.length;
-        index++
-      ) {
-        const path = await uploadImage(
-          imageFiles[index],
-          `Product image ${index + 1} upload`
-        );
-
-        imagePaths.push(path);
+      validate();
+      setBusy(true);
+      const paths: string[] = [];
+      for (const file of images) paths.push(await uploadPhoto(file));
+      const response = await fetch("/api/admin/products/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productType: form.productType,
+          name: form.name.trim(),
+          category: form.category,
+          images: paths,
+          hasBarcode: form.hasBarcode,
+          barcode: form.hasBarcode ? form.barcode.trim() : "",
+          purchaseCost: Number(form.purchaseCost),
+          price: Number(form.sellingPrice),
+          stock: form.productType === "standard" ? Number(form.stock) : undefined,
+          unit: form.unit,
+          description: form.description.trim(),
+          short: form.short.trim(),
+          deliveryNote: form.deliveryNote.trim(),
+          featured: form.featured,
+          bestseller: form.bestseller,
+          variants: form.productType === "variable" ? form.variants.map((variant) => ({
+            size: variant.size.trim(),
+            color: variant.color.trim(),
+            price: variant.price.trim() ? Number(variant.price) : undefined,
+            stock: Number(variant.stock),
+            barcode: form.hasBarcode ? variant.barcode.trim() : "",
+          })) : [],
+        }),
+      });
+      const result: { product?: Product; error?: string } = await response.json();
+      if (!response.ok || !result.product) {
+        throw new Error(result.error || "Could not save the product.");
       }
-
-      const variants: Array<{
-        size: string;
-        color: string;
-        price: number;
-        stock: number;
-        image: string;
-        traceposItemCode: string;
-      }> = [];
-
-      for (
-        let index = 0;
-        index < variantInputs.length;
-        index++
-      ) {
-        const variantInput =
-          variantInputs[index];
-
-        const image = await uploadImage(
-          variantInput.file,
-          `Variant ${index + 1} image upload`
-        );
-
-        variants.push({
-          size: variantInput.size,
-          color: variantInput.color,
-          price: variantInput.price,
-          stock: variantInput.stock,
-          image,
-          traceposItemCode:
-            variantInput.traceposItemCode,
-        });
-      }
-
-      const createResponse = await fetch(
-        "/api/admin/products",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: form.name.trim(),
-
-            traceposItemCode:
-              form.traceposItemCode.trim() ||
-              undefined,
-
-            price,
-            category: form.category,
-            stock: Number(form.stock || 0),
-            short: form.short.trim(),
-            description:
-              form.description.trim(),
-            deliveryNote:
-              form.deliveryNote.trim(),
-            featured: form.featured,
-            bestseller: form.bestseller,
-            variants,
-
-            /*
-             * The first image is the main image.
-             */
-            images: imagePaths,
-          }),
-        }
-      );
-
-      const createJson =
-        await readApiResponse(
-          createResponse,
-          "Product creation"
-        );
-
-      if (!createResponse.ok) {
-        throw new Error(
-          createJson.error ||
-            "Could not create product."
-        );
-      }
-
-      reset();
-      setOpen(false);
+      setCreated(result.product);
+      setImages([]);
       router.refresh();
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Something went wrong."
-      );
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : "Could not save the product.");
     } finally {
       setBusy(false);
     }
@@ -594,490 +236,184 @@ export default function NewProductForm() {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mb-6 flex items-center gap-2 rounded-full bg-cocoa-800 px-4 py-2 text-sm font-semibold text-cream-50"
-      >
-        <Plus size={16} />
-        Add product
+      <button type="button" onClick={() => setOpen(true)} className="mb-5 inline-flex items-center gap-2 rounded-xl bg-[#ff8200] px-5 py-3 text-sm font-semibold text-white hover:bg-[#e87700]">
+        <Plus size={17} aria-hidden="true" /> Add new product
       </button>
     );
   }
 
+  if (created) {
+    return (
+      <section className="mb-6 space-y-4 rounded-2xl border border-green-200 bg-green-50 p-4 sm:p-6" aria-live="polite">
+        <div>
+          <h2 className="font-display text-2xl text-cocoa-800">Product saved</h2>
+          <p className="mt-1 text-sm text-stone-600">{created.name} · {created.stock} {created.unit || "pcs"} in stock. Your Code 128 labels are ready.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {created.barcode && <BarcodeLabel value={created.barcode} caption="Product barcode" />}
+          {created.variants.map((variant) => variant.barcode && (
+            <BarcodeLabel key={variant.id} value={variant.barcode} caption={variant.name} />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={reset} className="rounded-xl bg-[#ff8200] px-4 py-2.5 text-sm font-semibold text-white">Add another product</button>
+          <button type="button" onClick={() => { reset(); setOpen(false); }} className="rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700">Done</button>
+        </div>
+      </section>
+    );
+  }
+
+  const variable = form.productType === "variable";
+  const totalStock = form.variants.reduce((total, variant) => total + (Number(variant.stock) || 0), 0);
+  const inputClass = "mt-1 block w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-cocoa-800 outline-none focus:border-orange-500";
   return (
-    <form
-      onSubmit={submit}
-      className="mb-6 rounded-3xl bg-white p-4 ring-1 ring-cream-200 sm:p-6"
-    >
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl text-cocoa-800">
-          New product
-        </h2>
-
-        <button
-          type="button"
-          onClick={() => {
-            reset();
-            setOpen(false);
-          }}
-          className="rounded-full p-1 text-cocoa-700/70 hover:bg-cream-100"
-          aria-label="Close form"
-        >
-          <X size={18} />
-        </button>
+    <form onSubmit={save} className="mb-6 space-y-4" aria-label="Add new product">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-2xl text-cocoa-800">Add new product</h2>
+        <button type="button" disabled={busy} onClick={() => { reset(); setOpen(false); }} aria-label="Close new product form" className="rounded-xl border border-stone-200 p-2 text-stone-600 disabled:opacity-50"><X size={18} /></button>
       </div>
+      {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
-      {error && (
-        <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      <Step number={1} title="Product type">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(["standard", "variable"] as const).map((type) => (
+            <label key={type} className={`cursor-pointer rounded-xl border p-4 ${form.productType === type ? "border-orange-400 bg-orange-50" : "border-stone-200"}`}>
+              <input type="radio" name="productType" value={type} checked={form.productType === type} onChange={() => update("productType", type)} className="accent-orange-600" />
+              <span className="ml-2 font-semibold capitalize text-cocoa-800">{type} product</span>
+              <span className="mt-1 block text-xs text-stone-500">{type === "standard" ? "One price and one stock quantity." : "Sizes/colours with their own prices, stock and barcodes."}</span>
+            </label>
+          ))}
+        </div>
+      </Step>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm">
-          Product name
+      <Step number={2} title="Product details and photos">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-medium text-stone-700">Product name *
+            <input required maxLength={200} value={form.name} onChange={(event) => update("name", event.target.value)} className={inputClass} placeholder="Enter product name" />
+          </label>
+          <label className="block text-sm font-medium text-stone-700">Category *
+            <select required value={form.category} onChange={(event) => update("category", event.target.value)} className={inputClass}>
+              <option value="" disabled>Select category</option>
+              {categories.map((category) => <option key={category.slug} value={category.slug}>{category.name}</option>)}
+            </select>
+          </label>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-stone-700">Product photos (optional)
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={chooseImages} className={inputClass} />
+            </label>
+            <p className="mt-1 text-xs text-stone-500">JPEG, PNG or WEBP · up to eight photos, 5 MB each. No photo? The storefront uses an “Image coming soon” placeholder.</p>
+            {previews.length > 0 && (
+              <ul className="mt-3 flex flex-wrap gap-3">
+                {previews.map((src, index) => (
+                  <li key={src} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Product photo ${index + 1} preview`} className="h-20 w-20 rounded-xl object-cover ring-1 ring-stone-200" />
+                    <button type="button" onClick={() => setImages((current) => current.filter((_, i) => i !== index))} aria-label={`Remove photo ${index + 1}`} className="absolute -right-2 -top-2 rounded-full bg-white p-1 text-red-600 shadow"><X size={13} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </Step>
 
-          <input
-            required
-            value={form.name}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                name: event.target.value,
-              })
-            }
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-          />
-        </label>
+      <Step number={3} title="Barcode · Code 128">
+        <fieldset>
+          <legend className="text-sm font-medium text-stone-700">Does this product already have a barcode? *</legend>
+          <div className="mt-2 flex gap-5 text-sm">
+            <label className="flex items-center gap-2"><input type="radio" name="hasBarcode" checked={form.hasBarcode === true} onChange={() => update("hasBarcode", true)} /> Yes, enter it</label>
+            <label className="flex items-center gap-2"><input type="radio" name="hasBarcode" checked={form.hasBarcode === false} onChange={() => update("hasBarcode", false)} /> No, generate one</label>
+          </div>
+        </fieldset>
+        {form.hasBarcode === true && (
+          <label className="mt-4 block max-w-lg text-sm font-medium text-stone-700">Existing barcode *
+            <input required maxLength={48} value={form.barcode} onChange={(event) => update("barcode", event.target.value)} className={inputClass} placeholder="Scan or enter the barcode" />
+          </label>
+        )}
+        {form.hasBarcode === false && <p className="mt-2 text-sm text-stone-500">A unique, scannable Code 128 label is generated when you save.</p>}
+      </Step>
 
-        <label className="text-sm">
-          Tracepos item code
+      <Step number={4} title="Pricing">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-medium text-stone-700">Purchase cost (₦) *
+            <input required type="number" min="0" step="0.01" value={form.purchaseCost} onChange={(event) => update("purchaseCost", event.target.value)} className={inputClass} placeholder="0.00" />
+            <span className="mt-1 block text-xs font-normal text-stone-500">Private; shoppers will not see this amount.</span>
+          </label>
+          <label className="block text-sm font-medium text-stone-700">Selling price (₦) *
+            <input required type="number" min="0.01" step="0.01" value={form.sellingPrice} onChange={(event) => update("sellingPrice", event.target.value)} className={inputClass} placeholder="0.00" />
+            {variable && <span className="mt-1 block text-xs font-normal text-stone-500">Default price for options without a different price.</span>}
+          </label>
+        </div>
+      </Step>
 
-          <input
-            value={form.traceposItemCode}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                traceposItemCode:
-                  event.target.value,
-              })
-            }
-            placeholder="Exact scanner item code"
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-          />
-        </label>
-
-        <label className="text-sm">
-          Category
-
-          <select
-            value={form.category}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                category:
-                  event.target.value as CategorySlug,
-              })
-            }
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-          >
-            {CATEGORIES.map((category) => (
-              <option
-                key={category.slug}
-                value={category.slug}
-              >
-                {category.name}
-              </option>
+      <Step number={5} title="Stock">
+        {!variable ? (
+          <label className="block max-w-sm text-sm font-medium text-stone-700">Total number in stock *
+            <input required type="number" min="0" step="1" value={form.stock} onChange={(event) => update("stock", event.target.value)} className={inputClass} placeholder="0" />
+          </label>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-stone-600">Total stock: <strong>{totalStock.toLocaleString("en-NG")}</strong> (sum of option stock). Each option gets a unique Code 128 barcode.</p>
+            {form.variants.map((variant, index) => (
+              <fieldset key={index} className="rounded-xl border border-stone-200 bg-stone-50 p-3 sm:p-4">
+                <legend className="px-1 text-sm font-semibold text-cocoa-800">Option {index + 1}</legend>
+                <div className="mb-2 flex justify-end">
+                  <button type="button" onClick={() => update("variants", form.variants.filter((_, i) => i !== index))} className="text-xs font-medium text-red-600 hover:underline">Remove option</button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-xs font-medium text-stone-700">Size
+                    <input value={variant.size} onChange={(event) => updateVariant(index, "size", event.target.value)} maxLength={60} className={inputClass} placeholder="Small / Medium / Large" />
+                  </label>
+                  <label className="block text-xs font-medium text-stone-700">Colour
+                    <input value={variant.color} onChange={(event) => updateVariant(index, "color", event.target.value)} maxLength={60} className={inputClass} placeholder="Red / Blue / Black" />
+                  </label>
+                  <label className="block text-xs font-medium text-stone-700">Selling price (₦), optional override
+                    <input type="number" min="0.01" step="0.01" value={variant.price} onChange={(event) => updateVariant(index, "price", event.target.value)} className={inputClass} placeholder="Use product selling price" />
+                  </label>
+                  <label className="block text-xs font-medium text-stone-700">Number in stock *
+                    <input required type="number" min="0" step="1" value={variant.stock} onChange={(event) => updateVariant(index, "stock", event.target.value)} className={inputClass} placeholder="0" />
+                  </label>
+                  {form.hasBarcode === true && <label className="block text-xs font-medium text-stone-700 sm:col-span-2">Option barcode (optional)
+                    <input maxLength={48} value={variant.barcode} onChange={(event) => updateVariant(index, "barcode", event.target.value)} className={inputClass} placeholder="Leave blank to generate a unique code" />
+                  </label>}
+                </div>
+                <p className="mt-2 text-xs text-stone-500">Enter at least a size or colour. Product photos are used for this option.</p>
+              </fieldset>
             ))}
+            <button type="button" disabled={form.variants.length >= 40} onClick={() => update("variants", [...form.variants, blankVariant()])} className="inline-flex items-center gap-2 rounded-xl border border-orange-300 px-4 py-2 text-sm font-medium text-orange-700 disabled:opacity-50"><Plus size={16} /> Add option</button>
+          </div>
+        )}
+      </Step>
+
+      <Step number={6} title="Units and measurement">
+        <label className="block max-w-sm text-sm font-medium text-stone-700">Unit *
+          <select required value={form.unit} onChange={(event) => update("unit", event.target.value as ProductUnit)} className={inputClass}>
+            {PRODUCT_UNITS.map((unit) => <option key={unit.value} value={unit.value}>{unit.label}</option>)}
           </select>
         </label>
+        <p className="mt-2 text-xs text-stone-500">Stock is counted in whole units of the selection (for example, 3 kg means three 1 kg units).</p>
+      </Step>
 
-        <label className="text-sm">
-          Base price (₦)
-
-          <input
-            required
-            type="number"
-            min="1"
-            value={form.price}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                price: event.target.value,
-              })
-            }
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-          />
+      <Step number={7} title="Product description (optional)">
+        <label className="block text-sm font-medium text-stone-700">Description
+          <textarea value={form.description} onChange={(event) => update("description", event.target.value)} rows={4} maxLength={5000} className={inputClass} placeholder="Describe the product" />
         </label>
-
-        <label className="text-sm">
-          Base stock
-
-          <input
-            type="number"
-            min="0"
-            value={form.stock}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                stock: event.target.value,
-              })
-            }
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-          />
-        </label>
-
-        <div className="sm:col-span-2">
-          <label className="text-sm">
-            Product images
-
-            <input
-              type="text"
-              readOnly
-              placeholder="Click here, then press Ctrl+V to add an image"
-              onPaste={onMainImagePaste}
-              aria-label="Paste product image"
-              className="mt-1 w-full rounded-lg border border-dashed border-cream-300 px-3 py-2 text-sm"
-            />
-
-            <p className="mt-1 text-xs text-stone-500">
-              Choose multiple files below. The first
-              image will be the main product image.
-            </p>
-
-            <input
-              type="file"
-              multiple
-              accept="image/jpeg,image/png,image/webp"
-              onChange={onImageFilesChange}
-              className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-            />
-          </label>
-
-          {imagePreviews.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-3">
-              {imagePreviews.map(
-                (preview, index) => (
-                  <div
-                    key={`${preview}-${index}`}
-                    className="relative"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={preview}
-                      alt={`Product image ${
-                        index + 1
-                      } preview`}
-                      className="h-24 w-24 rounded-xl object-cover ring-1 ring-cream-300"
-                    />
-
-                    {index === 0 && (
-                      <span className="absolute left-1 top-1 rounded bg-cocoa-800 px-1.5 py-0.5 text-[10px] text-white">
-                        Main
-                      </span>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        removeProductImage(index)
-                      }
-                      className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-red-600 text-white"
-                      aria-label={`Remove product image ${
-                        index + 1
-                      }`}
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="sm:col-span-2">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-semibold text-cocoa-800">
-                Product variants
-              </h3>
-
-              <p className="mt-1 text-xs text-stone-500">
-                Add as many size and color variants as
-                needed. Each variant needs its own
-                image.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={addVariant}
-              className="inline-flex items-center gap-1 rounded-full bg-cocoa-800 px-3 py-2 text-xs font-semibold text-cream-50"
-            >
-              <Plus size={14} />
-              Add variant
-            </button>
+        <details className="mt-4 rounded-xl bg-stone-50 p-3 text-sm">
+          <summary className="cursor-pointer font-medium text-cocoa-800">More options (optional)</summary>
+          <div className="mt-3 space-y-3">
+            <label className="block">Short description
+              <input maxLength={500} value={form.short} onChange={(event) => update("short", event.target.value)} className={inputClass} placeholder="Shown on product cards" />
+            </label>
+            <label className="block">Additional delivery note
+              <input maxLength={1000} value={form.deliveryNote} onChange={(event) => update("deliveryNote", event.target.value)} className={inputClass} />
+            </label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.featured} onChange={(event) => update("featured", event.target.checked)} /> Featured on homepage</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.bestseller} onChange={(event) => update("bestseller", event.target.checked)} /> Store bestseller</label>
           </div>
-
-          {form.variants.length === 0 ? (
-            <p className="mt-4 rounded-xl bg-cream-50 px-3 py-3 text-sm text-stone-500">
-              No variants added. This will be treated
-              as a single-option product.
-            </p>
-          ) : (
-            <div className="mt-4 grid gap-3">
-              {form.variants.map(
-                (variant, index) => (
-                  <div
-                    key={index}
-                    className="rounded-2xl bg-cream-50 p-3 ring-1 ring-cream-200"
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gold-600">
-                        Variant {index + 1}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          removeVariant(index)
-                        }
-                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800"
-                      >
-                        <X size={14} />
-                        Remove
-                      </button>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      <label className="text-sm">
-                        Size
-
-                        <input
-                          value={variant.size}
-                          onChange={(event) =>
-                            updateVariant(
-                              index,
-                              "size",
-                              event.target.value
-                            )
-                          }
-                          placeholder="Small, Medium, Large"
-                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                        />
-                      </label>
-
-                      <label className="text-sm">
-                        Color
-
-                        <input
-                          value={variant.color}
-                          onChange={(event) =>
-                            updateVariant(
-                              index,
-                              "color",
-                              event.target.value
-                            )
-                          }
-                          placeholder="Red, Blue, Black"
-                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                        />
-                      </label>
-
-                      <label className="text-sm">
-                        Variant price (₦)
-
-                        <input
-                          type="number"
-                          min="1"
-                          value={variant.price}
-                          onChange={(event) =>
-                            updateVariant(
-                              index,
-                              "price",
-                              event.target.value
-                            )
-                          }
-                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                        />
-                      </label>
-
-                      <label className="text-sm">
-                        Variant stock
-
-                        <input
-                          type="number"
-                          min="0"
-                          value={variant.stock}
-                          onChange={(event) =>
-                            updateVariant(
-                              index,
-                              "stock",
-                              event.target.value
-                            )
-                          }
-                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                        />
-                      </label>
-
-                      <label className="text-sm">
-                        Tracepos item code
-
-                        <input
-                          value={
-                            variant.traceposItemCode
-                          }
-                          onChange={(event) =>
-                            updateVariant(
-                              index,
-                              "traceposItemCode",
-                              event.target.value
-                            )
-                          }
-                          placeholder="Exact scanner code"
-                          className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-                        />
-                      </label>
-
-                      <label className="text-sm">
-                        Variant image
-
-                        <input
-                          type="text"
-                          readOnly
-                          placeholder="Click, then press Ctrl+V"
-                          onPaste={(event) =>
-                            onVariantImagePaste(
-                              index,
-                              event
-                            )
-                          }
-                          className="mt-1 w-full rounded-lg border border-dashed border-cream-300 px-2 py-2 text-xs"
-                        />
-
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          onChange={(event) =>
-                            onVariantFileChange(
-                              index,
-                              event
-                            )
-                          }
-                          className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-2 text-xs"
-                        />
-
-                        {variant.preview && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={variant.preview}
-                            alt={`Variant ${
-                              index + 1
-                            } preview`}
-                            className="mt-2 h-16 w-16 rounded-lg object-cover"
-                          />
-                        )}
-                      </label>
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-        </div>
-
-        <label className="text-sm sm:col-span-2">
-          Short description
-
-          <input
-            value={form.short}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                short: event.target.value,
-              })
-            }
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-            placeholder="One line shown on product cards"
-          />
-        </label>
-
-        <label className="text-sm sm:col-span-2">
-          Full description
-
-          <textarea
-            value={form.description}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                description: event.target.value,
-              })
-            }
-            rows={3}
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-          />
-        </label>
-
-        <label className="text-sm sm:col-span-2">
-          Additional delivery note
-
-          <input
-            value={form.deliveryNote}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                deliveryNote:
-                  event.target.value,
-              })
-            }
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-            placeholder="For example: Large item — please confirm access."
-          />
-        </label>
-
-        <div className="grid gap-3 sm:col-span-2 sm:flex sm:gap-6">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.featured}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  featured:
-                    event.target.checked,
-                })
-              }
-            />
-
-            Featured on homepage
-          </label>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.bestseller}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  bestseller:
-                    event.target.checked,
-                })
-              }
-            />
-
-            Bestseller
-          </label>
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        disabled={busy}
-        className="mt-6 w-full rounded-full bg-terracotta-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60 sm:w-auto"
-      >
-        {busy ? "Saving…" : "Save product"}
+        </details>
+      </Step>
+      <button type="submit" disabled={busy} className="w-full rounded-xl bg-[#ff8200] px-6 py-3 text-sm font-semibold text-white hover:bg-[#e87700] disabled:opacity-50 sm:w-auto">
+        {busy ? "Uploading photos and saving…" : "Save product"}
       </button>
     </form>
   );

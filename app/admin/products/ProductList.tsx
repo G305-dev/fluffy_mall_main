@@ -3,12 +3,17 @@
 import { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import type { Product } from "@/lib/types";
+import type { AdminCategory } from "@/lib/admin-categories";
 import ProductEditor from "./ProductEditor";
 
 export default function ProductList({
   products,
+  categories,
+  costs,
 }: {
   products: Product[];
+  categories: AdminCategory[];
+  costs: Record<string, number>;
 }) {
   const [query, setQuery] = useState("");
 
@@ -72,6 +77,8 @@ export default function ProductList({
               <ProductEditor
                 key={product.id}
                 product={product}
+                categories={categories}
+                initialPurchaseCost={costs[product.id]}
                 mobile
               />
             ))}
@@ -94,6 +101,8 @@ export default function ProductList({
                   <ProductEditor
                     key={product.id}
                     product={product}
+                    categories={categories}
+                    initialPurchaseCost={costs[product.id]}
                   />
                 ))}
               </tbody>

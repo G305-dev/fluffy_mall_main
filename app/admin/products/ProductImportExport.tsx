@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Download, FileSpreadsheet, Upload, X } from "lucide-react";
-import { CATEGORIES } from "@/lib/categories";
+import type { AdminCategory } from "@/lib/admin-categories";
 
 type Report = {
   total: number;
@@ -16,7 +16,7 @@ type Report = {
   error?: string;
 };
 
-export default function ProductImportExport() {
+export default function ProductImportExport({ categories }: { categories: AdminCategory[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -134,7 +134,7 @@ export default function ProductImportExport() {
                 className="mt-1 block w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm"
               >
                 <option value="">Use the category column</option>
-                {CATEGORIES.map((category) => (
+                {categories.map((category) => (
                   <option key={category.slug} value={category.slug}>{category.name}</option>
                 ))}
               </select>

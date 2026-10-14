@@ -1,3 +1,5 @@
+import type { ProductUnit } from "./product-units";
+
 export type CategorySlug =
   | "pantry-storage-organiser"
   | "waste-bin"
@@ -39,7 +41,8 @@ export type CategorySlug =
   | "mixer"
   | "food-processor"
   | "moulds"
-  | "tables";
+  | "tables"
+  | (string & {}); // Categories created in admin also have valid slugs.
 
 export type ProductVariant = {
   id: string;
@@ -50,6 +53,7 @@ export type ProductVariant = {
   stock: number;
   image: string;
   traceposItemCode?: string;
+  barcode?: string; // Code 128 label; independent of any POS item code.
 };
 
 export type Product = {
@@ -68,6 +72,9 @@ export type Product = {
   featured?: boolean;
   bestseller?: boolean;
   traceposItemCode?: string;
+  barcode?: string; // Code 128 label; independent of any POS item code.
+  productType?: "standard" | "variable";
+  unit?: ProductUnit;
 };
 
 export type CartItem = {

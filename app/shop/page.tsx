@@ -1,5 +1,5 @@
 import ProductCard from "@/components/ProductCard";
-import { CATEGORIES } from "@/lib/categories";
+import { getAdminCategories } from "@/lib/admin-categories";
 import { getProducts } from "@/lib/db";
 import Link from "next/link";
 
@@ -11,7 +11,7 @@ export default async function ShopPage({
   searchParams: { q?: string };
 }) {
   const q = (searchParams.q || "").trim().toLowerCase();
-  const products = await getProducts();
+  const [products, categories] = await Promise.all([getProducts(), getAdminCategories()]);
   const filtered = q
     ? products.filter(
         (p) =>
@@ -32,7 +32,7 @@ export default async function ShopPage({
         <Link href="/shop" className="rounded-full bg-cocoa-800 px-3 py-1.5 text-xs text-cream-50">
           All
         </Link>
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <Link
             key={c.slug}
             href={`/shop/${c.slug}`}

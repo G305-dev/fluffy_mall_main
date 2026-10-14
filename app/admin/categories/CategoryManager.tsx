@@ -161,7 +161,7 @@ export default function CategoryManager({
         )}
       </section>
       <p className="text-xs leading-relaxed text-stone-500">
-        Existing categories come from your website list and do not need to be added again. New categories saved here appear in this admin list only; product selection and storefront links are not connected in this step.
+        Existing categories are already included. New categories saved here also become selectable when adding products and appear on the storefront category list.
       </p>
     </>
   );

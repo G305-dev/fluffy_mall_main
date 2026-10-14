@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
   const body = input as Record<string, unknown>;
   try {
     const category = await addAdminCategory({ name: body.name, blurb: body.blurb });
-    revalidatePath("/admin/categories");
+    for (const path of ["/admin/categories", "/admin/products", "/", "/shop", "/sitemap.xml"]) {
+      revalidatePath(path);
+    }
     return NextResponse.json({ category }, { status: 201 });
   } catch (error) {
     if (error instanceof CategoryAlreadyExistsError) {

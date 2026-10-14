@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { CATEGORIES } from "@/lib/categories";
+import type { AdminCategory } from "@/lib/admin-categories";
+import { PRODUCT_UNITS, type ProductUnit } from "@/lib/product-units";
 import type {
   CategorySlug,
   Product,
@@ -44,9 +45,13 @@ async function readApiResponse(
 
 export default function ProductEditor({
   product,
+  categories,
+  initialPurchaseCost,
   mobile = false,
 }: {
   product: Product;
+  categories: AdminCategory[];
+  initialPurchaseCost?: number;
   mobile?: boolean;
 }) {
   const [price, setPrice] =
@@ -54,6 +59,11 @@ export default function ProductEditor({
 
   const [stock, setStock] =
     useState(product.stock);
+
+  const [purchaseCost, setPurchaseCost] = useState(
+    initialPurchaseCost === undefined ? "" : String(initialPurchaseCost)
+  );
+  const [unit, setUnit] = useState<ProductUnit>(product.unit || "pcs");
 
   const [name, setName] =
     useState(product.name);
@@ -118,7 +128,7 @@ export default function ProductEditor({
   }, []);
 
   function handleCategoryChange(value: string) {
-    const nextCategory = CATEGORIES.find(
+    const nextCategory = categories.find(
       (item) => item.slug === value
     );
 
@@ -207,6 +217,9 @@ export default function ProductEditor({
     setError(null);
 
     try {
+      if (purchaseCost.trim() && (!Number.isFinite(Number(purchaseCost)) || Number(purchaseCost) < 0)) {
+        throw new Error("Purchase cost must be zero or more.");
+      }
       const response = await fetch(
         "/api/admin/products",
         {
@@ -218,6 +231,8 @@ export default function ProductEditor({
             id: product.id,
             price,
             stock,
+            purchaseCost: purchaseCost.trim() ? Number(purchaseCost) : undefined,
+            unit,
             name: name.trim(),
             category,
             featured,
@@ -750,12 +765,12 @@ export default function ProductEditor({
                   }
                   className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
                 >
-                  {!CATEGORIES.some((item) => item.slug === category) && (
+                  {!categories.some((item) => item.slug === category) && (
                     <option value={category} disabled>
                       Choose a new category (was {category})
                     </option>
                   )}
-                  {CATEGORIES.map((item) => (
+                  {categories.map((item) => (
                     <option
                       key={item.slug}
                       value={item.slug}
@@ -803,11 +818,12 @@ export default function ProductEditor({
           </label>
 
           <label className="text-xs text-stone-500">
-            Stock
+            {product.variants.length ? "Total option stock" : "Stock"}
 
             <input
               type="number"
-              value={stock}
+              disabled={product.variants.length > 0}
+              value={product.variants.length ? product.variants.reduce((sum, variant) => sum + variant.stock, 0) : stock}
               onChange={(event) =>
                 setStock(
                   Number(event.target.value)
@@ -815,6 +831,14 @@ export default function ProductEditor({
               }
               className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
             />
+          </label>
+          <label className="text-xs text-stone-500">Purchase cost (₦)
+            <input type="number" min="0" step="0.01" value={purchaseCost} onChange={(event) => setPurchaseCost(event.target.value)} className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm" placeholder="Not set" />
+          </label>
+          <label className="text-xs text-stone-500">Unit
+            <select value={unit} onChange={(event) => setUnit(event.target.value as ProductUnit)} className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm">
+              {PRODUCT_UNITS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
           </label>
         </div>
 
@@ -921,12 +945,12 @@ export default function ProductEditor({
               }
               className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-xs"
             >
-              {!CATEGORIES.some((item) => item.slug === category) && (
+              {!categories.some((item) => item.slug === category) && (
                 <option value={category} disabled>
                   Choose a new category (was {category})
                 </option>
               )}
-              {CATEGORIES.map((item) => (
+              {categories.map((item) => (
                 <option
                   key={item.slug}
                   value={item.slug}
@@ -950,12 +974,16 @@ export default function ProductEditor({
           }
           className="w-24 rounded-lg border border-cream-300 px-2 py-1 text-sm"
         />
+        <label className="mt-2 block text-xs text-stone-500">Purchase cost (₦)
+          <input type="number" min="0" step="0.01" value={purchaseCost} onChange={(event) => setPurchaseCost(event.target.value)} className="mt-1 w-24 rounded-lg border border-cream-300 px-2 py-1 text-sm" placeholder="Not set" />
+        </label>
       </td>
 
       <td className="p-3 align-top">
         <input
           type="number"
-          value={stock}
+          disabled={product.variants.length > 0}
+          value={product.variants.length ? product.variants.reduce((sum, variant) => sum + variant.stock, 0) : stock}
           onChange={(event) =>
             setStock(
               Number(event.target.value)
@@ -963,6 +991,11 @@ export default function ProductEditor({
           }
           className="w-16 rounded-lg border border-cream-300 px-2 py-1 text-sm"
         />
+        <label className="mt-2 block text-xs text-stone-500">Unit
+          <select value={unit} onChange={(event) => setUnit(event.target.value as ProductUnit)} className="mt-1 w-28 rounded-lg border border-cream-300 px-2 py-1 text-xs">
+            {PRODUCT_UNITS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
       </td>
 
       <td className="p-3 align-top">

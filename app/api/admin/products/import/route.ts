@@ -2,8 +2,11 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
-import { CATEGORIES } from "@/lib/categories";
+import { getAdminCategories, type AdminCategory } from "@/lib/admin-categories";
 import { getProducts } from "@/lib/db";
+import { code128Text, claimBarcode, existingBarcodes } from "@/lib/product-barcodes";
+import { isProductUnit } from "@/lib/product-units";
+import { saveProductCosts } from "@/lib/product-costs";
 import { getDb, COLLECTIONS } from "@/lib/mongo";
 import { normalizeTraceposCode } from "@/lib/tracepos";
 import { readProductSheet } from "@/lib/product-spreadsheet";
@@ -35,9 +38,9 @@ function flag(value: string) {
   throw new Error(`Invalid yes/no value: ${value.slice(0, 30)}`);
 }
 
-function categoryFrom(value: string): CategorySlug | null {
+function categoryFrom(value: string, categories: AdminCategory[]): CategorySlug | null {
   const normalized = value.trim().toLowerCase();
-  return CATEGORIES.find((category) =>
+  return categories.find((category) =>
     category.slug === normalized || category.name.toLowerCase() === normalized
   )?.slug || null;
 }
@@ -91,6 +94,7 @@ function readVariants(value: string, productId: string, mainImage: string): Prod
       stock,
       image,
       traceposItemCode: String(raw.traceposItemCode ?? "").trim() || undefined,
+      barcode: raw.barcode ? code128Text(raw.barcode) : undefined,
     };
   });
 }
@@ -111,8 +115,9 @@ export async function POST(req: NextRequest) {
     if (!(file instanceof File) || !file.size || file.size > MAX_BYTES) {
       return NextResponse.json({ error: "Choose a non-empty CSV or XLSX file under 5 MB." }, { status: 400 });
     }
+    const categories = await getAdminCategories();
     const defaultCategory = String(form.get("defaultCategory") || "").trim();
-    if (defaultCategory && !categoryFrom(defaultCategory)) {
+    if (defaultCategory && !categoryFrom(defaultCategory, categories)) {
       return NextResponse.json({ error: "Unknown default category." }, { status: 400 });
     }
 
@@ -125,6 +130,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not load existing products." }, { status: 500 });
     }
     const usedCodes = new Set<string>();
+    const usedBarcodes = existingBarcodes(existing);
+    const purchaseCosts: Record<string, number> = {};
     const usedNames = new Set<string>();
     const usedSlugs = new Set(existing.map((product) => product.slug));
     for (const product of existing) {
@@ -153,7 +160,7 @@ export async function POST(req: NextRequest) {
           duplicates.push({ row: line, message: `A product named ${name} already exists without an item code.` });
           continue;
         }
-        const category = categoryFrom(fields.category || defaultCategory);
+        const category = categoryFrom(fields.category || defaultCategory, categories);
         if (!category) throw new Error("Choose a valid category in the sheet or the default category selector.");
         const price = numberField(fields.price, "Price");
         const stock = fields.stock ? numberField(fields.stock, "Stock", true) : 0;
@@ -164,6 +171,16 @@ export async function POST(req: NextRequest) {
         const bestseller = flag(fields.bestseller);
         const productId = `p-${randomUUID().replace(/-/g, "").slice(0, 20)}`;
         const variants = readVariants(fields.variants_json, productId, images[0]);
+        const barcode = fields.barcode.trim() ? code128Text(fields.barcode) : undefined;
+        const rowBarcodes = [barcode, ...variants.map((variant) => variant.barcode)].filter((value): value is string => Boolean(value));
+        const checkedBarcodes = new Set(usedBarcodes);
+        for (const value of rowBarcodes) claimBarcode(value, checkedBarcodes);
+        const unit = fields.unit.trim().toLowerCase() || "pcs";
+        if (!isProductUnit(unit)) throw new Error("Choose a valid unit (pcs, kg, g, l, ml, pack, box, set, pair or dozen).");
+        const productType = fields.product_type.trim().toLowerCase() || (variants.length ? "variable" : "standard");
+        if (productType !== "standard" && productType !== "variable") throw new Error("Product type must be standard or variable.");
+        if ((productType === "variable") !== (variants.length > 0)) throw new Error("Variable products need options; standard products cannot have options.");
+        const purchaseCost = fields.purchase_cost.trim() ? numberField(fields.purchase_cost, "Purchase cost", true) : undefined;
         const rowCodes = [code, ...variants.map((variant) => normalizeTraceposCode(variant.traceposItemCode))].filter(Boolean);
         if (new Set(rowCodes).size !== rowCodes.length || rowCodes.some((itemCode) => usedCodes.has(itemCode))) {
           throw new Error("A product or variant item code is duplicated.");
@@ -175,6 +192,8 @@ export async function POST(req: NextRequest) {
         usedSlugs.add(slug);
         usedNames.add(name.toLowerCase());
         rowCodes.forEach((itemCode) => usedCodes.add(itemCode));
+        rowBarcodes.forEach((value) => usedBarcodes.add(value));
+        if (purchaseCost !== undefined) purchaseCosts[productId] = purchaseCost;
         candidates.push({
           id: productId,
           slug,
@@ -182,8 +201,11 @@ export async function POST(req: NextRequest) {
           traceposItemCode: fields.item_code.trim() || undefined,
           category,
           price,
+          unit,
+          productType,
+          barcode,
           compareAt,
-          stock,
+          stock: variants.length ? variants.reduce((sum, variant) => sum + variant.stock, 0) : stock,
           images,
           short: fields.short.slice(0, 500),
           description: fields.description.slice(0, 5000),
@@ -222,6 +244,8 @@ export async function POST(req: NextRequest) {
 
     // Only insert new records. Never use saveProducts here: it rewrites/deletes the collection.
     try {
+      // Write private costs first; a partial import never exposes costs to shoppers.
+      await saveProductCosts(purchaseCosts);
       const db = await getDb();
       await db.collection(COLLECTIONS.PRODUCTS).insertMany(
         candidates.map((product, index) => ({ ...product, sortOrder: existing.length + index })),

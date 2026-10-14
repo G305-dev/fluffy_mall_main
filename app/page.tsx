@@ -1,7 +1,7 @@
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import CategoryProductRail from "@/components/CategoryProductRail";
-import { CATEGORIES } from "@/lib/categories";
+import { getAdminCategories } from "@/lib/admin-categories";
 import { getProducts } from "@/lib/db";
 import settings from "@/data/settings.json";
 import {
@@ -14,7 +14,7 @@ import HeroSlideshow from "@/components/HeroSlideshow";
 import NewsletterPopup from "@/components/NewsletterPopup";
 
 export default async function HomePage() {
-  const products = await getProducts();
+  const [products, categories] = await Promise.all([getProducts(), getAdminCategories()]);
 
   const featured = products
     .filter((product) => product.featured)
@@ -168,7 +168,7 @@ export default async function HomePage() {
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 lg:grid-cols-5">
-          {CATEGORIES.slice(0, 9).map(
+          {categories.slice(0, 9).map(
             (category, index) => (
               <Link
                 key={category.slug}
@@ -208,7 +208,7 @@ export default async function HomePage() {
             </p>
 
             <p className="mt-1 text-xs text-cream-100/80">
-              Browse all {CATEGORIES.length} categories
+              Browse all {categories.length} categories
             </p>
           </Link>
         </div>
@@ -217,7 +217,7 @@ export default async function HomePage() {
       {/* Jumia-style product rails */}
       <section className="mx-auto max-w-6xl px-4 pb-10 sm:px-6 lg:px-8">
         <div className="space-y-6">
-          {CATEGORIES.map((category, index) => {
+          {categories.map((category, index) => {
             const categoryProducts = products
               .filter(
                 (product) =>

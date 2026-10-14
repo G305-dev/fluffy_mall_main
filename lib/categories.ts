@@ -260,6 +260,6 @@ export function categoryName(slug: string) {
   return (
     CATEGORIES.find(
       (category) => category.slug === slug
-    )?.name ?? slug
+    )?.name ?? slug.split("-").map((word) => word ? word[0].toUpperCase() + word.slice(1) : "").join(" ")
   );
 }

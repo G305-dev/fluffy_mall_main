@@ -7,7 +7,9 @@ import {
   getProducts,
   saveProducts,
 } from "@/lib/db";
-import { CATEGORIES } from "@/lib/categories";
+import { getAdminCategories } from "@/lib/admin-categories";
+import { deleteProductCost, saveProductCost } from "@/lib/product-costs";
+import { isProductUnit } from "@/lib/product-units";
 import { COLLECTIONS, getDb } from "@/lib/mongo";
 import type {
   CategorySlug,
@@ -225,11 +227,7 @@ export async function POST(
   const category =
     String(body.category || "") as CategorySlug;
 
-  if (
-    !CATEGORIES.some(
-      (item) => item.slug === category
-    )
-  ) {
+  if (!(await getAdminCategories()).some((item) => item.slug === category)) {
     return NextResponse.json(
       {
         error: "Unknown category.",
@@ -363,6 +361,17 @@ export async function PATCH(
   const body = await req.json();
   const products = await getProducts();
 
+  if (body.unit !== undefined && !isProductUnit(body.unit)) {
+    return NextResponse.json({ error: "Choose a valid unit." }, { status: 400 });
+  }
+  const cost = body.purchaseCost;
+  if (cost !== undefined && (
+    (typeof cost !== "string" && typeof cost !== "number") ||
+    String(cost).trim() === "" || !Number.isFinite(Number(cost)) || Number(cost) < 0
+  )) {
+    return NextResponse.json({ error: "Purchase cost must be zero or more." }, { status: 400 });
+  }
+
   const index = products.findIndex(
     (product) => product.id === body.id
   );
@@ -403,11 +412,7 @@ export async function PATCH(
     const requestedCategory =
       String(body.category).trim() as CategorySlug;
 
-    if (
-      !CATEGORIES.some(
-        (item) => item.slug === requestedCategory
-      )
-    ) {
+    if (!(await getAdminCategories()).some((item) => item.slug === requestedCategory)) {
       return NextResponse.json(
         { error: "Unknown category." },
         { status: 400 }
@@ -488,11 +493,12 @@ export async function PATCH(
       body.price ?? products[index].price
     ),
 
-    stock: Number(
-      body.stock ?? products[index].stock
-    ),
+    stock: variants.length
+      ? variants.reduce((sum, variant) => sum + variant.stock, 0)
+      : Number(body.stock ?? products[index].stock),
 
     category: nextCategory,
+    unit: body.unit !== undefined ? body.unit : products[index].unit,
 
     featured:
       body.featured !== undefined
@@ -516,6 +522,7 @@ export async function PATCH(
   };
 
   await saveProducts(products);
+  if (cost !== undefined) await saveProductCost(products[index].id, Number(cost));
 
   // A legacy product may still have a stored subtype until migration.
   // Saving an explicit flat category clears it in MongoDB too; $set
@@ -570,6 +577,7 @@ export async function DELETE(
     products.splice(index, 1);
 
   await saveProducts(products);
+  await deleteProductCost(removed.id).catch((error) => console.error("[delete product cost]", error));
 
   return NextResponse.json({
     ok: true,
