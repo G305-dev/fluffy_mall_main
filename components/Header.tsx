@@ -35,6 +35,8 @@ const CATEGORY_SUGGESTIONS: SearchSuggestion[] =
     blurb: category.blurb,
   }));
 
+const HEADER_CATEGORIES = CATEGORIES.slice(0, 5);
+
 function normalizeSearchText(value: string) {
   return value
     .toLowerCase()
@@ -440,17 +442,27 @@ export default function Header() {
         </div>
       </div>
 
-      <nav className="hidden border-t border-cream-200 lg:block">
-        <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto whitespace-nowrap px-6 py-2 text-sm lg:px-8">
-          {CATEGORIES.map((category) => (
+      <nav
+        aria-label="Product categories"
+        className="hidden border-t border-cream-200 lg:block"
+      >
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-1 gap-y-2 px-6 py-2 text-sm lg:px-8">
+          {HEADER_CATEGORIES.map((category) => (
             <Link
               key={category.slug}
               href={`/shop/${category.slug}`}
-              className="whitespace-nowrap rounded-full px-3 py-1.5 text-cocoa-700 hover:bg-cream-100"
+              className="rounded-full px-3 py-1.5 text-cocoa-700 hover:bg-cream-100"
             >
               {category.name}
             </Link>
           ))}
+
+          <Link
+            href="/shop"
+            className="ml-auto rounded-full px-3 py-1.5 font-semibold text-terracotta-600 hover:bg-cream-100"
+          >
+            See all
+          </Link>
         </div>
       </nav>
 
@@ -513,22 +525,32 @@ export default function Header() {
                 aria-label="Product categories"
                 className="grid gap-2 text-base"
               >
-                {CATEGORIES.map((category) => (
-                  <Link
-                    key={category.slug}
-                    href={`/shop/${category.slug}`}
-                    className="flex items-center gap-3 rounded-xl border border-cream-200 bg-white px-3 py-3 font-medium text-cocoa-800 hover:bg-cream-100"
-                  >
-                    <span
-                      className="text-xl"
-                      aria-hidden="true"
+                {HEADER_CATEGORIES.map(
+                  (category) => (
+                    <Link
+                      key={category.slug}
+                      href={`/shop/${category.slug}`}
+                      className="flex items-center gap-3 rounded-xl border border-cream-200 bg-white px-3 py-3 font-medium text-cocoa-800 hover:bg-cream-100"
                     >
-                      {category.emoji}
-                    </span>
+                      <span
+                        className="text-xl"
+                        aria-hidden="true"
+                      >
+                        {category.emoji}
+                      </span>
 
-                    {category.name}
-                  </Link>
-                ))}
+                      {category.name}
+                    </Link>
+                  )
+                )}
+
+                <Link
+                  href="/shop"
+                  className="flex items-center justify-between rounded-xl border border-cream-200 bg-white px-3 py-3 font-semibold text-terracotta-600 hover:bg-cream-100"
+                >
+                  See all
+                  <span aria-hidden="true">→</span>
+                </Link>
               </nav>
 
               <div className="mt-5 grid gap-2 border-t border-cream-200 pt-4 text-base">

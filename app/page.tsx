@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import firstOrderBanner from "@/previews/first-order-5-percent-banner.jpg";
 import ProductCard from "@/components/ProductCard";
 import CategoryProductRail from "@/components/CategoryProductRail";
 import { CATEGORIES } from "@/lib/categories";
@@ -27,6 +29,30 @@ export default async function HomePage() {
   return (
     <div>
       <NewsletterPopup />
+
+      {/* New-customer offer above the hero */}
+      <section className="mx-auto max-w-6xl px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6 lg:px-8">
+        <Link
+          href="/shop"
+          aria-label="Shop now: 5% off your first signed-in order for new customers"
+          className="animate-hero animate-hero-1 group block overflow-hidden rounded-2xl bg-[#ff8a00] shadow-card ring-1 ring-cream-200"
+        >
+          <Image
+            src={firstOrderBanner}
+            alt=""
+            priority
+            sizes="(max-width: 1152px) 100vw, 1152px"
+            className="h-auto w-full transition-transform duration-500 group-hover:scale-[1.01] motion-reduce:transition-none"
+          />
+
+          <span className="block bg-cocoa-800 px-4 py-2 text-center text-xs font-semibold text-white sm:hidden">
+            5% off your first signed-in order for new customers
+            <span className="ml-2 text-gold-400">
+              Shop now →
+            </span>
+          </span>
+        </Link>
+      </section>
 
       {/* Mobile and tablet hero */}
       <section className="relative min-h-[560px] overflow-hidden sm:min-h-[650px] lg:hidden">
@@ -90,7 +116,7 @@ export default async function HomePage() {
 
                 <Link
                   href="/contact"
-                  className="btn-pop rounded-full bg-cocoa-800 px-6 py-3 text-center text-sm font-semibold text-cream-50"
+                  className="btn-pop rounded-full bg-cocoa-800 px-6 py-3 text-sm font-semibold text-cream-50"
                 >
                   Visit 30A Oseni Street
                 </Link>
@@ -136,48 +162,81 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Category links */}
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14 lg:px-8">
-        <div className="reveal flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-gold-600">
-              Shop from categories
-            </p>
+      {/* Store bestsellers */}
+      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <h2 className="reveal font-display text-3xl text-cocoa-800">
+          Store bestsellers
+        </h2>
 
-            <h2 className="mt-2 font-display text-3xl text-cocoa-800">
-              Categories
-            </h2>
-          </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 md:grid-cols-4">
+          {bestsellers.map((product, index) => (
+            <div
+              key={product.id}
+              className="reveal"
+              data-reveal-delay={index * 90}
+            >
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Category links: nine categories plus a View all box */}
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14 lg:px-8">
+        <div className="reveal">
+          <p className="text-xs uppercase tracking-[0.22em] text-gold-600">
+            Shop from categories
+          </p>
+
+          <h2 className="mt-2 font-display text-3xl text-cocoa-800">
+            Categories
+          </h2>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 lg:grid-cols-5">
+          {CATEGORIES.slice(0, 9).map(
+            (category, index) => (
+              <Link
+                key={category.slug}
+                href={`/shop/${category.slug}`}
+                data-reveal-delay={index * 70}
+                className="reveal hover-lift min-w-0 rounded-2xl bg-white p-3 shadow-soft ring-1 ring-cream-200 sm:p-4"
+              >
+                <span className="text-2xl">
+                  {category.emoji}
+                </span>
+
+                <p className="mt-3 font-display text-base leading-snug text-cocoa-800">
+                  {category.name}
+                </p>
+
+                <p className="mt-1 text-xs text-cocoa-700/70">
+                  {category.blurb}
+                </p>
+              </Link>
+            )
+          )}
 
           <Link
             href="/shop"
-            className="text-sm text-terracotta-600"
+            data-reveal-delay={9 * 70}
+            className="reveal hover-lift flex min-w-0 flex-col rounded-2xl bg-cocoa-800 p-3 text-cream-50 shadow-soft sm:p-4"
           >
-            View all
-          </Link>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-3 lg:grid-cols-6">
-          {CATEGORIES.map((category, index) => (
-            <Link
-              key={category.slug}
-              href={`/shop/${category.slug}`}
-              data-reveal-delay={index * 70}
-              className="reveal hover-lift min-w-0 rounded-2xl bg-white p-3 shadow-soft ring-1 ring-cream-200 sm:p-4"
+            <span
+              className="text-2xl"
+              aria-hidden="true"
             >
-              <span className="text-2xl">
-                {category.emoji}
-              </span>
+              →
+            </span>
 
-              <p className="mt-3 font-display text-base leading-snug text-cocoa-800">
-                {category.name}
-              </p>
+            <p className="mt-auto pt-3 font-display text-base leading-snug">
+              View all
+            </p>
 
-              <p className="mt-1 text-xs text-cocoa-700/70">
-                {category.blurb}
-              </p>
-            </Link>
-          ))}
+            <p className="mt-1 text-xs text-cream-100/80">
+              Browse all {CATEGORIES.length} categories
+            </p>
+          </Link>
         </div>
       </section>
 
@@ -205,25 +264,6 @@ export default async function HomePage() {
               />
             );
           })}
-        </div>
-      </section>
-
-      {/* Bestsellers immediately after the final category rail */}
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <h2 className="reveal font-display text-3xl text-cocoa-800">
-          Store bestsellers
-        </h2>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 md:grid-cols-4">
-          {bestsellers.map((product, index) => (
-            <div
-              key={product.id}
-              className="reveal"
-              data-reveal-delay={index * 90}
-            >
-              <ProductCard product={product} />
-            </div>
-          ))}
         </div>
       </section>
 
