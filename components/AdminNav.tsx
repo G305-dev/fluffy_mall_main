@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Bell,
+  ChevronDown,
   ExternalLink,
   LayoutDashboard,
   LogOut,
@@ -23,10 +24,21 @@ import {
 
 const PRIMARY_LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
-  { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+];
+
+const INVENTORY_SECTIONS: Array<{ label: string; href?: string }> = [
+  { label: "Overview", href: "/admin/inventory" },
+  { label: "Products", href: "/admin/products" },
+  { label: "Categories" },
+  { label: "Brands" },
+  { label: "Variants" },
+  { label: "Batch management" },
+  { label: "Stock transfer" },
+  { label: "Stock adjustment" },
+  { label: "Price adjustment" },
+  { label: "Print barcode" },
 ];
 
 const OTHER_LINKS = [
@@ -35,7 +47,13 @@ const OTHER_LINKS = [
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-const ALL_LINKS = [...PRIMARY_LINKS, ...OTHER_LINKS];
+const ALL_LINKS = [
+  PRIMARY_LINKS[0],
+  { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
+  { href: "/admin/products", label: "Products", icon: Package },
+  ...PRIMARY_LINKS.slice(1),
+  ...OTHER_LINKS,
+];
 const storeUrl = process.env.NEXT_PUBLIC_APP_URL || "https://fluffynyummystore.com";
 
 function Brand({ onNavigate }: { onNavigate?: () => void }) {
@@ -68,10 +86,21 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
 function NavigationLinks({
   pathname,
   onNavigate,
+  menuId,
 }: {
   pathname: string;
   onNavigate?: () => void;
+  menuId: string;
 }) {
+  const inventoryActive =
+    pathname === "/admin/inventory" || pathname.startsWith("/admin/inventory/") ||
+    pathname === "/admin/products" || pathname.startsWith("/admin/products/");
+  const [inventoryOpen, setInventoryOpen] = useState(inventoryActive);
+
+  useEffect(() => {
+    if (inventoryActive) setInventoryOpen(true);
+  }, [inventoryActive]);
+
   const renderLink = ({
     href,
     label,
@@ -104,8 +133,56 @@ function NavigationLinks({
       <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
         Workspace
       </p>
-      {PRIMARY_LINKS.map(renderLink)}
+      {renderLink(PRIMARY_LINKS[0])}
 
+      <button
+        type="button"
+        onClick={() => setInventoryOpen((open) => !open)}
+        aria-expanded={inventoryOpen}
+        aria-controls={menuId}
+        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+          inventoryActive ? "text-orange-700" : "text-stone-600"
+        }`}
+      >
+        <Warehouse size={18} strokeWidth={1.8} aria-hidden="true" />
+        <span className="flex-1">Inventory</span>
+        <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${inventoryOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {inventoryOpen && (
+        <div id={menuId} className="ml-5 space-y-0.5 border-l border-orange-200 pl-3">
+          {INVENTORY_SECTIONS.map((section) => {
+            if (!section.href) {
+              return (
+                <span
+                  key={section.label}
+                  aria-disabled="true"
+                  title="Coming soon"
+                  className="flex items-center justify-between gap-1 rounded-lg px-2 py-1.5 text-xs text-stone-400"
+                >
+                  <span>{section.label}</span><span className="text-[10px]">Soon</span>
+                </span>
+              );
+            }
+            const active = pathname === section.href || pathname.startsWith(`${section.href}/`);
+            return (
+              <Link
+                key={section.label}
+                href={section.href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                className={`block rounded-lg px-2 py-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                  active ? "bg-orange-100 text-orange-800" : "text-stone-600 hover:bg-orange-50"
+                }`}
+              >
+                {section.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {PRIMARY_LINKS.slice(1).map(renderLink)}
       <div className="my-5 border-t border-stone-200" />
       <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
         Tools
@@ -215,7 +292,7 @@ export default function AdminNav({ children }: { children: React.ReactNode }) {
         <aside className="hidden w-60 shrink-0 border-r border-stone-200 bg-[#f8f8f8] lg:block">
           <div className="sticky top-0 flex h-screen flex-col overflow-y-auto p-4 xl:p-5">
             <div className="px-2 pt-2"><Brand /></div>
-            <NavigationLinks pathname={pathname} />
+            <NavigationLinks pathname={pathname} menuId="desktop-inventory-menu" />
             <SidebarFooter />
           </div>
         </aside>
@@ -334,7 +411,7 @@ export default function AdminNav({ children }: { children: React.ReactNode }) {
                 <X size={20} aria-hidden="true" />
               </button>
             </div>
-            <NavigationLinks pathname={pathname} onNavigate={closeMenu} />
+            <NavigationLinks pathname={pathname} onNavigate={closeMenu} menuId="mobile-inventory-menu" />
             <SidebarFooter />
           </aside>
         </div>

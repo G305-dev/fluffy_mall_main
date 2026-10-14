@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Product image coming soon</title>
+  <desc id="desc">A neutral illustration shown until a product photograph is uploaded.</desc>
+  <rect width="800" height="1000" fill="#FFF4E8"/>
+  <rect x="92" y="205" width="616" height="490" rx="36" fill="#FFE4C9" stroke="#F5C99F" stroke-width="6"/>
+  <circle cx="574" cy="335" r="48" fill="#F6BE8C"/>
+  <path d="M144 635 316 438l124 128 77-77 140 146Z" fill="#EAA96C"/>
+  <path d="M144 635 316 438l124 128 77-77 140 146" fill="none" stroke="#C87F43" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="400" y="780" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="39" fill="#7C4B2B">Image coming soon</text>
+  <text x="400" y="830" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#A5734D">Fluffy&apos;n&apos;Yummy Mall</text>
+</svg>
