@@ -8,6 +8,7 @@ import {
   saveProducts,
 } from "@/lib/db";
 import { CATEGORIES } from "@/lib/categories";
+import { COLLECTIONS, getDb } from "@/lib/mongo";
 import type {
   CategorySlug,
   Product,
@@ -309,11 +310,6 @@ export async function POST(
     price,
     category,
 
-    subcategory:
-      String(
-        body.subcategory || ""
-      ).trim() || undefined,
-
     featured: Boolean(body.featured),
     bestseller: Boolean(body.bestseller),
 
@@ -403,75 +399,22 @@ export async function PATCH(
   let nextCategory: CategorySlug =
     products[index].category;
 
-  let nextSubcategory =
-    products[index].subcategory;
-
   if (body.category !== undefined) {
     const requestedCategory =
       String(body.category).trim() as CategorySlug;
 
-    const categoryDefinition =
-      CATEGORIES.find(
-        (item) =>
-          item.slug === requestedCategory
-      );
-
-    if (!categoryDefinition) {
+    if (
+      !CATEGORIES.some(
+        (item) => item.slug === requestedCategory
+      )
+    ) {
       return NextResponse.json(
-        {
-          error: "Unknown category.",
-        },
+        { error: "Unknown category." },
         { status: 400 }
       );
     }
 
     nextCategory = requestedCategory;
-
-    if (body.subcategory === undefined) {
-      const currentSubcategoryIsValid =
-        typeof nextSubcategory === "string" &&
-        categoryDefinition.subcategories.includes(
-          nextSubcategory
-        );
-
-      nextSubcategory =
-        currentSubcategoryIsValid
-          ? nextSubcategory
-          : categoryDefinition.subcategories[0] ||
-            undefined;
-    }
-  }
-
-  if (body.subcategory !== undefined) {
-    const categoryDefinition =
-      CATEGORIES.find(
-        (item) =>
-          item.slug === nextCategory
-      );
-
-    const requestedSubcategory =
-      String(
-        body.subcategory ?? ""
-      ).trim();
-
-    if (
-      requestedSubcategory &&
-      (!categoryDefinition ||
-        !categoryDefinition.subcategories.includes(
-          requestedSubcategory
-        ))
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Invalid subcategory for this category.",
-        },
-        { status: 400 }
-      );
-    }
-
-    nextSubcategory =
-      requestedSubcategory || undefined;
   }
 
   if (
@@ -550,7 +493,6 @@ export async function PATCH(
     ),
 
     category: nextCategory,
-    subcategory: nextSubcategory,
 
     featured:
       body.featured !== undefined
@@ -574,6 +516,24 @@ export async function PATCH(
   };
 
   await saveProducts(products);
+
+  // A legacy product may still have a stored subtype until migration.
+  // Saving an explicit flat category clears it in MongoDB too; $set
+  // alone would leave the old field behind.
+  if (body.category !== undefined) {
+    const db = await getDb();
+
+    await db.collection(COLLECTIONS.PRODUCTS).updateOne(
+      { id: products[index].id },
+      { $unset: { subcategory: "" } }
+    );
+
+    delete (
+      products[index] as Product & {
+        subcategory?: unknown;
+      }
+    ).subcategory;
+  }
 
   return NextResponse.json({
     product: products[index],

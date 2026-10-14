@@ -25,17 +25,15 @@ import { useWishlist } from "./WishlistProvider";
 type SearchSuggestion = {
   categorySlug: string;
   categoryName: string;
-  subcategory: string;
+  blurb: string;
 };
 
-const SUBCATEGORY_SUGGESTIONS: SearchSuggestion[] =
-  CATEGORIES.flatMap((category) =>
-    category.subcategories.map((subcategory) => ({
-      categorySlug: category.slug,
-      categoryName: category.name,
-      subcategory,
-    }))
-  );
+const CATEGORY_SUGGESTIONS: SearchSuggestion[] =
+  CATEGORIES.map((category) => ({
+    categorySlug: category.slug,
+    categoryName: category.name,
+    blurb: category.blurb,
+  }));
 
 function normalizeSearchText(value: string) {
   return value
@@ -55,11 +53,11 @@ function getSearchSuggestions(query: string) {
   const queryWords =
     normalizedQuery.split(" ");
 
-  return SUBCATEGORY_SUGGESTIONS.filter(
+  return CATEGORY_SUGGESTIONS.filter(
     (suggestion) => {
       const searchableText =
         normalizeSearchText(
-          `${suggestion.subcategory} ${suggestion.categoryName}`
+          `${suggestion.categoryName} ${suggestion.categorySlug} ${suggestion.blurb}`
         );
 
       return (
@@ -75,9 +73,7 @@ function getSearchSuggestions(query: string) {
 function getSuggestionUrl(
   suggestion: SearchSuggestion
 ) {
-  return `/shop/${suggestion.categorySlug}?subcategory=${encodeURIComponent(
-    suggestion.subcategory
-  )}`;
+  return `/shop/${suggestion.categorySlug}`;
 }
 
 function RelatedSearchSuggestions({
@@ -107,7 +103,7 @@ function RelatedSearchSuggestions({
           <div className="grid gap-1">
             {suggestions.map((suggestion) => (
               <Link
-                key={`${suggestion.categorySlug}-${suggestion.subcategory}`}
+                key={suggestion.categorySlug}
                 href={getSuggestionUrl(
                   suggestion
                 )}
@@ -116,11 +112,11 @@ function RelatedSearchSuggestions({
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold text-cocoa-800">
-                    {suggestion.subcategory}
+                    {suggestion.categoryName}
                   </span>
 
                   <span className="block truncate text-xs text-cocoa-700/60">
-                    {suggestion.categoryName}
+                    {suggestion.blurb}
                   </span>
                 </span>
 
@@ -244,10 +240,13 @@ export default function Header() {
     const query = q.trim();
 
     const exactSuggestion =
-      SUBCATEGORY_SUGGESTIONS.find(
+      CATEGORY_SUGGESTIONS.find(
         (suggestion) =>
           normalizeSearchText(
-            suggestion.subcategory
+            suggestion.categoryName
+          ) === normalizeSearchText(query) ||
+          normalizeSearchText(
+            suggestion.categorySlug
           ) === normalizeSearchText(query)
       );
 
@@ -442,7 +441,7 @@ export default function Header() {
       </div>
 
       <nav className="hidden border-t border-cream-200 lg:block">
-        <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-1 px-6 py-2 text-sm lg:px-8">
+        <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto whitespace-nowrap px-6 py-2 text-sm lg:px-8">
           {CATEGORIES.map((category) => (
             <Link
               key={category.slug}

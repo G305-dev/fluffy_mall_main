@@ -114,8 +114,7 @@ export default function ProductCard({
         className="flex min-h-0 min-w-0 flex-1 flex-col p-3 sm:p-4"
       >
         <p className="line-clamp-2 break-words text-[9px] uppercase tracking-[0.12em] text-gold-600 sm:text-[11px] sm:tracking-[0.18em]">
-          {product.subcategory ||
-            categoryName(product.category)}
+          {categoryName(product.category)}
         </p>
 
         <h3 className="mt-1 line-clamp-2 break-words font-display text-base leading-snug text-cocoa-800 sm:text-lg">

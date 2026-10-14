@@ -20,7 +20,6 @@ type FormState = {
   name: string;
   price: string;
   category: CategorySlug;
-  subcategory: string;
   stock: string;
   short: string;
   description: string;
@@ -55,8 +54,6 @@ function createEmptyForm(): FormState {
     price: "",
     category:
       CATEGORIES[0].slug as CategorySlug,
-    subcategory:
-      CATEGORIES[0].subcategories[0] || "",
     stock: "",
     short: "",
     description: "",
@@ -550,7 +547,6 @@ export default function NewProductForm() {
 
             price,
             category: form.category,
-            subcategory: form.subcategory,
             stock: Number(form.stock || 0),
             short: form.short.trim(),
             description:
@@ -677,23 +673,13 @@ export default function NewProductForm() {
 
           <select
             value={form.category}
-            onChange={(event) => {
-              const category =
-                CATEGORIES.find(
-                  (item) =>
-                    item.slug ===
-                    event.target.value
-                );
-
+            onChange={(event) =>
               setForm({
                 ...form,
                 category:
                   event.target.value as CategorySlug,
-                subcategory:
-                  category?.subcategories[0] ||
-                  "",
-              });
-            }}
+              })
+            }
             className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
           >
             {CATEGORIES.map((category) => (
@@ -702,36 +688,6 @@ export default function NewProductForm() {
                 value={category.slug}
               >
                 {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="text-sm">
-          Subcategory / product type
-
-          <select
-            value={form.subcategory}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                subcategory:
-                  event.target.value,
-              })
-            }
-            className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2"
-          >
-            {(
-              CATEGORIES.find(
-                (item) =>
-                  item.slug === form.category
-              )?.subcategories || []
-            ).map((subcategory) => (
-              <option
-                key={subcategory}
-                value={subcategory}
-              >
-                {subcategory}
               </option>
             ))}
           </select>

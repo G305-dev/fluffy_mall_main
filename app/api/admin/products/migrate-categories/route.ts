@@ -1,532 +1,303 @@
+import { createHash } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
-import { getProducts, saveProducts } from "@/lib/db";
 import { CATEGORIES } from "@/lib/categories";
+import { getProducts } from "@/lib/db";
+import { COLLECTIONS, getDb } from "@/lib/mongo";
 import type { CategorySlug, Product } from "@/lib/types";
+import seedProducts from "@/data/products.json";
 
-type Destination = {
-  category: CategorySlug;
-  subcategory?: string;
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type LegacyProduct = Product & {
+  subcategory?: unknown;
 };
 
-const newCategorySlugs = new Set(
+type Classification = {
+  category: CategorySlug;
+  reason: string;
+};
+
+type CategoryChange = {
+  id: string;
+  name: string;
+  slug: string;
+  fromCategory: string;
+  fromSubcategory: string;
+  toCategory: CategorySlug;
+  reason: string;
+};
+
+const validCategories = new Set<CategorySlug>(
   CATEGORIES.map((category) => category.slug)
 );
 
-const oldCategoryFallbacks: Record<string, Destination> = {
-  "kitchen-appliances": {
-    category: "kitchen-appliances",
-  },
-  "cookware-utensils": {
-    category: "cookware",
-  },
-  "home-organisation": {
-    category: "storage-organisation",
-  },
-  "household-essentials": {
-    category: "home-utility",
-  },
-  bathroom: {
-    category: "bathroom",
-    subcategory: "Bath Series",
-  },
+function normalize(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const categoryByName = new Map(
+  CATEGORIES.map((category) => [
+    normalize(category.name),
+    category.slug,
+  ])
+);
+
+// These aliases are for interpreting OLD stored data. They do not
+// introduce subcategories into the new product model.
+const legacyAliases: Record<string, CategorySlug> = {
+  "pantry storage organiser": "pantry-storage-organiser",
+  "laundries": "laundry",
+  "vaccum cleaner": "vacuum-cleaner",
+  "cutlery": "cutlery-utensils",
+  "utensils": "cutlery-utensils",
+  "cutleries utensils": "cutlery-utensils",
+  "glasswares": "glassware",
+  "cloth dryer": "clothes-dryer",
+  "cooking spoon": "spoons",
+  "spoon": "spoons",
+  "woodens": "wooden-utensils",
+  "straw": "straws",
+  "tray": "trays",
+  "tray trays": "trays",
+  "cover": "covers",
+  "mold": "moulds",
+  "mould": "moulds",
+  "table": "tables",
+  "pant hanger": "hangers",
+  "peg": "hangers",
+  "ironing board": "iron",
+  "spray bottles": "cleaning-tools",
+  "fruit platter": "trays",
 };
 
-const oldSubcategoryMap: Record<string, Destination> = {
-  "cookware-utensils|cookware": {
-    category: "cookware",
-  },
-  "cookware-utensils|bakeware": {
-    category: "cookware",
-    subcategory: "Bakeware",
-  },
-  "cookware-utensils|pressure cooker": {
-    category: "cookware",
-    subcategory: "Pressure Cooker",
-  },
-  "cookware-utensils|mold": {
-    category: "cookware",
-    subcategory: "Moulds",
-  },
+function legacySubcategoryToCategory(
+  value: unknown
+): CategorySlug | null {
+  const key = normalize(value);
 
-  "cookware-utensils|sieve": {
-    category: "kitchen-tools",
-    subcategory: "Sieve",
-  },
-  "cookware-utensils|chopping board": {
-    category: "kitchen-tools",
-    subcategory: "Chopping Board",
-  },
-  "cookware-utensils|scale": {
-    category: "kitchen-tools",
-    subcategory: "Scale",
-  },
-
-  "cookware-utensils|cooking spoon": {
-    category: "dining-serveware",
-    subcategory: "Spoons",
-  },
-  "cookware-utensils|spoon": {
-    category: "dining-serveware",
-    subcategory: "Spoons",
-  },
-  "cookware-utensils|cutlery": {
-    category: "dining-serveware",
-    subcategory: "Cutlery / Utensils",
-  },
-  "cookware-utensils|utensils": {
-    category: "dining-serveware",
-    subcategory: "Cutlery / Utensils",
-  },
-  "cookware-utensils|straw": {
-    category: "dining-serveware",
-    subcategory: "Straws",
-  },
-  "cookware-utensils|tray / trays": {
-    category: "dining-serveware",
-    subcategory: "Trays",
-  },
-  "cookware-utensils|woodens": {
-    category: "dining-serveware",
-    subcategory: "Wooden Utensils",
-  },
-  "cookware-utensils|gas burner": {
-    category: "kitchen-appliances",
-    subcategory: "Gas Burner",
-  },
-  "cookware-utensils|food warmer": {
-    category: "kitchen-appliances",
-    subcategory: "Food Warmer",
-  },
-
-  "home-organisation|cloth dryer": {
-    category: "cleaning-laundry",
-    subcategory: "Clothes Dryer",
-  },
-  "home-organisation|rack": {
-    category: "storage-organisation",
-    subcategory: "Rack",
-  },
-  "home-organisation|hangers": {
-    category: "storage-organisation",
-    subcategory: "Hangers",
-  },
-  "home-organisation|pant hanger": {
-    category: "storage-organisation",
-    subcategory: "Hangers",
-  },
-  "home-organisation|peg": {
-    category: "storage-organisation",
-    subcategory: "Hangers",
-  },
-
-  "household-essentials|vacuum cleaner": {
-    category: "cleaning-laundry",
-    subcategory: "Vacuum Cleaner",
-  },
-  "household-essentials|cleaning tools": {
-    category: "cleaning-laundry",
-    subcategory: "Cleaning Tools",
-  },
-  "household-essentials|spray bottles": {
-    category: "cleaning-laundry",
-    subcategory: "Cleaning Tools",
-  },
-  "household-essentials|waste bin": {
-    category: "cleaning-laundry",
-    subcategory: "Waste Bin",
-  },
-  "household-essentials|iron": {
-    category: "cleaning-laundry",
-    subcategory: "Iron",
-  },
-  "household-essentials|ironing board": {
-    category: "cleaning-laundry",
-    subcategory: "Iron",
-  },
-  "household-essentials|mats": {
-    category: "home-utility",
-    subcategory: "Mats",
-  },
-  "household-essentials|ladders": {
-    category: "home-utility",
-    subcategory: "Ladders",
-  },
-  "household-essentials|tools": {
-    category: "home-utility",
-    subcategory: "Tools",
-  },
-  "household-essentials|glassware": {
-    category: "dining-serveware",
-    subcategory: "Glassware",
-  },
-  "household-essentials|dinnerware": {
-    category: "dining-serveware",
-    subcategory: "Dinnerware",
-  },
-};
-
-const keywordRules: Array<{
-  pattern: RegExp;
-  destination: Destination;
-}> = [
-  {
-    pattern: /toilet|bathroom/i,
-    destination: {
-      category: "bathroom",
-      subcategory: "Bath Series",
-    },
-  },
-  {
-    pattern: /air fryer/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Air Fryers",
-    },
-  },
-  {
-    pattern: /blender/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Blenders",
-    },
-  },
-  {
-    pattern: /kettle/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Electric Kettle",
-    },
-  },
-  {
-    pattern: /oven/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Oven",
-    },
-  },
-  {
-    pattern: /chopper/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Electric Chopper",
-    },
-  },
-  {
-    pattern: /slow juic|juicer/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Slow Juicer",
-    },
-  },
-  {
-    pattern: /food processor/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Food Processor",
-    },
-  },
-  {
-    pattern: /mixer/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Mixer",
-    },
-  },
-  {
-    pattern: /dehydrat/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Dehydrator",
-    },
-  },
-  {
-    pattern: /gas burner/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Gas Burner",
-    },
-  },
-  {
-    pattern: /food warmer/i,
-    destination: {
-      category: "kitchen-appliances",
-      subcategory: "Food Warmer",
-    },
-  },
-  {
-    pattern: /cookware/i,
-    destination: {
-      category: "cookware",
-    },
-  },
-  {
-    pattern: /bakeware/i,
-    destination: {
-      category: "cookware",
-      subcategory: "Bakeware",
-    },
-  },
-  {
-    pattern: /pressure cooker/i,
-    destination: {
-      category: "cookware",
-      subcategory: "Pressure Cooker",
-    },
-  },
-  {
-    pattern: /mou?ld/i,
-    destination: {
-      category: "cookware",
-      subcategory: "Moulds",
-    },
-  },
-  {
-    pattern: /colander|drainer|sieve/i,
-    destination: {
-      category: "kitchen-tools",
-      subcategory: "Sieve",
-    },
-  },
-  {
-    pattern: /chopping board|chop board/i,
-    destination: {
-      category: "kitchen-tools",
-      subcategory: "Chopping Board",
-    },
-  },
-  {
-    pattern: /scale/i,
-    destination: {
-      category: "kitchen-tools",
-      subcategory: "Scale",
-    },
-  },
-  {
-    pattern: /cutlery|utensil/i,
-    destination: {
-      category: "dining-serveware",
-      subcategory: "Cutlery / Utensils",
-    },
-  },
-  {
-    pattern: /dinnerware/i,
-    destination: {
-      category: "dining-serveware",
-      subcategory: "Dinnerware",
-    },
-  },
-  {
-    pattern: /glassware/i,
-    destination: {
-      category: "dining-serveware",
-      subcategory: "Glassware",
-    },
-  },
-  {
-    pattern: /fruit platter|tray/i,
-    destination: {
-      category: "dining-serveware",
-      subcategory: "Trays",
-    },
-  },
-  {
-    pattern: /spoon/i,
-    destination: {
-      category: "dining-serveware",
-      subcategory: "Spoons",
-    },
-  },
-  {
-    pattern: /straw/i,
-    destination: {
-      category: "dining-serveware",
-      subcategory: "Straws",
-    },
-  },
-  {
-    pattern: /wooden/i,
-    destination: {
-      category: "dining-serveware",
-      subcategory: "Wooden Utensils",
-    },
-  },
-  {
-    pattern: /pantry|storage|organis|organizer|canister|grain bucket|lazy susan|egg rack/i,
-    destination: {
-      category: "storage-organisation",
-      subcategory: "Pantry / Storage Organiser",
-    },
-  },
-  {
-    pattern: /hanger|peg/i,
-    destination: {
-      category: "storage-organisation",
-      subcategory: "Hangers",
-    },
-  },
-  {
-    pattern: /rack/i,
-    destination: {
-      category: "storage-organisation",
-      subcategory: "Rack",
-    },
-  },
-  {
-    pattern: /cover/i,
-    destination: {
-      category: "storage-organisation",
-      subcategory: "Covers",
-    },
-  },
-  {
-    pattern: /vacuum/i,
-    destination: {
-      category: "cleaning-laundry",
-      subcategory: "Vacuum Cleaner",
-    },
-  },
-  {
-    pattern: /cleaning|spray bottle|waste bin|\bbin\b/i,
-    destination: {
-      category: "cleaning-laundry",
-      subcategory: "Cleaning Tools",
-    },
-  },
-  {
-    pattern: /laundry|cloth(es)? dryer|dryer/i,
-    destination: {
-      category: "cleaning-laundry",
-      subcategory: "Clothes Dryer",
-    },
-  },
-  {
-    pattern: /iron|ironing/i,
-    destination: {
-      category: "cleaning-laundry",
-      subcategory: "Iron",
-    },
-  },
-  {
-    pattern: /ladder/i,
-    destination: {
-      category: "home-utility",
-      subcategory: "Ladders",
-    },
-  },
-  {
-    pattern: /\btools?\b/i,
-    destination: {
-      category: "home-utility",
-      subcategory: "Tools",
-    },
-  },
-  {
-    pattern: /mat/i,
-    destination: {
-      category: "home-utility",
-      subcategory: "Mats",
-    },
-  },
-  {
-    pattern: /table/i,
-    destination: {
-      category: "home-utility",
-      subcategory: "Tables",
-    },
-  },
-];
-
-function classifyProduct(product: Product): Destination | null {
-  const currentCategory = String(product.category || "") as CategorySlug;
-  const currentSubcategory = String(
-    product.subcategory || ""
-  )
-    .trim()
-    .toLowerCase();
-
-  const text = [
-    product.name,
-    product.short,
-    product.description,
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  const oldSubcategoryDestination =
-    oldSubcategoryMap[
-      `${currentCategory}|${currentSubcategory}`
-    ];
-
-  if (oldSubcategoryDestination) {
-    return oldSubcategoryDestination;
+  if (!key) {
+    return null;
   }
-
-  const isAlreadyNew =
-    newCategorySlugs.has(currentCategory);
-
-  if (isAlreadyNew) {
-    const categoryDefinition = CATEGORIES.find(
-      (category) => category.slug === currentCategory
-    );
-
-    const validSubcategory =
-      product.subcategory &&
-      categoryDefinition?.subcategories.includes(
-        product.subcategory
-      );
-
-    if (validSubcategory) {
-      return {
-        category: currentCategory as CategorySlug,
-        subcategory: product.subcategory,
-      };
-    }
-
-    const sameCategoryKeyword =
-      keywordRules.find(
-        (rule) =>
-          rule.destination.category === currentCategory &&
-          rule.pattern.test(text)
-      );
-
-    return (
-      sameCategoryKeyword?.destination || {
-        category: currentCategory as CategorySlug,
-      }
-    );
-  }
-
-  const keywordDestination = keywordRules.find(
-    (rule) => rule.pattern.test(text)
-  );
 
   return (
-    keywordDestination?.destination ||
-    oldCategoryFallbacks[currentCategory] ||
+    legacyAliases[key] ||
+    categoryByName.get(key) ||
     null
   );
 }
 
-function applyDestination(
-  product: Product,
-  destination: Destination
-): Product {
-  const nextProduct = {
-    ...product,
-    category: destination.category,
-  };
+// This checked-in catalogue is a reviewed mapping for its 24 IDs.
+// It is used only when an existing MongoDB product still has an old
+// parent category; it never overwrites an already-flat category.
+const seedCategoryById = new Map<string, CategorySlug>(
+  seedProducts.flatMap((product) => {
+    const category = product.category as CategorySlug;
 
-  if (destination.subcategory) {
-    nextProduct.subcategory = destination.subcategory;
-  } else {
-    delete nextProduct.subcategory;
+    return validCategories.has(category)
+      ? [[product.id, category] as const]
+      : [];
+  })
+);
+
+// Name matching is intentionally conservative: anything uncertain
+// appears in "unresolved" for a human to classify in Admin Products.
+const nameRules: Array<{
+  pattern: RegExp;
+  category: CategorySlug;
+}> = [
+  { pattern: /\btoilet\b|\bbathroom\b/i, category: "bath-series" },
+  { pattern: /\bwhistling kettle\b/i, category: "cookware" },
+  { pattern: /\bair[ -]?fryers?\b/i, category: "air-fryers" },
+  { pattern: /\bblenders?\b/i, category: "blenders" },
+  { pattern: /\belectric kettle\b/i, category: "electric-kettle" },
+  { pattern: /\b(?:electric )?chopper\b/i, category: "electric-chopper" },
+  { pattern: /\bslow juicer\b/i, category: "slow-juicer" },
+  { pattern: /\bfood processor\b/i, category: "food-processor" },
+  { pattern: /\bbreakfast maker\b/i, category: "breakfast-makers" },
+  { pattern: /\bfood warmer\b/i, category: "food-warmer" },
+  { pattern: /\bpressure cooker\b/i, category: "pressure-cooker" },
+  { pattern: /\bgas burner\b/i, category: "gas-burner" },
+  { pattern: /\bdehydrator\b/i, category: "dehydrator" },
+  { pattern: /\bbakeware\b/i, category: "bakeware" },
+  { pattern: /\b(?:mould|mold)s?\b/i, category: "moulds" },
+  { pattern: /\b(?:fruit platter|trays?)\b/i, category: "trays" },
+  { pattern: /\bwooden (?:spoon|utensil)/i, category: "wooden-utensils" },
+  { pattern: /\b(?:cutlery|utensils?)\b/i, category: "cutlery-utensils" },
+  { pattern: /\bspoons?\b/i, category: "spoons" },
+  { pattern: /\bstraws?\b/i, category: "straws" },
+  { pattern: /\b(?:colander|sieve)\b/i, category: "sieve" },
+  { pattern: /\bchopping board\b/i, category: "chopping-board" },
+  { pattern: /\bscales?\b/i, category: "scale" },
+  { pattern: /\bwaste bins?\b/i, category: "waste-bin" },
+  { pattern: /\b(?:vacuum|vaccum) cleaner\b/i, category: "vacuum-cleaner" },
+  { pattern: /\bclothes? dryer\b/i, category: "clothes-dryer" },
+  { pattern: /\bironing board\b|\birons?\b/i, category: "iron" },
+  { pattern: /\blaundry\b/i, category: "laundry" },
+  { pattern: /\b(?:hanger|peg)s?\b/i, category: "hangers" },
+  { pattern: /\bladders?\b/i, category: "ladders" },
+  { pattern: /\bglassware\b/i, category: "glassware" },
+  { pattern: /\bdinnerware\b/i, category: "dinnerware" },
+  { pattern: /\bcleaning\b/i, category: "cleaning-tools" },
+  { pattern: /\bracks?\b/i, category: "rack" },
+  { pattern: /\bcovers?\b/i, category: "covers" },
+  { pattern: /\bmats?\b/i, category: "mats" },
+  { pattern: /\btables?\b/i, category: "tables" },
+  { pattern: /\bpantry\b|\bstorage\b|\bcontainers?\b|\bcanisters?\b/i,
+    category: "pantry-storage-organiser" },
+  { pattern: /\bcookware\b/i, category: "cookware" },
+  { pattern: /\bovens?\b/i, category: "oven" },
+  { pattern: /\bmixers?\b/i, category: "mixer" },
+];
+
+function classify(product: LegacyProduct): Classification | null {
+  const currentCategory = String(product.category || "").trim();
+  const isAlreadyFlat = validCategories.has(
+    currentCategory as CategorySlug
+  );
+
+  // Old "cookware" was also a parent name. A stored subtype such
+  // as Bakeware should win before accepting the parent as flat.
+  const subtype = legacySubcategoryToCategory(
+    product.subcategory
+  );
+
+  if (isAlreadyFlat && currentCategory !== "cookware") {
+    return {
+      category: currentCategory as CategorySlug,
+      reason: "Already a flat category",
+    };
   }
 
-  return nextProduct;
+  if (subtype) {
+    return {
+      category: subtype,
+      reason: "Existing product type mapped to a flat category",
+    };
+  }
+
+  if (isAlreadyFlat) {
+    return {
+      category: currentCategory as CategorySlug,
+      reason: "Already a flat category",
+    };
+  }
+
+  const seedCategory = seedCategoryById.get(product.id);
+
+  if (seedCategory) {
+    return {
+      category: seedCategory,
+      reason: "Reviewed seed product mapping",
+    };
+  }
+
+  const name = product.name || "";
+  const nameRule = nameRules.find((rule) =>
+    rule.pattern.test(name)
+  );
+
+  if (nameRule) {
+    return {
+      category: nameRule.category,
+      reason: "Product name match — check the preview",
+    };
+  }
+
+  if (currentCategory === "bathroom") {
+    return {
+      category: "bath-series",
+      reason: "Old bathroom category",
+    };
+  }
+
+  return null;
 }
 
-export async function POST() {
+async function createPreview() {
+  const products = (await getProducts()) as LegacyProduct[];
+  const changes: CategoryChange[] = [];
+  const unresolved: Array<{
+    id: string;
+    name: string;
+    category: string;
+    subcategory: string;
+  }> = [];
+  let unchanged = 0;
+
+  for (const product of products) {
+    const fromCategory = String(
+      product.category || ""
+    ).trim();
+    const hadSubcategory = Object.prototype.hasOwnProperty.call(
+      product,
+      "subcategory"
+    );
+    const fromSubcategory = String(
+      product.subcategory ?? ""
+    ).trim();
+    const result = classify(product);
+
+    if (!result) {
+      unresolved.push({
+        id: product.id,
+        name: product.name,
+        category: fromCategory,
+        subcategory: fromSubcategory,
+      });
+      continue;
+    }
+
+    if (
+      result.category === fromCategory &&
+      !hadSubcategory
+    ) {
+      unchanged += 1;
+      continue;
+    }
+
+    changes.push({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      fromCategory,
+      fromSubcategory,
+      toCategory: result.category,
+      reason: result.reason,
+    });
+  }
+
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify(
+        products.map((product) => [
+          product.id,
+          product.name,
+          product.slug,
+          product.category,
+          product.subcategory ?? null,
+        ])
+      )
+    )
+    .digest("hex");
+
+  return {
+    total: products.length,
+    updated: changes.length,
+    unchanged,
+    unresolved,
+    changes,
+    fingerprint,
+  };
+}
+
+export async function GET() {
   if (!isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -534,55 +305,114 @@ export async function POST() {
     );
   }
 
-  const products = await getProducts();
-  const unresolved: Array<{
-    id: string;
-    name: string;
-    category: string;
-  }> = [];
-
-  let updated = 0;
-  let unchanged = 0;
-
-  const migratedProducts = products.map((product) => {
-    const destination = classifyProduct(product);
-
-    if (!destination) {
-      unresolved.push({
-        id: product.id,
-        name: product.name,
-        category: String(product.category),
-      });
-      return product;
-    }
-
-    const nextProduct = applyDestination(
-      product,
-      destination
+  try {
+    return NextResponse.json(await createPreview(), {
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not preview product categories.",
+      },
+      { status: 500 }
     );
+  }
+}
 
-    const changed =
-      product.category !== nextProduct.category ||
-      (product.subcategory || "") !==
-        (nextProduct.subcategory || "");
-
-    if (changed) {
-      updated += 1;
-    } else {
-      unchanged += 1;
-    }
-
-    return nextProduct;
-  });
-
-  if (updated > 0) {
-    await saveProducts(migratedProducts);
+export async function POST(request: Request) {
+  if (!isAdminAuthed()) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
   }
 
-  return NextResponse.json({
-    ok: true,
-    updated,
-    unchanged,
-    unresolved,
-  });
+  const body = await request.json().catch(() => null);
+
+  if (
+    body?.confirm !== true ||
+    typeof body?.fingerprint !== "string"
+  ) {
+    return NextResponse.json(
+      { error: "Preview and confirm this migration first." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const preview = await createPreview();
+
+    if (body.fingerprint !== preview.fingerprint) {
+      return NextResponse.json(
+        { error: "Products changed after the preview. Preview again." },
+        { status: 409 }
+      );
+    }
+
+    if (preview.total === 0) {
+      return NextResponse.json(
+        { error: "No products to migrate." },
+        { status: 409 }
+      );
+    }
+
+    if (preview.unresolved.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Some products need manual category review.",
+          unresolved: preview.unresolved,
+        },
+        { status: 409 }
+      );
+    }
+
+    const db = await getDb();
+    const collection = db.collection(COLLECTIONS.PRODUCTS);
+    let updated = 0;
+
+    // Only category data is changed. IDs, slugs, images, prices,
+    // variants, stock and Tracepos mappings remain untouched.
+    for (const change of preview.changes) {
+      const result = await collection.updateOne(
+        {
+          id: change.id,
+          category: change.fromCategory,
+        },
+        {
+          $set: { category: change.toCategory },
+          $unset: { subcategory: "" },
+        }
+      );
+
+      if (result.matchedCount !== 1) {
+        throw new Error(
+          `Product ${change.id} changed during migration. Preview again and review the database.`
+        );
+      }
+
+      updated += 1;
+      revalidatePath(`/product/${change.slug}`);
+      revalidatePath(`/shop/${change.fromCategory}`);
+      revalidatePath(`/shop/${change.toCategory}`);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/shop");
+    revalidatePath("/admin/products");
+
+    return NextResponse.json({ ok: true, updated });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Category migration failed. Check the database before retrying.",
+      },
+      { status: 500 }
+    );
+  }
 }

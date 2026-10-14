@@ -34,7 +34,7 @@ const LEGACY_SUBCATEGORY_REDIRECTS: Record<
   sieve: "sieve",
   "chopping board": "chopping-board",
   scale: "scale",
-  "cutlery / utensils": "cutlery-utensils",
+  "cutlery utensils": "cutlery-utensils",
   cutlery: "cutlery-utensils",
   utensils: "cutlery-utensils",
   dinnerware: "dinnerware",
@@ -128,29 +128,39 @@ export default async function CategoryPage({
   );
 
   /*
-   * Preserve old links such as:
-   * /shop/kitchen-appliances?subcategory=Air%20Fryers
+   * Old URLs are redirected for bookmarked links only.
+   * The live shop has no subcategory navigation or filtering.
    */
-  if (!category) {
-    const oldSubcategory =
-      normalizeLegacyValue(
-        searchParams.subcategory || ""
-      );
+  const legacySubcategory = normalizeLegacyValue(
+    searchParams.subcategory || ""
+  );
 
-    const redirectedCategory =
+  if (
+    legacySubcategory &&
+    (!category || params.category === "cookware")
+  ) {
+    const destination =
       LEGACY_SUBCATEGORY_REDIRECTS[
-        oldSubcategory
+        legacySubcategory
       ];
 
-    if (redirectedCategory) {
-      redirect(`/shop/${redirectedCategory}`);
+    if (destination) {
+      redirect(`/shop/${destination}`);
     }
+  }
 
-    const legacyParent =
-      LEGACY_PARENT_REDIRECTS[params.category];
+  if (category && searchParams.subcategory) {
+    redirect(`/shop/${category.slug}`);
+  }
 
-    if (legacyParent) {
-      redirect(legacyParent);
+  if (!category) {
+    const oldParent =
+      LEGACY_PARENT_REDIRECTS[
+        params.category
+      ];
+
+    if (oldParent) {
+      redirect(oldParent);
     }
 
     notFound();

@@ -84,9 +84,6 @@ export default function ProductEditor({
   const [category, setCategory] =
     useState<CategorySlug>(product.category);
 
-  const [subcategory, setSubcategory] =
-    useState(product.subcategory ?? "");
-
   const [busy, setBusy] =
     useState(false);
 
@@ -120,26 +117,14 @@ export default function ProductEditor({
     };
   }, []);
 
-  const selectedCategory = CATEGORIES.find(
-    (item) => item.slug === category
-  );
-
-  function handleCategoryChange(
-    value: string
-  ) {
+  function handleCategoryChange(value: string) {
     const nextCategory = CATEGORIES.find(
       (item) => item.slug === value
     );
 
-    if (!nextCategory) {
-      return;
+    if (nextCategory) {
+      setCategory(nextCategory.slug);
     }
-
-    setCategory(nextCategory.slug);
-
-    setSubcategory(
-      nextCategory.subcategories[0] ?? ""
-    );
   }
 
   async function uploadImage(
@@ -235,7 +220,6 @@ export default function ProductEditor({
             stock,
             name: name.trim(),
             category,
-            subcategory,
             featured,
             bestseller,
             images,
@@ -766,6 +750,11 @@ export default function ProductEditor({
                   }
                   className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
                 >
+                  {!CATEGORIES.some((item) => item.slug === category) && (
+                    <option value={category} disabled>
+                      Choose a new category (was {category})
+                    </option>
+                  )}
                   {CATEGORIES.map((item) => (
                     <option
                       key={item.slug}
@@ -774,31 +763,6 @@ export default function ProductEditor({
                       {item.name}
                     </option>
                   ))}
-                </select>
-              </label>
-
-              <label className="block text-xs text-stone-500">
-                Subcategory
-
-                <select
-                  value={subcategory}
-                  onChange={(event) =>
-                    setSubcategory(
-                      event.target.value
-                    )
-                  }
-                  className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
-                >
-                  {selectedCategory?.subcategories.map(
-                    (item) => (
-                      <option
-                        key={item}
-                        value={item}
-                      >
-                        {item}
-                      </option>
-                    )
-                  )}
                 </select>
               </label>
             </div>
@@ -957,6 +921,11 @@ export default function ProductEditor({
               }
               className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-xs"
             >
+              {!CATEGORIES.some((item) => item.slug === category) && (
+                <option value={category} disabled>
+                  Choose a new category (was {category})
+                </option>
+              )}
               {CATEGORIES.map((item) => (
                 <option
                   key={item.slug}
@@ -965,31 +934,6 @@ export default function ProductEditor({
                   {item.name}
                 </option>
               ))}
-            </select>
-          </label>
-
-          <label className="text-xs text-stone-500">
-            Subcategory
-
-            <select
-              value={subcategory}
-              onChange={(event) =>
-                setSubcategory(
-                  event.target.value
-                )
-              }
-              className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-xs"
-            >
-              {selectedCategory?.subcategories.map(
-                (item) => (
-                  <option
-                    key={item}
-                    value={item}
-                  >
-                    {item}
-                  </option>
-                )
-              )}
             </select>
           </label>
         </div>
