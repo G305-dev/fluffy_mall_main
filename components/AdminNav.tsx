@@ -31,7 +31,7 @@ const PRIMARY_LINKS = [
 const INVENTORY_SECTIONS: Array<{ label: string; href?: string }> = [
   { label: "Overview", href: "/admin/inventory" },
   { label: "Products", href: "/admin/products" },
-  { label: "Categories" },
+  { label: "Categories", href: "/admin/categories" },
   { label: "Brands" },
   { label: "Variants" },
   { label: "Batch management" },
@@ -51,6 +51,7 @@ const ALL_LINKS = [
   PRIMARY_LINKS[0],
   { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
   { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/categories", label: "Categories", icon: Package },
   ...PRIMARY_LINKS.slice(1),
   ...OTHER_LINKS,
 ];
@@ -94,7 +95,8 @@ function NavigationLinks({
 }) {
   const inventoryActive =
     pathname === "/admin/inventory" || pathname.startsWith("/admin/inventory/") ||
-    pathname === "/admin/products" || pathname.startsWith("/admin/products/");
+    pathname === "/admin/products" || pathname.startsWith("/admin/products/") ||
+    pathname === "/admin/categories" || pathname.startsWith("/admin/categories/");
   const [inventoryOpen, setInventoryOpen] = useState(inventoryActive);
 
   useEffect(() => {
