@@ -1,56 +1,118 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { Order, OrderStatus } from "@/lib/types";
+import { Download, Search, X } from "lucide-react";
 import { naira } from "@/lib/format";
-import StatusBadge from "@/components/StatusBadge";
 import { STATUS_LABEL } from "@/lib/status";
-import { Search, X } from "lucide-react";
+import type { Order, OrderStatus } from "@/lib/types";
+import StatusBadge from "@/components/StatusBadge";
 
-const PAGE_SIZE = 20;
+export type StatusFilter = "all" | "pending" | OrderStatus;
+type MethodFilter = "all" | "paystack" | "bank";
+type FulfilmentFilter = "all" | "delivery" | "pickup";
 
-const STATUS_OPTIONS = Object.entries(
-  STATUS_LABEL
-) as [OrderStatus, string][];
+const PAGE_SIZE = 10;
+const PLACEHOLDER = "/images/product-placeholder.svg";
+const exactStatuses = Object.entries(STATUS_LABEL) as [OrderStatus, string][];
+const orderDate = new Intl.DateTimeFormat("en-NG", {
+  timeZone: "Africa/Lagos",
+  dateStyle: "medium",
+  timeStyle: "short",
+});
 
 function paymentLabel(method: string) {
   return method === "paystack"
     ? "Paystack"
-    : "Payment";
+    : method === "bank"
+      ? "Bank transfer"
+      : method;
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Unknown" : orderDate.format(date);
+}
+
+function csvCell(value: string | number) {
+  const text = String(value).replace(/[\r\n]+/g, " ");
+  // Keep spreadsheet applications from interpreting customer text as formulas.
+  const safe = /^[=+\-@\t]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
+function Items({ order }: { order: Order }) {
+  const extra = Math.max(0, order.items.length - 2);
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      {order.items.slice(0, 2).map((item, index) => (
+        <Image
+          key={`${item.productId}-${index}`}
+          src={item.image || PLACEHOLDER}
+          alt={item.name}
+          width={36}
+          height={36}
+          className="h-9 w-9 shrink-0 rounded-lg bg-stone-100 object-cover"
+        />
+      ))}
+      {extra > 0 && (
+        <span className="shrink-0 text-xs text-stone-500">+{extra}</span>
+      )}
+      <span
+        className="min-w-0 truncate text-xs text-stone-600"
+        title={order.items
+          .map((item) => `${item.qty} × ${item.name}`)
+          .join(", ")}
+      >
+        {order.items.length
+          ? order.items.map((item) => item.name).join(", ")
+          : "No items"}
+      </span>
+    </div>
+  );
 }
 
 export default function OrdersTable({
   orders,
+  initialStatus,
+  today,
 }: {
   orders: Order[];
+  initialStatus: StatusFilter;
+  today: string;
 }) {
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState<
-    "all" | OrderStatus
-  >("all");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<StatusFilter>(initialStatus);
+  const [method, setMethod] = useState<MethodFilter>("all");
+  const [fulfilment, setFulfilment] = useState<FulfilmentFilter>("all");
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
-
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     return orders.filter((order) => {
       if (
+        status === "pending" &&
+        ["completed", "cancelled", "refunded"].includes(order.status)
+      ) {
+        return false;
+      }
+      if (
         status !== "all" &&
+        status !== "pending" &&
         order.status !== status
       ) {
         return false;
       }
+      if (method !== "all" && order.payment.method !== method) return false;
+      if (fulfilment !== "all" && order.fulfilment !== fulfilment) return false;
 
-      if (!query) {
-        return true;
-      }
-
-      const haystack = [
+      const text = [
         order.id,
         order.customer.name,
+        order.customer.email,
         order.customer.phone,
-        order.customer.email || "",
         order.customer.state,
         order.payment.reference || "",
         ...order.items.map((item) => item.name),
@@ -58,264 +120,413 @@ export default function OrdersTable({
         .join(" ")
         .toLowerCase();
 
-      return query
-        .split(/\s+/)
-        .every((word) =>
-          haystack.includes(word)
-        );
+      return terms.every((term) => text.includes(term));
     });
-  }, [orders, q, status]);
+  }, [orders, query, status, method, fulfilment]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filtered.length / PAGE_SIZE)
-  );
-
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-
-  const visible = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
+  const first = (safePage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(first, first + PAGE_SIZE);
+  const selected = new Set(selectedIds);
+  const selectedInResults = filtered.filter((order) => selected.has(order.id));
+  const allOnPageSelected =
+    visible.length > 0 && visible.every((order) => selected.has(order.id));
+  const pages = Array.from(
+    { length: Math.min(5, totalPages) },
+    (_, index) =>
+      Math.min(
+        Math.max(1, safePage - 2),
+        Math.max(1, totalPages - 4)
+      ) + index
   );
+  const hasFilters =
+    Boolean(query.trim()) ||
+    status !== initialStatus ||
+    method !== "all" ||
+    fulfilment !== "all";
 
-  function resetFilters() {
-    setQ("");
-    setStatus("all");
+  function changeFilter(update: () => void) {
+    update();
     setPage(1);
+    setSelectedIds([]);
   }
 
-  const hasFilters =
-    q.trim() !== "" || status !== "all";
+  function toggleSelected(id: string) {
+    setSelectedIds((ids) =>
+      ids.includes(id)
+        ? ids.filter((value) => value !== id)
+        : [...ids, id]
+    );
+  }
+
+  function togglePageSelection() {
+    setSelectedIds((ids) =>
+      allOnPageSelected
+        ? ids.filter((id) => !visible.some((order) => order.id === id))
+        : Array.from(
+            new Set([...ids, ...visible.map((order) => order.id)])
+          )
+    );
+  }
+
+  function exportCSV() {
+    const source = selectedInResults.length ? selectedInResults : filtered;
+    if (!source.length) return;
+
+    const columns = [
+      "Order ID",
+      "Order date (ISO)",
+      "Customer",
+      "Email",
+      "Phone",
+      "Items",
+      "Total (NGN)",
+      "Payment method",
+      "Payment status",
+      "Order status",
+      "Fulfilment",
+      "State",
+    ];
+    const rows = source.map((order) => [
+      order.id,
+      order.createdAt,
+      order.customer.name,
+      order.customer.email,
+      order.customer.phone,
+      order.items
+        .map(
+          (item) =>
+            `${item.qty} x ${item.name}${
+              item.variantName ? ` (${item.variantName})` : ""
+            }`
+        )
+        .join(" | "),
+      order.total,
+      paymentLabel(order.payment.method),
+      order.payment.status,
+      STATUS_LABEL[order.status],
+      order.fulfilment,
+      order.customer.state,
+    ]);
+    const csv =
+      "\ufeff" +
+      [columns, ...rows]
+        .map((row) => row.map(csvCell).join(","))
+        .join("\r\n");
+
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" })
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `fluffy-mall-orders-${today}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   return (
-    <div>
-      <div className="mt-6 grid gap-3 min-[520px]:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
-        <div className="relative min-w-0 min-[520px]:col-span-2 lg:min-w-[220px] lg:flex-1">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gold-600" />
-
-          <input
-            value={q}
-            onChange={(event) => {
-              setQ(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Search order ID, name, phone, email, product…"
-            className="w-full rounded-full border border-cream-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none ring-terracotta-400 focus:ring-2"
+    <section
+      aria-label="Orders list"
+      className="min-w-0 rounded-2xl border border-stone-200 bg-white"
+    >
+      <div className="grid gap-2 border-b border-stone-100 p-3 sm:grid-cols-2 sm:p-4 xl:flex xl:flex-wrap xl:items-center">
+        <label className="relative min-w-0 sm:col-span-2 xl:min-w-[220px] xl:flex-1">
+          <span className="sr-only">Search orders</span>
+          <Search
+            size={16}
+            aria-hidden="true"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
           />
-        </div>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) =>
+              changeFilter(() => setQuery(event.target.value))
+            }
+            placeholder="Search order ID, customer or item"
+            className="w-full rounded-xl border border-stone-200 bg-[#fafafa] py-2.5 pl-9 pr-3 text-sm outline-none focus:border-orange-500"
+          />
+        </label>
 
+        <label className="sr-only" htmlFor="orders-status">
+          Order status
+        </label>
         <select
+          id="orders-status"
           value={status}
-          onChange={(event) => {
-            setStatus(
-              event.target.value as typeof status
-            );
-            setPage(1);
-          }}
-          className="w-full rounded-full border border-cream-300 bg-white px-4 py-2.5 text-sm lg:w-auto"
+          onChange={(event) =>
+            changeFilter(() =>
+              setStatus(event.target.value as StatusFilter)
+            )
+          }
+          className="min-w-0 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm xl:w-40"
         >
           <option value="all">All statuses</option>
-
-          {STATUS_OPTIONS.map(
-            ([value, label]) => (
+          <option value="pending">Pending / open</option>
+          <optgroup label="Exact status">
+            {exactStatuses.map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
-            )
-          )}
+            ))}
+          </optgroup>
         </select>
 
+        <label className="sr-only" htmlFor="orders-payment">
+          Payment method
+        </label>
+        <select
+          id="orders-payment"
+          value={method}
+          onChange={(event) =>
+            changeFilter(() =>
+              setMethod(event.target.value as MethodFilter)
+            )
+          }
+          className="min-w-0 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm xl:w-40"
+        >
+          <option value="all">All payment methods</option>
+          <option value="paystack">Paystack</option>
+          <option value="bank">Bank transfer</option>
+        </select>
+
+        <label className="sr-only" htmlFor="orders-fulfilment">
+          Fulfilment
+        </label>
+        <select
+          id="orders-fulfilment"
+          value={fulfilment}
+          onChange={(event) =>
+            changeFilter(() =>
+              setFulfilment(event.target.value as FulfilmentFilter)
+            )
+          }
+          className="min-w-0 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm xl:w-36"
+        >
+          <option value="all">All fulfilment</option>
+          <option value="delivery">Delivery</option>
+          <option value="pickup">Pickup</option>
+        </select>
+
+        <button
+          type="button"
+          onClick={exportCSV}
+          disabled={!filtered.length}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-200 px-3 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-40 sm:col-span-2 xl:ml-auto"
+        >
+          <Download size={16} aria-hidden="true" />
+          {selectedInResults.length
+            ? `Export selected (${selectedInResults.length})`
+            : "Export orders"}
+        </button>
         {hasFilters && (
           <button
-            onClick={resetFilters}
-            className="flex w-full items-center justify-center gap-1 rounded-full px-3 py-2 text-sm text-cocoa-700 ring-1 ring-cream-300 hover:bg-cream-100 min-[520px]:w-auto"
+            type="button"
+            onClick={() =>
+              changeFilter(() => {
+                setQuery("");
+                setStatus(initialStatus);
+                setMethod("all");
+                setFulfilment("all");
+              })
+            }
+            className="flex items-center justify-center gap-1 text-xs text-stone-600 hover:text-orange-700 sm:col-span-2 xl:col-span-1"
           >
-            <X size={14} />
-            Clear
+            <X size={14} aria-hidden="true" /> Reset filters
           </button>
         )}
       </div>
 
-      <p className="mt-3 text-xs text-cocoa-700/60">
-        {filtered.length === orders.length
-          ? `${orders.length} orders`
-          : `${filtered.length} of ${orders.length} orders match`}
-      </p>
-
-      <div className="mt-3 space-y-3 lg:hidden">
+      <div className="space-y-3 p-3 lg:hidden">
         {visible.map((order) => (
           <article
             key={order.id}
-            className="min-w-0 rounded-2xl bg-white p-4 ring-1 ring-cream-200"
+            className="min-w-0 rounded-xl border border-stone-200 p-3 text-sm"
           >
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div className="flex min-w-0 items-start gap-3">
+              <input
+                type="checkbox"
+                checked={selected.has(order.id)}
+                onChange={() => toggleSelected(order.id)}
+                aria-label={`Select order ${order.id}`}
+                className="mt-1 h-4 w-4 shrink-0 accent-orange-600"
+              />
+              <div className="min-w-0 flex-1">
                 <Link
-                  href={`/admin/orders/${order.id}`}
-                  className="break-words font-medium text-terracotta-600"
+                  href={`/admin/orders/${encodeURIComponent(order.id)}`}
+                  className="break-all font-semibold text-orange-700 hover:underline"
                 >
                   {order.id}
                 </Link>
-
-                <p className="mt-1 text-xs text-stone-500">
-                  {new Date(
-                    order.createdAt
-                  ).toLocaleString("en-NG")}
+                <p className="mt-1 break-words text-stone-600">
+                  {order.customer.name} · {order.customer.email}
                 </p>
               </div>
-
               <StatusBadge status={order.status} />
             </div>
-
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-cream-100 pt-4 text-sm">
-              <div className="min-w-0">
-                <dt className="text-xs text-stone-500">
-                  Customer
-                </dt>
-
-                <dd className="mt-0.5 break-words">
-                  {order.customer.name}
-                </dd>
-
-                <dd className="break-words text-xs text-stone-500">
-                  {order.customer.phone}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-xs text-stone-500">
-                  Total
-                </dt>
-
-                <dd className="mt-0.5 font-semibold">
+            <div className="mt-3">
+              <Items order={order} />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-stone-600">
+              <span>
+                Total:{" "}
+                <strong className="text-cocoa-800">
                   {naira(order.total)}
-                </dd>
-              </div>
-
-              <div className="col-span-2">
-                <dt className="text-xs text-stone-500">
-                  Payment
-                </dt>
-
-                <dd className="mt-0.5">
-                  {paymentLabel(
-                    String(order.payment.method)
-                  )}
-                </dd>
-              </div>
-            </dl>
+                </strong>
+              </span>
+              <span>{paymentLabel(order.payment.method)}</span>
+              <span>{formatDate(order.createdAt)}</span>
+              <span className="capitalize">{order.fulfilment}</span>
+            </div>
+            <Link
+              href={`/admin/orders/${encodeURIComponent(order.id)}`}
+              className="mt-3 inline-block rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-semibold text-orange-700"
+            >
+              View order
+            </Link>
           </article>
         ))}
-
-        {visible.length === 0 && (
-          <p className="rounded-2xl bg-white p-6 text-center text-sm text-stone-500 ring-1 ring-cream-200">
-            {orders.length === 0
-              ? "No orders yet"
-              : "No orders match your search — try different words or clear the filters."}
-          </p>
-        )}
       </div>
 
-      <div className="mt-3 hidden overflow-x-auto rounded-3xl bg-white ring-1 ring-cream-200 lg:block">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="border-b border-cream-200 text-xs uppercase tracking-wider text-gold-600">
+      <div className="hidden overflow-x-auto lg:block">
+        <table className="w-full min-w-[1120px] text-left text-sm">
+          <thead className="bg-stone-50 text-xs font-semibold text-stone-600">
             <tr>
-              <th className="p-4">Order</th>
-              <th className="p-4">Customer</th>
-              <th className="p-4">Total</th>
-              <th className="p-4">Pay</th>
-              <th className="p-4">Status</th>
+              <th scope="col" className="px-3 py-3">
+                <input
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  onChange={togglePageSelection}
+                  disabled={!visible.length}
+                  aria-label="Select all orders on this page"
+                  className="h-4 w-4 accent-orange-600"
+                />
+              </th>
+              <th scope="col" className="px-3 py-3">Order ID</th>
+              <th scope="col" className="px-3 py-3">Customer</th>
+              <th scope="col" className="px-3 py-3">Items</th>
+              <th scope="col" className="px-3 py-3">Total</th>
+              <th scope="col" className="px-3 py-3">Payment method</th>
+              <th scope="col" className="px-3 py-3">Status</th>
+              <th scope="col" className="px-3 py-3">Order date</th>
+              <th scope="col" className="px-3 py-3">Actions</th>
             </tr>
           </thead>
-
-          <tbody>
+          <tbody className="divide-y divide-stone-100">
             {visible.map((order) => (
-              <tr
-                key={order.id}
-                className="border-b border-cream-100"
-              >
-                <td className="p-4">
+              <tr key={order.id} className="hover:bg-orange-50/40">
+                <td className="px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(order.id)}
+                    onChange={() => toggleSelected(order.id)}
+                    aria-label={`Select order ${order.id}`}
+                    className="h-4 w-4 accent-orange-600"
+                  />
+                </td>
+                <td className="break-all px-3 py-3 font-semibold">
                   <Link
-                    href={`/admin/orders/${order.id}`}
-                    className="font-medium text-terracotta-600"
+                    href={`/admin/orders/${encodeURIComponent(order.id)}`}
+                    className="text-orange-700 hover:underline"
                   >
                     {order.id}
                   </Link>
-
-                  <p className="text-xs text-stone-500">
-                    {new Date(
-                      order.createdAt
-                    ).toLocaleString("en-NG")}
+                </td>
+                <td className="max-w-44 px-3 py-3">
+                  <p
+                    className="truncate font-medium text-cocoa-800"
+                    title={order.customer.name}
+                  >
+                    {order.customer.name}
+                  </p>
+                  <p
+                    className="truncate text-xs text-stone-500"
+                    title={order.customer.email}
+                  >
+                    {order.customer.email}
                   </p>
                 </td>
-
-                <td className="p-4">
-                  {order.customer.name}
-
-                  <p className="text-xs text-stone-500">
-                    {order.customer.phone}
-                  </p>
+                <td className="max-w-48 px-3 py-3">
+                  <Items order={order} />
                 </td>
-
-                <td className="p-4">
+                <td className="whitespace-nowrap px-3 py-3 font-semibold text-cocoa-800">
                   {naira(order.total)}
                 </td>
-
-                <td className="p-4">
-                  {paymentLabel(
-                    String(order.payment.method)
-                  )}
+                <td className="whitespace-nowrap px-3 py-3 text-stone-600">
+                  {paymentLabel(order.payment.method)}
                 </td>
-
-                <td className="p-4">
+                <td className="whitespace-nowrap px-3 py-3">
                   <StatusBadge status={order.status} />
+                </td>
+                <td className="whitespace-nowrap px-3 py-3 text-xs text-stone-600">
+                  {formatDate(order.createdAt)}
+                </td>
+                <td className="px-3 py-3">
+                  <Link
+                    href={`/admin/orders/${encodeURIComponent(order.id)}`}
+                    className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-50"
+                  >
+                    View
+                  </Link>
                 </td>
               </tr>
             ))}
-
-            {visible.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="p-8 text-center text-stone-500"
-                >
-                  {orders.length === 0
-                    ? "No orders yet"
-                    : "No orders match your search — try different words or clear the filters."}
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="mt-4 grid grid-cols-[auto_1fr_auto] items-center gap-2 text-xs sm:text-sm">
-          <button
-            disabled={safePage <= 1}
-            onClick={() =>
-              setPage(safePage - 1)
-            }
-            className="rounded-full px-4 py-2 ring-1 ring-cream-300 disabled:opacity-40"
-          >
-            ← Previous
-          </button>
-
-          <span className="text-center text-cocoa-700/70">
-            Page {safePage} of {totalPages}
-          </span>
-
-          <button
-            disabled={safePage >= totalPages}
-            onClick={() =>
-              setPage(safePage + 1)
-            }
-            className="rounded-full px-4 py-2 ring-1 ring-cream-300 disabled:opacity-40"
-          >
-            Next →
-          </button>
-        </div>
+      {!visible.length && (
+        <p className="px-4 py-10 text-center text-sm text-stone-500">
+          {orders.length
+            ? "No orders match these filters."
+            : "No orders in the selected date range."}
+        </p>
       )}
-    </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 px-4 py-3 text-xs text-stone-600">
+        <span>
+          Showing {filtered.length ? first + 1 : 0}–
+          {Math.min(first + PAGE_SIZE, filtered.length)} of{" "}
+          {filtered.length} orders
+        </span>
+        {totalPages > 1 && (
+          <nav aria-label="Orders pages" className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPage(safePage - 1)}
+              disabled={safePage === 1}
+              className="rounded-lg border border-stone-200 px-2 py-1.5 disabled:opacity-40"
+            >
+              Previous
+            </button>
+            {pages.map((number) => (
+              <button
+                key={number}
+                type="button"
+                onClick={() => setPage(number)}
+                aria-current={safePage === number ? "page" : undefined}
+                className={`rounded-lg border px-2.5 py-1.5 ${
+                  safePage === number
+                    ? "border-orange-500 bg-orange-500 text-white"
+                    : "border-stone-200 hover:bg-orange-50"
+                }`}
+              >
+                {number}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setPage(safePage + 1)}
+              disabled={safePage === totalPages}
+              className="rounded-lg border border-stone-200 px-2 py-1.5 disabled:opacity-40"
+            >
+              Next
+            </button>
+          </nav>
+        )}
+      </div>
+    </section>
   );
 }
