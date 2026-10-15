@@ -9,13 +9,12 @@ import type { AdminCategory } from "@/lib/admin-categories";
 import { categoryName } from "@/lib/categories";
 import { naira } from "@/lib/format";
 import type { Product } from "@/lib/types";
-import ProductEditor from "./ProductEditor";
 import ProductPhotoForm from "./ProductPhotoForm";
 
 const PAGE_SIZE = 50;
 const PLACEHOLDER = "/images/product-placeholder.svg";
 type ProductTab = "all" | "standard" | "variable";
-type OpenRow = { id: string; mode: "options" | "edit" | "photo" } | null;
+type OpenRow = { id: string; mode: "options" | "photo" } | null;
 
 function kind(product: Product): "standard" | "variable" {
   return product.productType === "variable" || (product.variants?.length || 0) > 0
@@ -128,7 +127,7 @@ export default function ProductList({
     if (tableScroll.current) tableScroll.current.scrollTop = 0;
   }
 
-  function toggleRow(id: string, mode: "options" | "edit" | "photo") {
+  function toggleRow(id: string, mode: "options" | "photo") {
     setNotice("");
     setOpenRow((current) => current?.id === id && current.mode === mode ? null : { id, mode });
   }
@@ -282,7 +281,7 @@ export default function ProductList({
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap gap-1.5">
                           <Link href={`/product/${product.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">View</Link>
-                          <button type="button" onClick={() => toggleRow(product.id, "edit")} aria-expanded={expanded === "edit"} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">Edit</button>
+                          <Link href={`/admin/products/${encodeURIComponent(product.id)}/edit`} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">Edit</Link>
                           <button type="button" onClick={() => toggleRow(product.id, "photo")} aria-expanded={expanded === "photo"} className="rounded-lg border border-orange-200 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50">Photo</button>
                         </div>
                       </td>
@@ -292,8 +291,6 @@ export default function ProductList({
                         <td colSpan={10} className="px-4 py-4">
                           {expanded === "photo" ? (
                             <ProductPhotoForm product={product} currentImage={image} onSaved={(path) => savedPhoto(product, path)} onCancel={() => setOpenRow(null)} />
-                          ) : expanded === "edit" ? (
-                            <div className="max-w-xl"><ProductEditor product={product} categories={categories} initialPurchaseCost={cost} mobile /></div>
                           ) : (
                             <div className="flex flex-wrap gap-3" aria-label={`Options for ${product.name}`}>
                               {variants.map((option) => (
