@@ -13,6 +13,7 @@ type VariantDraft = {
   price: string;
   stock: string;
   barcode: string;
+  traceposItemCode: string;
 };
 
 type FormState = {
@@ -43,7 +44,7 @@ function blankForm(category: string): FormState {
 }
 
 function blankVariant(): VariantDraft {
-  return { size: "", color: "", price: "", stock: "", barcode: "" };
+  return { size: "", color: "", price: "", stock: "", barcode: "", traceposItemCode: "" };
 }
 
 function Step({ number, title, children }: {
@@ -152,6 +153,7 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
     } else {
       if (!form.variants.length) throw new Error("Add at least one option for a variable product.");
       const seen = new Set<string>();
+      const seenTraceposCodes = new Set<string>();
       form.variants.forEach((variant, index) => {
         const label = `Option ${index + 1}`;
         if (!variant.size.trim() && !variant.color.trim()) throw new Error(`${label} needs a size or colour.`);
@@ -164,6 +166,14 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
         if (variant.stock.trim() === "" || !Number.isSafeInteger(Number(variant.stock)) || Number(variant.stock) < 0) {
           throw new Error(`${label} stock must be a whole number of zero or more.`);
         }
+        const code = variant.traceposItemCode.trim().toUpperCase();
+        if (variant.traceposItemCode.trim().length > 80) {
+          throw new Error(`${label} TracePOS item code must be 80 characters or fewer.`);
+        }
+        if (code && seenTraceposCodes.has(code)) {
+          throw new Error(`${label} repeats another option's TracePOS item code.`);
+        }
+        if (code) seenTraceposCodes.add(code);
         if (form.hasBarcode && variant.barcode.trim() &&
           (variant.barcode.trim().length > 48 || !/^[\x20-\x7e]+$/.test(variant.barcode.trim()))) {
           throw new Error(`${label} barcode must use printable English characters, up to 48.`);
@@ -217,6 +227,7 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
             price: variant.price.trim() ? Number(variant.price) : undefined,
             stock: Number(variant.stock),
             barcode: form.hasBarcode ? variant.barcode.trim() : "",
+            traceposItemCode: variant.traceposItemCode.trim(),
           })) : [],
         }),
       });
@@ -266,6 +277,18 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
   const variable = form.productType === "variable";
   const totalStock = form.variants.reduce((total, variant) => total + (Number(variant.stock) || 0), 0);
   const inputClass = "mt-1 block w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-cocoa-800 outline-none focus:border-orange-500";
+  const pricingFields = (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <label className="block text-sm font-medium text-stone-700">Purchase cost (₦) *
+        <input required type="number" min="0" step="0.01" value={form.purchaseCost} onChange={(event) => update("purchaseCost", event.target.value)} className={inputClass} placeholder="0.00" />
+        <span className="mt-1 block text-xs font-normal text-stone-500">Private; shoppers will not see this amount.</span>
+      </label>
+      <label className="block text-sm font-medium text-stone-700">{variable ? "Parent/default selling price (₦) *" : "Selling price (₦) *"}
+        <input required type="number" min="0.01" step="0.01" value={form.sellingPrice} onChange={(event) => update("sellingPrice", event.target.value)} className={inputClass} placeholder="0.00" />
+        {variable && <span className="mt-1 block text-xs font-normal text-stone-500">Saved on the parent product. Each option uses this price unless you enter an override below.</span>}
+      </label>
+    </div>
+  );
   return (
     <form onSubmit={save} className="mb-6 space-y-4" aria-label="Add new product">
       <div className="flex items-center justify-between gap-3">
@@ -279,14 +302,17 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
           {(["standard", "variable"] as const).map((type) => (
             <label key={type} className={`cursor-pointer rounded-xl border p-4 ${form.productType === type ? "border-orange-400 bg-orange-50" : "border-stone-200"}`}>
               <input type="radio" name="productType" value={type} checked={form.productType === type} onChange={() => update("productType", type)} className="accent-orange-600" />
-              <span className="ml-2 font-semibold capitalize text-cocoa-800">{type} product</span>
-              <span className="mt-1 block text-xs text-stone-500">{type === "standard" ? "One price and one stock quantity." : "Sizes/colours with their own prices, stock and barcodes."}</span>
+              <span className="ml-2 font-semibold text-cocoa-800">{type === "standard" ? "Standard product" : "Product with variants"}</span>
+              <span className="mt-1 block text-xs text-stone-500">{type === "standard" ? "One price and one stock quantity." : "Options with their own stock, TracePOS codes and optional price overrides."}</span>
             </label>
           ))}
         </div>
       </Step>
 
       <Step number={2} title="Product details and photos">
+        {variable && (
+          <p className="mb-4 text-sm text-stone-600">These details belong to the parent product. Option stock, TracePOS codes and prices are entered below.</p>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-stone-700">Product name *
             <input required maxLength={200} value={form.name} onChange={(event) => update("name", event.target.value)} className={inputClass} placeholder="Enter product name" />
@@ -333,57 +359,70 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
         {form.hasBarcode === false && <p className="mt-2 text-sm text-stone-500">A unique, scannable Code 128 label is generated when you save.</p>}
       </Step>
 
-      <Step number={4} title="Pricing">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-stone-700">Purchase cost (₦) *
-            <input required type="number" min="0" step="0.01" value={form.purchaseCost} onChange={(event) => update("purchaseCost", event.target.value)} className={inputClass} placeholder="0.00" />
-            <span className="mt-1 block text-xs font-normal text-stone-500">Private; shoppers will not see this amount.</span>
-          </label>
-          <label className="block text-sm font-medium text-stone-700">Selling price (₦) *
-            <input required type="number" min="0.01" step="0.01" value={form.sellingPrice} onChange={(event) => update("sellingPrice", event.target.value)} className={inputClass} placeholder="0.00" />
-            {variable && <span className="mt-1 block text-xs font-normal text-stone-500">Default price for options without a different price.</span>}
-          </label>
-        </div>
-      </Step>
+      {variable ? (
+        <>
+          <Step number={4} title="Variant options and stock">
+            <div className="space-y-4">
+              <p className="text-sm text-stone-600">Total stock: <strong>{totalStock.toLocaleString("en-NG")}</strong> (sum of option stock). Add a TracePOS item code to link an option to stock sync; without one, that option will not sync automatically. Code 128 barcodes are separate and generated if not provided.</p>
+              {form.variants.map((variant, index) => (
+                <fieldset key={index} className="rounded-xl border border-stone-200 bg-stone-50 p-3 sm:p-4">
+                  <legend className="px-1 text-sm font-semibold text-cocoa-800">Option {index + 1}</legend>
+                  <div className="mb-2 flex justify-end">
+                    <button type="button" onClick={() => update("variants", form.variants.filter((_, i) => i !== index))} className="text-xs font-medium text-red-600 hover:underline">Remove option</button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block text-xs font-medium text-stone-700">Size
+                      <input value={variant.size} onChange={(event) => updateVariant(index, "size", event.target.value)} maxLength={60} className={inputClass} placeholder="Small / Medium / Large" />
+                    </label>
+                    <label className="block text-xs font-medium text-stone-700">Colour
+                      <input value={variant.color} onChange={(event) => updateVariant(index, "color", event.target.value)} maxLength={60} className={inputClass} placeholder="Red / Blue / Black" />
+                    </label>
+                    <label className="block text-xs font-medium text-stone-700">Number in stock *
+                      <input required type="number" min="0" step="1" value={variant.stock} onChange={(event) => updateVariant(index, "stock", event.target.value)} className={inputClass} placeholder="0" />
+                    </label>
+                    <label className="block text-xs font-medium text-stone-700">TracePOS item code (optional)
+                      <input maxLength={80} value={variant.traceposItemCode} onChange={(event) => updateVariant(index, "traceposItemCode", event.target.value)} className={inputClass} placeholder="Matching TracePOS item code" />
+                    </label>
+                    {form.hasBarcode === true && <label className="block text-xs font-medium text-stone-700 sm:col-span-2">Option Code 128 barcode (optional)
+                      <input maxLength={48} value={variant.barcode} onChange={(event) => updateVariant(index, "barcode", event.target.value)} className={inputClass} placeholder="Leave blank to generate a unique barcode" />
+                    </label>}
+                  </div>
+                  <p className="mt-2 text-xs text-stone-500">Enter at least a size or colour. Product photos are used for this option. The TracePOS item code is not a barcode.</p>
+                </fieldset>
+              ))}
+              <button type="button" disabled={form.variants.length >= 40} onClick={() => update("variants", [...form.variants, blankVariant()])} className="inline-flex items-center gap-2 rounded-xl border border-orange-300 px-4 py-2 text-sm font-medium text-orange-700 disabled:opacity-50"><Plus size={16} /> Add option</button>
+            </div>
+          </Step>
 
-      <Step number={5} title="Stock">
-        {!variable ? (
-          <label className="block max-w-sm text-sm font-medium text-stone-700">Total number in stock *
-            <input required type="number" min="0" step="1" value={form.stock} onChange={(event) => update("stock", event.target.value)} className={inputClass} placeholder="0" />
-          </label>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-stone-600">Total stock: <strong>{totalStock.toLocaleString("en-NG")}</strong> (sum of option stock). Each option gets a unique Code 128 barcode.</p>
-            {form.variants.map((variant, index) => (
-              <fieldset key={index} className="rounded-xl border border-stone-200 bg-stone-50 p-3 sm:p-4">
-                <legend className="px-1 text-sm font-semibold text-cocoa-800">Option {index + 1}</legend>
-                <div className="mb-2 flex justify-end">
-                  <button type="button" onClick={() => update("variants", form.variants.filter((_, i) => i !== index))} className="text-xs font-medium text-red-600 hover:underline">Remove option</button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block text-xs font-medium text-stone-700">Size
-                    <input value={variant.size} onChange={(event) => updateVariant(index, "size", event.target.value)} maxLength={60} className={inputClass} placeholder="Small / Medium / Large" />
+          <Step number={5} title="Pricing">
+            {pricingFields}
+            <div className="mt-5 space-y-3">
+              <p className="text-sm font-semibold text-cocoa-800">Variant selling prices</p>
+              <p className="text-xs text-stone-600">Leave an option’s price blank to use the parent/default selling price. Its effective price is saved on the option.</p>
+              {form.variants.length === 0 ? (
+                <p className="text-sm text-stone-500">Add an option above to set its price.</p>
+              ) : form.variants.map((variant, index) => {
+                const optionName = [variant.size.trim(), variant.color.trim()].filter(Boolean).join(" / ");
+                return (
+                  <label key={index} className="block text-sm font-medium text-stone-700">
+                    Option {index + 1}{optionName ? ` — ${optionName}` : ""}: selling price override (₦)
+                    <input type="number" min="0.01" step="0.01" value={variant.price} onChange={(event) => updateVariant(index, "price", event.target.value)} className={inputClass} placeholder="Use parent/default selling price" />
                   </label>
-                  <label className="block text-xs font-medium text-stone-700">Colour
-                    <input value={variant.color} onChange={(event) => updateVariant(index, "color", event.target.value)} maxLength={60} className={inputClass} placeholder="Red / Blue / Black" />
-                  </label>
-                  <label className="block text-xs font-medium text-stone-700">Selling price (₦), optional override
-                    <input type="number" min="0.01" step="0.01" value={variant.price} onChange={(event) => updateVariant(index, "price", event.target.value)} className={inputClass} placeholder="Use product selling price" />
-                  </label>
-                  <label className="block text-xs font-medium text-stone-700">Number in stock *
-                    <input required type="number" min="0" step="1" value={variant.stock} onChange={(event) => updateVariant(index, "stock", event.target.value)} className={inputClass} placeholder="0" />
-                  </label>
-                  {form.hasBarcode === true && <label className="block text-xs font-medium text-stone-700 sm:col-span-2">Option barcode (optional)
-                    <input maxLength={48} value={variant.barcode} onChange={(event) => updateVariant(index, "barcode", event.target.value)} className={inputClass} placeholder="Leave blank to generate a unique code" />
-                  </label>}
-                </div>
-                <p className="mt-2 text-xs text-stone-500">Enter at least a size or colour. Product photos are used for this option.</p>
-              </fieldset>
-            ))}
-            <button type="button" disabled={form.variants.length >= 40} onClick={() => update("variants", [...form.variants, blankVariant()])} className="inline-flex items-center gap-2 rounded-xl border border-orange-300 px-4 py-2 text-sm font-medium text-orange-700 disabled:opacity-50"><Plus size={16} /> Add option</button>
-          </div>
-        )}
-      </Step>
+                );
+              })}
+            </div>
+          </Step>
+        </>
+      ) : (
+        <>
+          <Step number={4} title="Pricing">{pricingFields}</Step>
+          <Step number={5} title="Stock">
+            <label className="block max-w-sm text-sm font-medium text-stone-700">Total number in stock *
+              <input required type="number" min="0" step="1" value={form.stock} onChange={(event) => update("stock", event.target.value)} className={inputClass} placeholder="0" />
+            </label>
+          </Step>
+        </>
+      )}
 
       <Step number={6} title="Units and measurement">
         <label className="block max-w-sm text-sm font-medium text-stone-700">Unit *
