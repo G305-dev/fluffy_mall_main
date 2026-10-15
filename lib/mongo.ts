@@ -12,12 +12,8 @@ declare global {
     | undefined;
 }
 
-export async function getDb() {
+export async function getMongoClient(): Promise<MongoClient> {
   const uri = process.env.MONGODB_URI?.trim();
-
-  const dbName =
-    process.env.MONGODB_DB?.trim() ||
-    "fluffy_mall";
 
   if (!uri) {
     throw new Error(
@@ -25,9 +21,7 @@ export async function getDb() {
     );
   }
 
-  if (global._fnyMongoClient) {
-    return global._fnyMongoClient.db(dbName);
-  }
+  if (global._fnyMongoClient) return global._fnyMongoClient;
 
   if (!global._fnyMongoClientPromise) {
     const client = new MongoClient(uri, {
@@ -57,9 +51,14 @@ export async function getDb() {
         });
   }
 
-  const client =
-    await global._fnyMongoClientPromise;
+  return global._fnyMongoClientPromise;
+}
 
+export async function getDb() {
+  const dbName =
+    process.env.MONGODB_DB?.trim() ||
+    "fluffy_mall";
+  const client = await getMongoClient();
   return client.db(dbName);
 }
 

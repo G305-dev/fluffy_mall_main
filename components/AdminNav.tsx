@@ -18,6 +18,7 @@ import {
   Search,
   Settings,
   ShoppingBag,
+  ShoppingCart,
   Warehouse,
   X,
 } from "lucide-react";
@@ -27,6 +28,8 @@ const PRIMARY_LINKS = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ];
+
+const POS_LINK = { href: "/admin/pos", label: "Point of sale", icon: ShoppingCart };
 
 const INVENTORY_SECTIONS: Array<{ label: string; href?: string }> = [
   { label: "Overview", href: "/admin/inventory" },
@@ -49,6 +52,7 @@ const OTHER_LINKS = [
 
 const ALL_LINKS = [
   PRIMARY_LINKS[0],
+  POS_LINK,
   { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: Package },
@@ -149,6 +153,7 @@ function NavigationLinks({
         Workspace
       </p>
       {renderLink(PRIMARY_LINKS[0])}
+      {renderLink(POS_LINK)}
 
       <button
         type="button"

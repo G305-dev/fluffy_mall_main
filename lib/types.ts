@@ -106,6 +106,7 @@ export type OrderStatus =
 export type OrderItem = {
   productId: string;
   name: string;
+  variantId?: string;
   variantName?: string;
   unitPrice: number;
   qty: number;
@@ -135,6 +136,7 @@ export type Order = {
   pickupDiscount: number;
   total: number;
   status: OrderStatus;
+  channel?: "website" | "pos";
   payment: {
     method: PayMethod;
     status: PaymentStatus;

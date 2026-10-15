@@ -361,6 +361,11 @@ export default function OrdersTable({
                 >
                   {order.id}
                 </Link>
+                {order.channel === "pos" && (
+                  <span className="ml-2 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-800">
+                    In-store
+                  </span>
+                )}
                 <p className="mt-1 break-words text-stone-600">
                   {order.customer.name} · {order.customer.email}
                 </p>
@@ -434,6 +439,11 @@ export default function OrdersTable({
                   >
                     {order.id}
                   </Link>
+                  {order.channel === "pos" && (
+                    <span className="ml-2 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-800">
+                      In-store
+                    </span>
+                  )}
                 </td>
                 <td className="max-w-44 px-3 py-3">
                   <p

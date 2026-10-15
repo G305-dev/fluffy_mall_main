@@ -108,6 +108,12 @@ export default async function InventoryPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
+            href="/admin/pos"
+            className="rounded-xl bg-[#ff8200] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#e87700]"
+          >
+            Open point of sale
+          </Link>
+          <Link
             href="/admin/products"
             className="rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-cocoa-800 hover:border-orange-300"
           >

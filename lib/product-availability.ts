@@ -30,7 +30,10 @@ export class StockUnavailableError extends Error {}
 
 // The cart is a client-side snapshot. Recheck selected options and their total
 // quantities against the current catalogue before creating an order.
-export function resolveAvailableOrderItems(items: CartItem[], catalog: Product[]): OrderItem[] {
+export function resolveAvailableOrderItems(
+  items: Pick<CartItem, "productId" | "variantId" | "qty">[],
+  catalog: Product[]
+): OrderItem[] {
   const products = new Map(catalog.map((product) => [product.id, product]));
   const requested = new Map<string, number>();
 
@@ -72,6 +75,7 @@ export function resolveAvailableOrderItems(items: CartItem[], catalog: Product[]
     return {
       productId: product.id,
       name: product.name,
+      ...(variant ? { variantId: variant.id } : {}),
       variantName: variant?.name,
       unitPrice: variant ? variant.price : product.price,
       qty,

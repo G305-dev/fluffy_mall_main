@@ -43,6 +43,7 @@ test("checkout accepts a selected available option at the current catalogue pric
   const p = product({ stock: 0, variants: [option("black", 0, 1000), option("white", 2, 2500)] });
   const resolved = resolveAvailableOrderItems([cart("white", 1)], [p]);
   assert.equal(resolved.length, 1);
+  assert.equal(resolved[0].variantId, "white");
   assert.equal(resolved[0].variantName, "white");
   assert.equal(resolved[0].unitPrice, 2500);
   assert.equal(resolved[0].qty, 1);
