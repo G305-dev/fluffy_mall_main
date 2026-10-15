@@ -1,332 +1,1026 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
-import { NextRequest, NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
 import { getAdminCategories } from "@/lib/admin-categories";
-import { getProducts } from "@/lib/db";
-import { code128Text, claimBarcode, existingBarcodes } from "@/lib/product-barcodes";
+import {
+  getProducts,
+  saveProducts,
+} from "@/lib/db";
+import { nativeItemCode } from "@/lib/native-item-codes";
+import {
+  code128Text,
+  claimBarcode,
+  existingBarcodes,
+  newBarcode,
+} from "@/lib/product-barcodes";
 import { isProductUnit } from "@/lib/product-units";
 import { saveProductCosts } from "@/lib/product-costs";
-import { getDb, COLLECTIONS } from "@/lib/mongo";
 import {
-  createProductMatcher, heldLadderSize, itemCodeKey,
-  stockQuantity, stockReportCategory,
+  productNameKey,
+  stockQuantity,
+  stockReportCategory,
 } from "@/lib/product-import-matching";
 import { readProductSheet } from "@/lib/product-spreadsheet";
-import type { CategorySlug, Product, ProductVariant } from "@/lib/types";
+import type { Product } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const PLACEHOLDER = "/images/product-placeholder.svg";
-const DELIVERY_TIMES = "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days.";
-const SINGLE_NOTE = "No obvious variant marker; product type is not confirmed by this report";
+const MAX_BYTES =
+  5 * 1024 * 1024;
+const PLACEHOLDER =
+  "/images/product-placeholder.svg";
+const DELIVERY_TIMES =
+  "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days.";
 
-function slugify(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "product";
-}
+type Issue = {
+  row: number;
+  message: string;
+};
 
-function numberField(value: string, label: string, allowZero = false) {
-  const number = Number(value.replace(/[₦,\s]/g, ""));
-  if (!value.trim() || !Number.isFinite(number) || (allowZero ? number < 0 : number <= 0)) {
-    throw new Error(`${label} must be ${allowZero ? "zero or more" : "greater than zero"}.`);
+function price(
+  raw: string,
+  label: string,
+  allowZero = false
+) {
+  const cleaned =
+    raw.replace(
+      /[₦,\s]/g,
+      ""
+    );
+
+  const value =
+    Number(cleaned);
+
+  if (
+    !raw.trim() ||
+    !Number.isFinite(
+      value
+    ) ||
+    (
+      allowZero
+        ? value < 0
+        : value <= 0
+    ) ||
+    Math.abs(
+      value * 100 -
+        Math.round(
+          value * 100
+        )
+    ) > 0.000001
+  ) {
+    throw new Error(
+      `${label} must be ${
+        allowZero
+          ? "zero or more"
+          : "greater than zero"
+      }, with up to two decimals.`
+    );
   }
-  return number;
+
+  return (
+    Math.round(
+      value * 100
+    ) / 100
+  );
 }
 
 function flag(value: string) {
-  if (!value.trim()) return false;
-  if (/^(true|yes|1)$/i.test(value)) return true;
-  if (/^(false|no|0)$/i.test(value)) return false;
-  throw new Error(`Invalid yes/no value: ${value.slice(0, 30)}`);
+  if (!value.trim()) {
+    return false;
+  }
+
+  if (
+    /^(true|yes|1)$/i.test(
+      value
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /^(false|no|0)$/i.test(
+      value
+    )
+  ) {
+    return false;
+  }
+
+  throw new Error(
+    "Use yes/no or true/false for flags."
+  );
 }
 
-function safeImage(value: string) {
-  const url = value.trim();
-  if (/^\/images\/(?!.*(?:\.\.|%2e%2e|[?#]))[a-zA-Z0-9_./%() -]+$/i.test(url)) return url;
-  if (/^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/[a-zA-Z0-9_./%()-]+$/i.test(url)) return url;
-  throw new Error("Image URL must be a local /images/ path or a public Vercel Blob URL. Leave blank to use the placeholder.");
+function safeImage(
+  raw: string
+) {
+  const url =
+    raw.trim();
+
+  if (
+    /^\/images\/(?!.*(?:\.\.|%2e%2e|[?#]))[a-zA-Z0-9_./%() -]+$/i.test(
+      url
+    )
+  ) {
+    return url;
+  }
+
+  if (
+    /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/[a-zA-Z0-9_./%()-]+$/i.test(
+      url
+    )
+  ) {
+    return url;
+  }
+
+  throw new Error(
+    "Image URL must be a local /images/ path or public Vercel Blob URL."
+  );
 }
 
-function readImages(value: string) {
-  if (!value.trim()) return [PLACEHOLDER];
+function images(
+  raw: string
+) {
+  if (!raw.trim()) {
+    return [
+      PLACEHOLDER,
+    ];
+  }
+
   let values: unknown;
-  if (value.trim().startsWith("[")) {
-    try { values = JSON.parse(value); } catch { throw new Error("image_urls contains invalid JSON."); }
-  } else {
-    values = value.split("|");
-  }
-  if (!Array.isArray(values) || !values.length || values.length > 12) {
-    throw new Error("Use up to 12 image URLs separated by | (or a JSON array).");
-  }
-  return Array.from(new Set(values.map((entry) => safeImage(String(entry)))));
-}
 
-function readVariants(value: string, productId: string, mainImage: string): ProductVariant[] {
-  if (!value.trim()) return [];
-  let parsed: unknown;
-  try { parsed = JSON.parse(value); } catch { throw new Error("variants_json contains invalid JSON."); }
-  if (!Array.isArray(parsed) || parsed.length > 40) {
-    throw new Error("variants_json must be an array with up to 40 options.");
-  }
-  return parsed.map((entry, index) => {
-    if (!entry || typeof entry !== "object") throw new Error("Invalid variant.");
-    const raw = entry as Record<string, unknown>;
-    const size = String(raw.size ?? "").trim();
-    const color = String(raw.color ?? "").trim();
-    const name = String(raw.name ?? "").trim() || [size, color].filter(Boolean).join(" / ");
-    if (!name) throw new Error("Every variant needs a name, size or color.");
-    const image = raw.image && String(raw.image) !== PLACEHOLDER
-      ? safeImage(String(raw.image)) : mainImage;
-    const stock = numberField(String(raw.stock ?? ""), "Variant stock", true);
-    if (!Number.isSafeInteger(stock)) throw new Error("Variant stock must be a whole number.");
-    return {
-      id: `${productId}-variant-${index + 1}`,
-      name: name.slice(0, 120),
-      size: size || undefined,
-      color: color || undefined,
-      price: numberField(String(raw.price ?? ""), "Variant price"),
-      stock,
-      image,
-      traceposItemCode: String(raw.traceposItemCode ?? "").trim() || undefined,
-      barcode: raw.barcode ? code128Text(raw.barcode) : undefined,
-    };
-  });
-}
-
-type Issue = { row: number; message: string };
-type ExistingUpdate = { product: Product; code: string; price: number; stock: number };
-class CatalogChangedError extends Error {}
-
-export async function POST(req: NextRequest) {
-  if (!isAdminAuthed()) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  try {
-    const mode = req.nextUrl.searchParams.get("mode");
-    if (mode !== "preview" && mode !== "import") {
-      return NextResponse.json({ error: "Select preview or import mode." }, { status: 400 });
-    }
-    const form = await req.formData();
-    const file = form.get("file");
-    if (!(file instanceof File) || !file.size || file.size > MAX_BYTES) {
-      return NextResponse.json({ error: "Choose a non-empty CSV or XLSX file under 5 MB." }, { status: 400 });
-    }
-    const categories = await getAdminCategories();
-    const defaultCategory = String(form.get("defaultCategory") || "").trim();
-    if (defaultCategory && !stockReportCategory(defaultCategory, categories)) {
-      return NextResponse.json({ error: "Unknown default category." }, { status: 400 });
-    }
-
-    const sheet = await readProductSheet(file);
-    const stockReport = sheet.every((row) => Boolean(row.stockReport));
-    let existing: Product[];
+  if (
+    raw
+      .trim()
+      .startsWith("[")
+  ) {
     try {
-      existing = await getProducts();
-    } catch (error) {
-      console.error("[product import load]", error);
-      return NextResponse.json({ error: "Could not load existing products." }, { status: 500 });
+      values =
+        JSON.parse(
+          raw
+        );
+    } catch {
+      throw new Error(
+        "image_urls is not valid JSON."
+      );
     }
-    const matcher = createProductMatcher(existing);
-    const usedCodes = new Set<string>();
-    const usedBarcodes = existingBarcodes(existing);
-    const usedSlugs = new Set(existing.map((product) => product.slug));
-    const purchaseCosts: Record<string, number> = {};
-    for (const product of existing) {
-      const parentCode = itemCodeKey(product.traceposItemCode);
-      if (parentCode) usedCodes.add(parentCode);
-      for (const variant of product.variants || []) {
-        const code = itemCodeKey(variant.traceposItemCode);
-        if (code) usedCodes.add(code);
+  } else {
+    values =
+      raw.split(
+        "|"
+      );
+  }
+
+  if (
+    !Array.isArray(
+      values
+    ) ||
+    !values.length ||
+    values.length > 12
+  ) {
+    throw new Error(
+      "Use up to 12 images."
+    );
+  }
+
+  return Array.from(
+    new Set(
+      values.map(
+        (value) =>
+          safeImage(
+            String(
+              value
+            )
+          )
+      )
+    )
+  );
+}
+
+function slugify(
+  name: string
+) {
+  return (
+    name
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]+/g,
+        "-"
+      )
+      .replace(
+        /^-+|-+$/g,
+        ""
+      )
+      .slice(
+        0,
+        80
+      ) ||
+    "product"
+  );
+}
+
+export async function POST(
+  req: NextRequest
+) {
+  if (
+    !isAdminAuthed()
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Unauthorized",
+      },
+      {
+        status:
+          401,
       }
+    );
+  }
+
+  try {
+    const mode =
+      req.nextUrl.searchParams.get(
+        "mode"
+      );
+
+    if (
+      mode !== "preview" &&
+      mode !== "import"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Select preview or import.",
+        },
+        {
+          status:
+            400,
+        }
+      );
     }
+
+    const form =
+      await req.formData();
+    const file =
+      form.get("file");
+
+    if (
+      !(file instanceof File) ||
+      !file.size ||
+      file.size >
+        MAX_BYTES
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Choose a CSV or XLSX file under 5 MB.",
+        },
+        {
+          status:
+            400,
+        }
+      );
+    }
+
+    const sheet =
+      await readProductSheet(
+        file
+      );
+    const categories =
+      await getAdminCategories();
+
+    const fallbackCategory =
+      String(
+        form.get(
+          "defaultCategory"
+        ) || ""
+      ).trim();
+
+    if (
+      fallbackCategory &&
+      !stockReportCategory(
+        fallbackCategory,
+        categories
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Unknown default category.",
+        },
+        {
+          status:
+            400,
+        }
+      );
+    }
+
+    const existing =
+      await getProducts();
+    const byId =
+      new Map(
+        existing.map(
+          (product) => [
+            product.id,
+            product,
+          ]
+        )
+      );
+    const names =
+      new Set(
+        existing.map(
+          (product) =>
+            productNameKey(
+              product.name
+            )
+        )
+      );
+    const usedBarcodes =
+      existingBarcodes(
+        existing
+      );
+    const slugs =
+      new Set(
+        existing.map(
+          (product) =>
+            product.slug
+        )
+      );
 
     const candidates: Product[] = [];
-    const updates: ExistingUpdate[] = [];
+    const updates =
+      new Map<
+        string,
+        Product
+      >();
+    const costs: Record<
+      string,
+      number
+    > = {};
     const duplicates: Issue[] = [];
     const held: Issue[] = [];
     const invalid: Issue[] = [];
-    for (const { line, fields, stockReport: source } of sheet) {
-      const prefix = source?.sourceRow ? `Source row ${source.sourceRow}: ` : "";
+
+    const stockReport =
+      sheet.some(
+        (row) =>
+          Boolean(
+            row.stockReport
+          )
+      );
+
+    for (
+      const {
+        line,
+        fields,
+        stockReport:
+          source,
+      } of sheet
+    ) {
       try {
-        const name = fields.name.trim();
-        if (!name || name.length > 200) throw new Error("Product name is required (max 200 characters).");
-        if (source && source.classificationNote !== SINGLE_NOTE) {
-          held.push({ row: line, message: `${prefix}Only classified Single candidates can be imported; review this row.` });
-          continue;
-        }
-        if (source && (heldLadderSize(name, fields.category) || name.includes(" - ") || fields.variants_json.trim() || fields.product_type.trim().toLowerCase() === "variable")) {
-          held.push({ row: line, message: `${prefix}Possible variant/ladder size held for review; no single product created.` });
-          continue;
-        }
-        const code = itemCodeKey(fields.item_code);
-        if (source && !code) throw new Error("Every stock-report item needs an Item Code.");
-        const category = stockReportCategory(fields.category || defaultCategory, categories);
-        if (!category) throw new Error(`Unknown category ${fields.category || defaultCategory || "(blank)"}. Choose a website category.`);
-        const price = numberField(fields.price, "Price");
-        const { stock, unit } = stockQuantity(fields.stock, fields.unit);
-        if (!isProductUnit(unit)) throw new Error("Choose a valid unit (pcs, kg, g, l, ml, pack, box, set, pair or dozen).");
+        const name =
+          fields.name.trim();
 
-        const match = matcher.match(name, code, price, stock, Boolean(source));
-        if (match.kind === "held") {
-          held.push({ row: line, message: prefix + match.message });
-          continue;
+        if (
+          !name ||
+          name.length >
+            200
+        ) {
+          throw new Error(
+            "Product name is required (up to 200 characters)."
+          );
         }
-        if (match.kind === "duplicate") {
-          duplicates.push({ row: line, message: prefix + match.message });
-          continue;
-        }
-        if (match.kind === "update") {
-          // Stock reports update ONLY the matching standard product's code,
-          // price and stock. Existing photos, category and copy stay intact.
-          updates.push({ product: match.product, code: fields.item_code.trim(), price, stock });
-          matcher.accept(name, code, match.product.id);
-          if (code) usedCodes.add(code);
+
+        if (
+          stockReport ||
+          source
+        ) {
+          held.push({
+            row: line,
+            message:
+              "Classified stock-report rows are not used to replace the current website inventory.",
+          });
           continue;
         }
 
-        const compareAt = fields.compare_at ? numberField(fields.compare_at, "Compare-at price") : undefined;
-        const images = readImages(fields.image_urls);
-        const featured = flag(fields.featured);
-        const bestseller = flag(fields.bestseller);
-        const productId = `p-${randomUUID().replace(/-/g, "").slice(0, 20)}`;
-        const variants = readVariants(fields.variants_json, productId, images[0]);
-        const barcode = fields.barcode.trim() ? code128Text(fields.barcode) : undefined;
-        const rowBarcodes = [barcode, ...variants.map((variant) => variant.barcode)].filter((value): value is string => Boolean(value));
-        const checkedBarcodes = new Set(usedBarcodes);
-        for (const value of rowBarcodes) claimBarcode(value, checkedBarcodes);
-        const productType = fields.product_type.trim().toLowerCase() || (variants.length ? "variable" : "standard");
-        if (productType !== "standard" && productType !== "variable") throw new Error("Product type must be standard or variable.");
-        if ((productType === "variable") !== (variants.length > 0)) throw new Error("Variable products need options; standard products cannot have options.");
-        const purchaseCost = fields.purchase_cost.trim() ? numberField(fields.purchase_cost, "Purchase cost", true) : undefined;
-        const rowCodes = [code, ...variants.map((variant) => itemCodeKey(variant.traceposItemCode))].filter(Boolean);
-        if (new Set(rowCodes).size !== rowCodes.length || rowCodes.some((itemCode) => usedCodes.has(itemCode))) {
-          throw new Error("A product or variant item code is duplicated.");
+        if (
+          fields.product_type
+            .trim()
+            .toLowerCase() ===
+            "variable" ||
+          fields.variants_json.trim()
+        ) {
+          held.push({
+            row: line,
+            message:
+              "Variant imports are paused. Existing variant products are preserved.",
+          });
+          continue;
         }
-        let slug = slugify(fields.slug || name);
-        const base = slug;
-        let suffix = 2;
-        while (usedSlugs.has(slug)) slug = `${base}-${suffix++}`;
-        usedSlugs.add(slug);
-        rowCodes.forEach((itemCode) => usedCodes.add(itemCode));
-        rowBarcodes.forEach((value) => usedBarcodes.add(value));
-        matcher.accept(name, code);
-        if (purchaseCost !== undefined) purchaseCosts[productId] = purchaseCost;
-        candidates.push({
-          id: productId,
+
+        const current =
+          fields.id.trim()
+            ? byId.get(
+                fields.id.trim()
+              )
+            : undefined;
+
+        if (
+          fields.id.trim() &&
+          !current
+        ) {
+          held.push({
+            row: line,
+            message:
+              "Website product ID not found. Remove the ID only if this really is a new product.",
+          });
+          continue;
+        }
+
+        if (
+          current &&
+          (
+            current.productType ===
+              "variable" ||
+            current.variants?.length
+          )
+        ) {
+          held.push({
+            row: line,
+            message:
+              "This existing product has variants and is paused.",
+          });
+          continue;
+        }
+
+        if (
+          !current &&
+          names.has(
+            productNameKey(
+              name
+            )
+          )
+        ) {
+          duplicates.push({
+            row: line,
+            message:
+              "Name matches an existing or earlier new product. Supply the website ID to edit it.",
+          });
+          continue;
+        }
+
+        if (
+          current &&
+          updates.has(
+            current.id
+          )
+        ) {
+          duplicates.push({
+            row: line,
+            message:
+              "The same website product appears twice in this file.",
+          });
+          continue;
+        }
+
+        const category =
+          stockReportCategory(
+            fields.category ||
+              fallbackCategory ||
+              current?.category ||
+              "",
+            categories
+          );
+
+        if (
+          !category
+        ) {
+          throw new Error(
+            "Unknown category. Choose an existing website category."
+          );
+        }
+
+        const sellingPrice =
+          price(
+            fields.price,
+            "Selling price"
+          );
+
+        const compareAt =
+          fields.compare_at.trim()
+            ? price(
+                fields.compare_at,
+                "Compare-at price"
+              )
+            : undefined;
+
+        const parsed =
+          fields.stock.trim()
+            ? stockQuantity(
+                fields.stock,
+                fields.unit
+              )
+            : {
+                stock:
+                  current?.stock ??
+                  0,
+                unit:
+                  fields.unit
+                    .trim()
+                    .toLowerCase() ||
+                  current?.unit ||
+                  "pcs",
+              };
+
+        if (
+          !isProductUnit(
+            parsed.unit
+          )
+        ) {
+          throw new Error(
+            "Choose a supported unit."
+          );
+        }
+
+        if (
+          !current &&
+          parsed.stock <
+            0
+        ) {
+          throw new Error(
+            "New product stock cannot be negative."
+          );
+        }
+
+        if (
+          current &&
+          parsed.stock !==
+            current.stock
+        ) {
+          held.push({
+            row: line,
+            message:
+              "Existing website stock is not changed by a spreadsheet. Use an audited stock adjustment.",
+          });
+          continue;
+        }
+
+        const purchaseCost =
+          fields.purchase_cost.trim()
+            ? price(
+                fields.purchase_cost,
+                "Purchase cost",
+                true
+              )
+            : undefined;
+
+        const checkedBarcodes =
+          new Set(
+            usedBarcodes
+          );
+
+        if (
+          current
+        ) {
+          const barcode =
+            fields.barcode.trim() &&
+            fields.barcode.trim() !==
+              current.barcode
+              ? claimBarcode(
+                  code128Text(
+                    fields.barcode
+                  ),
+                  checkedBarcodes
+                )
+              : current.barcode;
+
+          const next: Product = {
+            ...current,
+            name,
+            category,
+            price:
+              sellingPrice,
+            barcode,
+            compareAt:
+              compareAt ===
+              undefined
+                ? current.compareAt
+                : compareAt,
+            images:
+              fields.image_urls.trim()
+                ? images(
+                    fields.image_urls
+                  )
+                : current.images,
+            short:
+              fields.short ||
+              current.short,
+            description:
+              fields.description ||
+              current.description,
+            deliveryNote:
+              fields.delivery_note ||
+              current.deliveryNote,
+            unit:
+              parsed.unit,
+            featured:
+              fields.featured.trim()
+                ? flag(
+                    fields.featured
+                  )
+                : current.featured,
+            bestseller:
+              fields.bestseller.trim()
+                ? flag(
+                    fields.bestseller
+                  )
+                : current.bestseller,
+          };
+
+          updates.set(
+            current.id,
+            next
+          );
+
+          for (
+            const code of
+            Array.from(
+              checkedBarcodes
+            )
+          ) {
+            usedBarcodes.add(
+              code
+            );
+          }
+
+          if (
+            purchaseCost !==
+            undefined
+          ) {
+            costs[
+              current.id
+            ] =
+              purchaseCost;
+          }
+
+          continue;
+        }
+
+        const id =
+          `p-${randomUUID()
+            .replace(
+              /-/g,
+              ""
+            )
+            .slice(
+              0,
+              20
+            )}`;
+
+        let slug =
+          slugify(
+            name
+          );
+        let counter =
+          2;
+
+        while (
+          slugs.has(
+            slug
+          )
+        ) {
+          slug = `${slugify(
+            name
+          )}-${counter++}`;
+        }
+
+        const imagePaths =
+          images(
+            fields.image_urls
+          );
+
+        const barcode =
+          fields.barcode.trim()
+            ? claimBarcode(
+                code128Text(
+                  fields.barcode
+                ),
+                checkedBarcodes
+              )
+            : newBarcode(
+                checkedBarcodes
+              );
+
+        const product: Product = {
+          id,
+          itemCode:
+            nativeItemCode(
+              id
+            ),
           slug,
           name,
-          traceposItemCode: fields.item_code.trim() || undefined,
-          category: category as CategorySlug,
-          price,
-          unit,
-          productType,
-          barcode,
+          category,
+          price:
+            sellingPrice,
           compareAt,
-          stock: variants.length ? variants.reduce((sum, variant) => sum + variant.stock, 0) : stock,
-          images,
-          short: fields.short.slice(0, 500),
-          description: fields.description.slice(0, 5000),
-          deliveryNote: fields.delivery_note.includes(DELIVERY_TIMES)
-            ? fields.delivery_note
-            : [DELIVERY_TIMES, fields.delivery_note].filter(Boolean).join(" "),
-          featured,
-          bestseller,
-          variants,
+          stock:
+            parsed.stock,
+          unit:
+            parsed.unit,
+          images:
+            imagePaths,
+          barcode,
+          short:
+            fields.short ||
+            "",
+          description:
+            fields.description ||
+            "",
+          deliveryNote:
+            fields.delivery_note ||
+            DELIVERY_TIMES,
+          featured:
+            flag(
+              fields.featured
+            ),
+          bestseller:
+            flag(
+              fields.bestseller
+            ),
+          productType:
+            "standard",
+          variants: [],
+        };
+
+        candidates.push(
+          product
+        );
+        slugs.add(
+          slug
+        );
+        names.add(
+          productNameKey(
+            name
+          )
+        );
+
+        for (
+          const code of
+          Array.from(
+            checkedBarcodes
+          )
+        ) {
+          usedBarcodes.add(
+            code
+          );
+        }
+
+        if (
+          purchaseCost !==
+          undefined
+        ) {
+          costs[
+            id
+          ] =
+            purchaseCost;
+        }
+      } catch (
+        error
+      ) {
+        invalid.push({
+          row: line,
+          message:
+            error instanceof
+            Error
+              ? error.message
+              : "Invalid row.",
         });
-      } catch (error) {
-        invalid.push({ row: line, message: prefix + (error instanceof Error ? error.message : "Invalid row.") });
       }
     }
 
     const report = {
-      total: sheet.length,
+      total:
+        sheet.length,
       stockReport,
-      importable: candidates.length,
-      updatable: updates.length,
-      duplicates: duplicates.length,
-      held: held.length,
-      invalid: invalid.length,
-      issues: [...invalid, ...held, ...duplicates].slice(0, 100),
-      sample: candidates.slice(0, 5).map((product) => ({
-        name: product.name,
-        code: product.traceposItemCode || "—",
-        category: product.category,
-        price: product.price,
-        image: product.images[0] !== PLACEHOLDER,
-      })),
-      updateSample: updates.slice(0, 5).map(({ product, code, price, stock }) => ({ name: product.name, code, price, stock })),
+      importable:
+        candidates.length,
+      updatable:
+        updates.size,
+      duplicates:
+        duplicates.length,
+      held:
+        held.length,
+      invalid:
+        invalid.length,
+      issues: [
+        ...invalid,
+        ...held,
+        ...duplicates,
+      ].slice(
+        0,
+        100
+      ),
+      sample:
+        candidates
+          .slice(
+            0,
+            10
+          )
+          .map(
+            (
+              item
+            ) => ({
+              name:
+                item.name,
+              code:
+                mode ===
+                "preview"
+                  ? "Generated when applied"
+                  : item.itemCode ||
+                    "",
+              category:
+                item.category,
+              price:
+                item.price,
+              image:
+                item.images[0] !==
+                PLACEHOLDER,
+            })
+          ),
+      updateSample:
+        Array.from(
+          updates.values()
+        )
+          .slice(
+            0,
+            10
+          )
+          .map(
+            (
+              item
+            ) => ({
+              name:
+                item.name,
+              code:
+                item.itemCode ||
+                "",
+              price:
+                item.price,
+              stock:
+                item.stock,
+            })
+          ),
     };
 
-    if (mode === "preview") return NextResponse.json(report);
-    if (invalid.length) {
-      return NextResponse.json({ ...report, error: "Fix all invalid rows before importing. Nothing was saved." }, { status: 422 });
-    }
-    if (!candidates.length && !updates.length) {
-      return NextResponse.json({ ...report, imported: 0, updated: 0 });
+    if (
+      mode ===
+      "preview"
+    ) {
+      return NextResponse.json(
+        report
+      );
     }
 
-    let updated = 0;
-    let imported = 0;
-    try {
-      // Never use saveProducts: it deletes other products. Costs stay private.
-      await saveProductCosts(purchaseCosts);
-      const db = await getDb();
-      const collection = db.collection(COLLECTIONS.PRODUCTS);
-      for (const { product, code, price, stock } of updates) {
-        // Optimistic guard: don't overwrite an edit made after the preview.
-        const result = await collection.updateOne(
-          {
-            id: product.id,
-            price: product.price,
-            stock: product.stock,
-            traceposItemCode: product.traceposItemCode || { $in: [null, ""] },
-            $or: [{ variants: { $size: 0 } }, { variants: { $exists: false } }],
-          },
-          { $set: { traceposItemCode: code, price, stock } }
-        );
-        if (!result.matchedCount) {
-          throw new CatalogChangedError(`Existing product ${product.name} changed while importing. Refresh the preview and retry.`);
+    if (
+      invalid.length
+    ) {
+      return NextResponse.json(
+        {
+          ...report,
+          error:
+            "Fix invalid rows before importing; no products were changed.",
+        },
+        {
+          status:
+            400,
         }
-        updated += 1;
-      }
-      if (candidates.length) {
-        const result = await collection.insertMany(
-          candidates.map((product, index) => ({ ...product, sortOrder: existing.length + index })),
-          { ordered: true }
-        );
-        imported = result.insertedCount;
-      }
-    } catch (error) {
-      console.error("[product import write]", error);
+      );
+    }
+
+    if (
+      !candidates.length &&
+      !updates.size
+    ) {
       return NextResponse.json({
         ...report,
-        updated,
-        error: error instanceof CatalogChangedError
-          ? `${error.message} ${updated ? "Some earlier rows were updated." : "No new products were inserted."}`
-          : "The import may have partially completed. Refresh Products and preview again before retrying; matching item codes and names are skipped.",
-      }, { status: error instanceof CatalogChangedError ? 409 : 500 });
+        imported:
+          0,
+        updated:
+          0,
+      });
     }
-    revalidatePath("/");
-    revalidatePath("/shop");
-    revalidatePath("/admin");
-    revalidatePath("/admin/products");
-    revalidatePath("/admin/inventory");
-    revalidatePath("/sitemap.xml");
-    for (const { product } of updates) {
-      revalidatePath(`/product/${product.slug}`);
+
+    const nextProducts =
+      existing
+        .map(
+          (
+            item
+          ) =>
+            updates.get(
+              item.id
+            ) ||
+            item
+        )
+        .concat(
+          candidates
+        );
+
+    try {
+      await saveProducts(
+        nextProducts
+      );
+
+      if (
+        Object.keys(
+          costs
+        ).length
+      ) {
+        await saveProductCosts(
+          costs
+        );
+      }
+    } catch (
+      error
+    ) {
+      console.error(
+        "[product import]",
+        error
+      );
+      return NextResponse.json(
+        {
+          ...report,
+          error:
+            error instanceof
+            Error
+              ? error.message
+              : "Import failed. Refresh and preview again.",
+        },
+        {
+          status:
+            409,
+        }
+      );
     }
-    for (const category of Array.from(new Set([
-      ...candidates.map((product) => product.category),
-      ...updates.map(({ product }) => product.category),
-    ]))) {
-      revalidatePath(`/shop/${category}`);
+
+    revalidatePath(
+      "/"
+    );
+    revalidatePath(
+      "/shop"
+    );
+    revalidatePath(
+      "/admin/products"
+    );
+    revalidatePath(
+      "/admin/inventory"
+    );
+    revalidatePath(
+      "/admin/pos"
+    );
+
+    for (
+      const item of [
+        ...candidates,
+        ...Array.from(
+          updates.values()
+        ),
+      ]
+    ) {
+      revalidatePath(
+        `/product/${item.slug}`
+      );
     }
-    return NextResponse.json({ ...report, imported, updated });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not import products.";
-    console.error("[product import]", error);
-    return NextResponse.json({ error: message }, { status: 400 });
+
+    return NextResponse.json({
+      ...report,
+      imported:
+        candidates.length,
+      updated:
+        updates.size,
+    });
+  } catch (
+    error
+  ) {
+    console.error(
+      "[product import]",
+      error
+    );
+    return NextResponse.json(
+      {
+        error:
+          error instanceof
+          Error
+            ? error.message
+            : "Could not read product file.",
+      },
+      {
+        status:
+          400,
+      }
+    );
   }
 }

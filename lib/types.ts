@@ -42,7 +42,7 @@ export type CategorySlug =
   | "food-processor"
   | "moulds"
   | "tables"
-  | (string & {}); // Categories created in admin also have valid slugs.
+  | (string & {});
 
 export type ProductVariant = {
   id: string;
@@ -52,8 +52,7 @@ export type ProductVariant = {
   price: number;
   stock: number;
   image: string;
-  traceposItemCode?: string;
-  barcode?: string; // Code 128 label; independent of any POS item code.
+  barcode?: string; // Code 128 label; distinct from the native item code.
 };
 
 export type Product = {
@@ -71,8 +70,8 @@ export type Product = {
   deliveryNote?: string;
   featured?: boolean;
   bestseller?: boolean;
-  traceposItemCode?: string;
-  barcode?: string; // Code 128 label; independent of any POS item code.
+  barcode?: string; // Code 128 label; distinct from the native item code.
+  itemCode?: string; // Generated from the website product ID, never imported.
   productType?: "standard" | "variable";
   unit?: ProductUnit;
 };
@@ -143,12 +142,7 @@ export type Order = {
     paidAt?: string;
   };
   customerNotified?: boolean;
-  traceposSaleStatus?: "processing" | "synced" | "failed";
-  traceposSaleReference?: string;
-  traceposSaleAttemptedAt?: string;
-  traceposSaleSyncedAt?: string;
-  traceposSaleInvoiceNumber?: string;
-  traceposSaleError?: string;
+  nativeStockAt?: string; // Idempotency marker for a paid website sale.
 };
 
 export type StoreSettings = {

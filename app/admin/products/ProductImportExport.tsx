@@ -54,7 +54,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
       if (mode === "preview") {
         setReport(data);
       } else {
-        setSuccess(`Added ${data.imported || 0} new products, updated ${data.updated || 0} existing singles, skipped ${data.duplicates} duplicates and held ${data.held} for review. Item codes are linked to TracePOS; Code 128 barcodes were not changed.`);
+        setSuccess(`Added ${data.imported || 0} new products, updated ${data.updated || 0} existing singles, skipped ${data.duplicates} duplicates and held ${data.held} for review. New products receive Fluffy Mall item codes generated from their website IDs. Code 128 barcodes remain separate.`);
         setReport({ ...data, importable: 0, updatable: 0 });
         router.refresh();
       }
@@ -103,7 +103,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
                 <FileSpreadsheet size={18} aria-hidden="true" /> Import from a spreadsheet
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-stone-600">
-                CSV or Excel (.xlsx), up to 5 MB / 1,000 rows. The classified Single (candidate) CSV can be uploaded directly: its ₦ prices, PC/Pcs quantities and report categories are understood. Duplicate names/codes are checked against live products and options. Existing standard products with a confident match get their item code, price and stock updated; their photos and descriptions stay unchanged. Ambiguous matches and ladder sizes are held for review. Item codes link to TracePOS, never to Code 128 barcode labels. Products without a photo use an “Image coming soon” placeholder.
+                CSV or Excel (.xlsx), up to 5 MB / 1,000 rows. New standard products receive generated Fluffy Mall item codes; imported item-code columns are ignored. Existing products must be matched by website product ID, and their stock cannot be overwritten by a spreadsheet. Use audited POS stock adjustments instead. Variant imports and classified stock reports are held for review. Products without an image use a placeholder.
               </p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close import" className="rounded-lg p-2 text-stone-500 hover:bg-stone-100">
@@ -164,7 +164,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
                 {report.total} rows · {report.imported === undefined ? report.importable : report.imported} new · {report.updated === undefined ? report.updatable : report.updated} existing updates · {report.duplicates} duplicates skipped · {report.held} held for review · {report.invalid} invalid.
                 {report.invalid > 0 && " Fix invalid rows before importing; nothing will be saved yet."}
               </p>
-              {report.stockReport && <p className="text-xs text-stone-600">Only classified single candidates are eligible. Ladder sizes and possible duplicates are held, not changed. Source row numbers appear with the issues below.</p>}
+              {report.stockReport && <p className="text-xs text-stone-600">Classified stock-report rows are held; they do not replace current website stock. Source row numbers appear with the issues below.</p>}
               {report.sample.length > 0 && (
                 <div>
                   <p className="font-semibold text-cocoa-800">{report.imported === undefined ? "First products to import" : "Sample of products added"}</p>

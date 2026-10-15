@@ -17,11 +17,9 @@ type ProductSlide = {
   variant?: ProductVariant;
 };
 
-export default function ProductView({ product, initialVariantId }: { product: Product; initialVariantId?: string }) {
+export default function ProductView({ product }: { product: Product }) {
   const { add, items } = useCart();
-  const initialVariantIndex = product.variants.findIndex((variant) => variant.id === initialVariantId);
-  const initialSlideIndex = initialVariantIndex >= 0 ? product.images.length + initialVariantIndex : 0;
-  const [slideIndex, setSlideIndex] = useState(initialSlideIndex);
+  const [slideIndex, setSlideIndex] = useState(0);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -38,10 +36,10 @@ export default function ProductView({ product, initialVariantId }: { product: Pr
   }, [product.images, product.variants]);
 
   useEffect(() => {
-    setSlideIndex(initialSlideIndex);
+    setSlideIndex(0);
     setQty(1);
     setAdded(false);
-  }, [product.id, initialSlideIndex]);
+  }, [product.id]);
 
   const safeSlideIndex = Math.min(slideIndex, Math.max(0, slides.length - 1));
   const activeSlide = slides[safeSlideIndex];
@@ -57,13 +55,13 @@ export default function ProductView({ product, initialVariantId }: { product: Pr
     .reduce((total, item) => total + item.qty, 0);
   const remaining = Math.max(0, stock - inCart);
   const needsOption = variable && !activeVariant;
-  const canAdd = !needsOption && stock > 0 && remaining >= qty;
+  const canAdd = !variable && !needsOption && stock > 0 && remaining >= qty;
   const availabilityQuestion = `Hello Fluffy'n'Yummy Mall! Is ${product.name}${
     activeVariant ? ` (${activeVariant.name})` : ""
   } available?\n\nFrom fluffynyummystore.com`;
   const wa = waLink(
     PRIMARY_WA,
-    allOutOfStock || selectedOutOfStock || needsOption
+    variable || allOutOfStock || selectedOutOfStock || needsOption
       ? availabilityQuestion
       : productWhatsAppText(product.name, price, activeVariant?.name)
   );
@@ -191,19 +189,21 @@ export default function ProductView({ product, initialVariantId }: { product: Pr
                   >
                     <span className="block">{optionLabel}</span>
                     <span className="block text-xs opacity-80">
-                      {naira(variantOption.price)} · {soldOut ? "Out of stock" : "In stock"}
+                      {naira(variantOption.price)} · Option sales paused
                     </span>
                   </button>
                 );
               })}
             </div>
             <p role="status" aria-live="polite" className={`mt-3 text-sm font-medium ${allOutOfStock || selectedOutOfStock ? "text-red-700" : "text-cocoa-700"}`}>
-              {allOutOfStock
+              {variable
+                ? "Option sales are temporarily paused."
+                : allOutOfStock
                 ? "Out of stock — all options are unavailable."
                 : selectedOutOfStock
                   ? `${activeVariant?.name} is out of stock. Choose another option.`
                   : activeVariant
-                    ? `${activeVariant.name}: In stock.`
+                    ? `${activeVariant.name}: ${activeVariant.stock} available.`
                     : "Select an option to check availability."}
             </p>
           </div>
@@ -242,7 +242,7 @@ export default function ProductView({ product, initialVariantId }: { product: Pr
             className="inline-flex min-w-0 items-center justify-center gap-2 rounded-full bg-terracotta-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 sm:px-6"
           >
             {added ? <Check size={16} /> : <ShoppingBag size={16} />}
-            {added ? "Added to cart" : allOutOfStock || selectedOutOfStock ? "Out of stock" : needsOption ? "Choose an option" : remaining < qty ? "Stock limit reached" : "Add to cart"}
+            {added ? "Added to cart" : variable ? "Option sales paused" : allOutOfStock || selectedOutOfStock ? "Out of stock" : needsOption ? "Choose an option" : remaining < qty ? "Stock limit reached" : "Add to cart"}
           </button>
           <a
             href={wa}
@@ -251,7 +251,7 @@ export default function ProductView({ product, initialVariantId }: { product: Pr
             className="col-span-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-3 text-sm font-semibold text-white sm:col-auto sm:px-6"
           >
             <MessageCircle size={16} />
-            {allOutOfStock || selectedOutOfStock || needsOption ? "Ask about availability" : "Order via WhatsApp"}
+            {variable || allOutOfStock || selectedOutOfStock || needsOption ? "Ask about availability" : "Order via WhatsApp"}
           </a>
         </div>
 

@@ -3,205 +3,210 @@
 import { useCart } from "@/components/CartProvider";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Order } from "@/lib/types";
+import type { Order } from "@/lib/types";
 import { naira } from "@/lib/format";
 
-const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
+const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
 
 declare global {
   interface Window {
     PaystackPop?: {
-      setup(options: Record<string, unknown>): { openIframe(): void };
+      setup(options: Record<string, unknown>): {
+        openIframe(): void;
+      };
     };
   }
 }
 
 export default function PaystackPage() {
-  const params = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { clear } = useCart();
   const [order, setOrder] = useState<Order | null>(null);
   const [busy, setBusy] = useState(false);
-  const [loadError, setLoadError] = useState("");
-  const [payError, setPayError] = useState("");
-  const [scriptReady, setScriptReady] = useState(false);
-  const scriptRequested = useRef(false);
-
-  const liveMode = Boolean(PAYSTACK_PUBLIC_KEY);
+  const [error, setError] = useState("");
+  const [ready, setReady] = useState(false);
+  const [checkoutPaused, setCheckoutPaused] = useState(true);
+  const requested = useRef(false);
 
   useEffect(() => {
-    fetch(`/api/orders/${params.id}`)
-      .then(async (r) => {
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || "Could not load this order.");
-        setOrder(d.order);
+    fetch(`/api/orders/${encodeURIComponent(id)}`, {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Could not load order.");
+        }
+        setOrder(data.order);
+        setCheckoutPaused(Boolean(data.checkoutPaused));
       })
-      .catch((err) => setLoadError(err.message));
-  }, [params.id]);
+      .catch((cause) =>
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Could not load order."
+        )
+      );
+  }, [id]);
 
-  // Load Paystack's inline script only in live mode.
   useEffect(() => {
-    if (!liveMode || scriptRequested.current) return;
-    scriptRequested.current = true;
+    if (!PUBLIC_KEY || requested.current) return;
+    requested.current = true;
+
     if (window.PaystackPop) {
-      setScriptReady(true);
+      setReady(true);
       return;
     }
+
     const script = document.createElement("script");
     script.src = "https://js.paystack.co/v1/inline.js";
     script.async = true;
-    script.onload = () => setScriptReady(true);
+    script.onload = () => setReady(true);
     script.onerror = () =>
-      setPayError("Could not load Paystack. Check your connection and refresh.");
+      setError(
+        "Could not load Paystack. Check your connection and refresh."
+      );
     document.body.appendChild(script);
-  }, [liveMode]);
 
-  if (loadError) {
-    return (
-      <div className="mx-auto max-w-md px-4 py-16 sm:px-6 sm:py-20 text-center">
-        <h1 className="font-display text-3xl text-cocoa-800">Payment could not start</h1>
-        <p className="mt-3 text-sm text-rose-700">{loadError}</p>
-        <button
-          onClick={() => router.push("/track")}
-          className="mt-6 rounded-full bg-cocoa-800 px-6 py-3 text-sm font-semibold text-cream-50"
-        >
-          Track my order
-        </button>
-      </div>
-    );
-  }
+    return () => {
+      script.remove();
+    };
+  }, []);
 
-  if (!order) return <p className="p-10 text-center">Starting Paystack…</p>;
+  function pay() {
+    if (!order || !PUBLIC_KEY || !window.PaystackPop || busy) return;
 
-  /* ---------- LIVE mode: real Paystack inline popup ---------- */
-  function payLive() {
-    if (!window.PaystackPop || !order) return;
-    setPayError("");
+    if (order.payment.status === "paid") {
+      router.push(`/order/${order.id}`);
+      return;
+    }
+
+    if (checkoutPaused) return;
+
     setBusy(true);
+    setError("");
+
     const reference = `PSK-${order.id}-${Date.now() % 100000}`;
-    const handler = window.PaystackPop.setup({
-      key: PAYSTACK_PUBLIC_KEY,
-      email: order.customer.email || "orders@fluffynyummystore.com",
-      amount: Math.round(order.total * 100), // kobo
+
+    window.PaystackPop.setup({
+      key: PUBLIC_KEY,
+      email: order.customer.email,
+      amount: Math.round(order.total * 100),
       currency: "NGN",
       ref: reference,
-      metadata: {
-        order_id: order.id,
-        customer_name: order.customer.name,
-        custom_fields: [
-          { display_name: "Order", variable_name: "order_id", value: order.id },
-        ],
-      },
-      callback: (response: { reference: string }) => {
-        // Verify on the server before trusting the result.
+      metadata: { order_id: order.id },
+
+      callback: (result: { reference: string }) => {
         fetch("/api/paystack/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reference: response.reference }),
+          body: JSON.stringify({
+            reference: result.reference,
+          }),
         })
-          .then(async (r) => {
-            const d = await r.json();
-            if (!r.ok) {
-  throw new Error(d.error || "Verification failed");
-}
+          .then(async (response) => {
+            const data = await response.json();
 
-clear();
-router.push(`/order/${order.id}`);
+            if (!response.ok || !data.ok) {
+              throw new Error(
+                data.error || "Payment could not be verified yet."
+              );
+            }
+
+            clear();
+            router.push(`/order/${order.id}`);
           })
-          .catch((err) => {
-            setPayError(
-              `${err.message} — if you were debited, your payment will be confirmed automatically; contact us with reference ${response.reference}.`
+          .catch((cause) => {
+            setError(
+              `${
+                cause instanceof Error
+                  ? cause.message
+                  : "Verification failed."
+              } If debited, keep your reference ${result.reference} and contact the store.`
             );
             setBusy(false);
           });
       },
-      onClose: () => {
-        setBusy(false);
-      },
-    });
-    handler.openIframe();
-  }
 
-  /* ---------- DEMO mode: no keys configured ---------- */
-  async function payDemo(success: boolean) {
-    if (!order) return;
-    setBusy(true);
-    await fetch(`/api/orders/${order.id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: success ? "paystack_success" : "paystack_failed",
-        reference: `PSK-${order.id}`,
-      }),
-    });
-    clear();
-router.push(`/order/${order.id}`);
+      onClose: () => setBusy(false),
+    }).openIframe();
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10 sm:px-6 sm:py-16">
-      <div className="rounded-3xl bg-white p-5 shadow-card sm:rounded-[2rem] sm:p-8 ring-1 ring-cream-200">
-        <p className="text-center text-xs uppercase tracking-[0.25em] text-[#0ba4db]">
-          Paystack checkout
-        </p>
-        <h1 className="mt-3 text-center font-display text-3xl">Pay {naira(order.total)}</h1>
-        <p className="mt-2 break-words text-center text-sm text-stone-500">
-          {order.customer.email || order.customer.phone} · {order.id}
+    <div className="mx-auto max-w-md px-4 py-12">
+      <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-widest text-orange-700">
+          Secure Paystack checkout
         </p>
 
-        {liveMode ? (
-          <>
-            <p className="mt-6 rounded-2xl bg-cream-100 p-4 text-xs leading-relaxed text-cocoa-700">
-              You&apos;ll pay securely in the Paystack window — card, bank transfer or USSD.
-              Your card details never touch our servers.
-            </p>
-            {payError && <p className="mt-4 text-sm text-rose-700">{payError}</p>}
-            <div className="mt-6 grid gap-2">
-              <button
-                disabled={busy || !scriptReady}
-                onClick={payLive}
-                className="rounded-full bg-[#0ba4db] py-3 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {busy ? "Waiting for Paystack…" : scriptReady ? "Pay with card / transfer / USSD" : "Loading Paystack…"}
-              </button>
-              <button
-  disabled={busy}
-  onClick={() => router.push("/cart")}
-  className="rounded-full py-3 text-sm ring-1 ring-stone-200"
->
-  Modify cart
-</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="mt-6 rounded-2xl bg-cream-100 p-4 text-xs leading-relaxed text-cocoa-700">
-              Demo mode: live Paystack keys are not configured in this environment. Completing
-              payment here marks the order paid the same way a verified webhook would. Connect
-              keys via <code>PAYSTACK_SECRET_KEY</code> and{" "}
-              <code>NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY</code>.
-            </p>
-            <div className="mt-6 grid gap-2">
-              <button
-                disabled={busy}
-                onClick={() => payDemo(true)}
-                className="rounded-full bg-[#0ba4db] py-3 text-sm font-semibold text-white"
-              >
-                Pay with card / transfer / USSD
-              </button>
-              <button
-                disabled={busy}
-                onClick={() => payDemo(false)}
-                className="rounded-full py-3 text-sm ring-1 ring-stone-200"
-              >
-                Simulate failed payment
-              </button>
-            </div>
-          </>
+        <h1 className="mt-3 font-display text-3xl text-cocoa-800">
+          {order ? `Pay ${naira(order.total)}` : "Loading order…"}
+        </h1>
+
+        {order && (
+          <p className="mt-2 text-sm text-stone-600">
+            Order {order.id}
+          </p>
         )}
 
-        <p className="mt-4 text-center text-[11px] text-stone-400">
-          Secured by Paystack · Fluffy&apos;n&apos;Yummy Concepts
+        {!PUBLIC_KEY && (
+          <p
+            role="alert"
+            className="mt-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-900"
+          >
+            Payments are not configured. No demo payment can mark an
+            order paid. Please contact the store.
+          </p>
+        )}
+
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
+        {checkoutPaused && order?.payment.status !== "paid" && (
+          <p
+            role="alert"
+            className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900"
+          >
+            Checkout is temporarily paused while current inventory is
+            reviewed.
+          </p>
+        )}
+
+        {order && PUBLIC_KEY && (
+          <button
+            type="button"
+            disabled={
+              !ready ||
+              busy ||
+              (checkoutPaused && order.payment.status !== "paid")
+            }
+            onClick={pay}
+            className="mt-6 w-full rounded-full bg-[#ff8200] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {busy
+              ? "Waiting for Paystack…"
+              : order.payment.status === "paid"
+                ? "View paid order"
+                : ready
+                  ? "Pay with Paystack"
+                  : "Loading Paystack…"}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => router.push("/cart")}
+          className="mt-3 w-full rounded-full border border-stone-200 px-5 py-3 text-sm"
+        >
+          Modify cart
+        </button>
+
+        <p className="mt-4 text-xs text-stone-500">
+          Card details are processed by Paystack, not this website.
         </p>
       </div>
     </div>

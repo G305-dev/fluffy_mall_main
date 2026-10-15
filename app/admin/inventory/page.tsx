@@ -114,17 +114,17 @@ export default async function InventoryPage({
             Manage products
           </Link>
           <Link
-            href="/admin/tracepos/check"
+            href="/admin/pos?view=stock"
             className="rounded-xl bg-[#ff8200] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#e87700]"
           >
-            Check / sync TracePOS
+            Review native stock
           </Link>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-stone-100 bg-[#fff0df] p-4">
-          <p className="text-xs text-stone-500">Sellable options</p>
+          <p className="text-xs text-stone-500">Catalogue options (variants paused)</p>
           <p className="mt-2 text-2xl font-bold text-cocoa-800">{totals.options.toLocaleString("en-NG")}</p>
         </div>
         <div className="rounded-2xl border border-stone-100 bg-white p-4">
@@ -241,7 +241,7 @@ export default async function InventoryPage({
       </section>
 
       <p className="text-xs leading-relaxed text-stone-500">
-        This is a read-only view of website stock. Edit products in Products, or use TracePOS check to compare and sync existing item codes. Syncing does not import new TracePOS products.
+        This is a read-only view of current website stock. Use Products for details or the POS stock screen for audited standard-product stock adjustments. Variants are paused.
       </p>
     </div>
   );

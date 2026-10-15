@@ -26,46 +26,51 @@ import {
   NEW_CUSTOMER_DISCOUNT_PERCENT,
   roundMoney,
 } from "@/lib/promotions";
-import { resolveAvailableOrderItems, StockUnavailableError } from "@/lib/product-availability";
+import {
+  resolveAvailableOrderItems,
+  StockUnavailableError,
+} from "@/lib/product-availability";
+import { nativePosControl } from "@/lib/native-pos";
 
 const ALLOWED_DELIVERY_STATES = [
   "Lagos",
   "Outside Lagos",
 ] as const;
 
-export async function POST(
-  req: NextRequest
-) {
+export async function POST(req: NextRequest) {
   const session = readCustomerSession(
     req.cookies.get(CUSTOMER_COOKIE)?.value
   );
 
   if (!session) {
     return NextResponse.json(
-      {
-        error:
-          "You must sign in before placing an order.",
-      },
+      { error: "You must sign in before placing an order." },
       { status: 401 }
     );
   }
 
-  const account = await findCustomerAccount(
-    session.email
-  );
+  const account = await findCustomerAccount(session.email);
 
   if (!account) {
     return NextResponse.json(
+      { error: "Your customer account could not be found." },
+      { status: 401 }
+    );
+  }
+
+  // New orders stay paused until current website stock has been reviewed.
+  // No order or promotional discount is claimed during the cutover window.
+  if (!(await nativePosControl())) {
+    return NextResponse.json(
       {
         error:
-          "Your customer account could not be found.",
+          "Checkout is temporarily paused while inventory is reviewed. Please try again shortly.",
       },
-      { status: 401 }
+      { status: 503 }
     );
   }
 
   const body = await req.json();
-
   const items = Array.isArray(body?.items) ? body.items as CartItem[] : [];
 
   const fulfilment =
@@ -73,9 +78,7 @@ export async function POST(
       ? "pickup"
       : "delivery";
 
-  /*
-   * Paystack is the only checkout provider.
-   */
+  // Paystack is the only checkout provider.
   const method: PayMethod = "paystack";
 
   const customer =
@@ -93,37 +96,26 @@ export async function POST(
 
   if (!customer.name || !customer.phone) {
     return NextResponse.json(
-      {
-        error:
-          "Name and phone are required",
-      },
+      { error: "Name and phone are required" },
       { status: 400 }
     );
   }
 
-  const requestedState = String(
-    customer.state || "Lagos"
-  ).trim();
+  const requestedState = String(customer.state || "Lagos").trim();
 
   if (
     fulfilment === "delivery" &&
     !ALLOWED_DELIVERY_STATES.includes(
-      requestedState as
-        (typeof ALLOWED_DELIVERY_STATES)[number]
+      requestedState as (typeof ALLOWED_DELIVERY_STATES)[number]
     )
   ) {
     return NextResponse.json(
-      {
-        error:
-          "Please select Lagos or Outside Lagos.",
-      },
+      { error: "Please select Lagos or Outside Lagos." },
       { status: 400 }
     );
   }
 
-  /*
-   * Pickup does not use a delivery area.
-   */
+  // Pickup does not use a delivery area.
   const state =
     fulfilment === "pickup"
       ? "Lagos"
@@ -145,10 +137,7 @@ export async function POST(
     )
   ) {
     return NextResponse.json(
-      {
-        error:
-          "Please select a valid Lagos delivery city.",
-      },
+      { error: "Please select a valid Lagos delivery city." },
       { status: 400 }
     );
   }
@@ -158,28 +147,28 @@ export async function POST(
     !String(customer.address || "").trim()
   ) {
     return NextResponse.json(
-      {
-        error:
-          "Please add your delivery address.",
-      },
+      { error: "Please add your delivery address." },
       { status: 400 }
     );
   }
 
   const catalog = await getProducts();
   let resolved: OrderItem[];
+
   try {
     resolved = resolveAvailableOrderItems(items, catalog);
   } catch (error) {
     if (error instanceof StockUnavailableError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: 409 }
+      );
     }
     throw error;
   }
 
   const subtotal = resolved.reduce(
-    (sum, item) =>
-      sum + item.unitPrice * item.qty,
+    (sum, item) => sum + item.unitPrice * item.qty,
     0
   );
 
@@ -193,20 +182,15 @@ export async function POST(
     city,
   });
 
-  /*
-   * Only eligible new customer accounts can claim
-   * the discount. The claim is atomic and happens
-   * when this order is created.
-   */
-  const discountClaimed =
-    await claimNewCustomerDiscount(
-      session.email
-    );
+  // Only eligible new customer accounts can claim the discount.
+  // The claim is atomic and happens when this order is created.
+  const discountClaimed = await claimNewCustomerDiscount(
+    session.email
+  );
 
   const discount = discountClaimed
     ? roundMoney(
-        subtotal *
-          (NEW_CUSTOMER_DISCOUNT_PERCENT / 100)
+        subtotal * (NEW_CUSTOMER_DISCOUNT_PERCENT / 100)
       )
     : 0;
 
@@ -226,15 +210,10 @@ export async function POST(
       name: String(customer.name).trim(),
       phone: String(customer.phone).trim(),
 
-      /*
-       * Always use the authenticated account email.
-       */
+      // Always use the authenticated account email.
       email: session.email,
 
-      address: String(
-        customer.address || ""
-      ).trim(),
-
+      address: String(customer.address || "").trim(),
       state,
 
       city:
@@ -243,9 +222,7 @@ export async function POST(
           ? city
           : "",
 
-      notes: String(
-        customer.notes || ""
-      ).trim(),
+      notes: String(customer.notes || "").trim(),
     },
 
     items: resolved,
@@ -271,7 +248,5 @@ export async function POST(
 
   await saveOrder(order);
 
-  return NextResponse.json({
-    order,
-  });
+  return NextResponse.json({ order });
 }
