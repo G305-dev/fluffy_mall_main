@@ -12,6 +12,9 @@ export type ProductColumn = (typeof PRODUCT_COLUMNS)[number];
 export type SpreadsheetRow = {
   line: number;
   fields: Record<ProductColumn, string>;
+  // Present only in the three classified stock-summary exports. Never infer
+  // the product type from the filename or treat other sheets as single items.
+  stockReport?: { sourceRow: string; classificationNote: string };
 };
 
 const ALIASES: Record<ProductColumn, string[]> = {
@@ -126,13 +129,22 @@ export async function readProductSheet(file: File): Promise<SpreadsheetRow[]> {
   if (columns.name < 0 || columns.price < 0) {
     throw new Error("Required columns: name and price. Download the template for all supported columns.");
   }
+  const sourceRowIndex = headings.indexOf("source_row");
+  const classificationIndex = headings.indexOf("classification_note");
+  if ((sourceRowIndex < 0) !== (classificationIndex < 0)) {
+    throw new Error("Stock reports must include both Source row and Classification note columns.");
+  }
 
   return rows.slice(1).map((cells, index) => {
     const fields = {} as Record<ProductColumn, string>;
     for (const column of PRODUCT_COLUMNS) {
       fields[column] = columns[column] < 0 ? "" : (cells[columns[column]] || "").trim();
     }
-    return { line: index + 2, fields };
+    const stockReport = sourceRowIndex < 0 ? undefined : {
+      sourceRow: (cells[sourceRowIndex] || "").trim(),
+      classificationNote: (cells[classificationIndex] || "").trim(),
+    };
+    return { line: index + 2, fields, stockReport };
   });
 }
 

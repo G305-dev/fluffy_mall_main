@@ -7,12 +7,17 @@ import type { AdminCategory } from "@/lib/admin-categories";
 
 type Report = {
   total: number;
+  stockReport: boolean;
   importable: number;
+  updatable: number;
   duplicates: number;
+  held: number;
   invalid: number;
   imported?: number;
+  updated?: number;
   issues: Array<{ row: number; message: string }>;
   sample: Array<{ name: string; code: string; category: string; price: number; image: boolean }>;
+  updateSample: Array<{ name: string; code: string; price: number; stock: number }>;
   error?: string;
 };
 
@@ -49,8 +54,8 @@ export default function ProductImportExport({ categories }: { categories: AdminC
       if (mode === "preview") {
         setReport(data);
       } else {
-        setSuccess(`Imported ${data.imported || 0} new products. Skipped ${data.duplicates} duplicates.`);
-        setReport(null);
+        setSuccess(`Added ${data.imported || 0} new products, updated ${data.updated || 0} existing singles, skipped ${data.duplicates} duplicates and held ${data.held} for review. Item codes are linked to TracePOS; Code 128 barcodes were not changed.`);
+        setReport({ ...data, importable: 0, updatable: 0 });
         router.refresh();
       }
     } catch (problem) {
@@ -98,7 +103,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
                 <FileSpreadsheet size={18} aria-hidden="true" /> Import from a spreadsheet
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-stone-600">
-                CSV or Excel (.xlsx), up to 5 MB / 1,000 rows. Name, price and a website category are required. Stock defaults to zero. Image URLs are optional: products without one appear in the store with an “Image coming soon” placeholder. Use /images/ or Vercel Blob URLs; embedded Excel pictures are not imported. Existing item codes are skipped, never overwritten.
+                CSV or Excel (.xlsx), up to 5 MB / 1,000 rows. The classified Single (candidate) CSV can be uploaded directly: its ₦ prices, PC/Pcs quantities and report categories are understood. Duplicate names/codes are checked against live products and options. Existing standard products with a confident match get their item code, price and stock updated; their photos and descriptions stay unchanged. Ambiguous matches and ladder sizes are held for review. Item codes link to TracePOS, never to Code 128 barcode labels. Products without a photo use an “Image coming soon” placeholder.
               </p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close import" className="rounded-lg p-2 text-stone-500 hover:bg-stone-100">
@@ -145,8 +150,8 @@ export default function ProductImportExport({ categories }: { categories: AdminC
             <button type="button" onClick={() => send("preview")} disabled={!file || !!busy} className="rounded-xl border border-orange-300 px-4 py-2.5 text-sm font-semibold text-orange-700 disabled:opacity-50">
               {busy === "preview" ? "Checking..." : "Preview import"}
             </button>
-            <button type="button" onClick={() => send("import")} disabled={!report || !report.importable || !!report.invalid || !!busy} className="rounded-xl bg-[#ff8200] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-              {busy === "import" ? "Importing..." : `Import ${report?.importable || 0} products`}
+            <button type="button" onClick={() => send("import")} disabled={!report || (!report.importable && !report.updatable) || !!report.invalid || !!busy} className="rounded-xl bg-[#ff8200] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+              {busy === "import" ? "Importing..." : `Apply ${report?.importable || 0} new + ${report?.updatable || 0} updates`}
             </button>
           </div>
 
@@ -156,12 +161,13 @@ export default function ProductImportExport({ categories }: { categories: AdminC
           {report && (
             <div className="mt-5 space-y-4 text-sm">
               <p className="rounded-xl bg-orange-50 p-3 text-cocoa-800">
-                {report.total} rows · {report.importable} new · {report.duplicates} duplicates skipped · {report.invalid} invalid.
+                {report.total} rows · {report.imported === undefined ? report.importable : report.imported} new · {report.updated === undefined ? report.updatable : report.updated} existing updates · {report.duplicates} duplicates skipped · {report.held} held for review · {report.invalid} invalid.
                 {report.invalid > 0 && " Fix invalid rows before importing; nothing will be saved yet."}
               </p>
+              {report.stockReport && <p className="text-xs text-stone-600">Only classified single candidates are eligible. Ladder sizes and possible duplicates are held, not changed. Source row numbers appear with the issues below.</p>}
               {report.sample.length > 0 && (
                 <div>
-                  <p className="font-semibold text-cocoa-800">First products to import</p>
+                  <p className="font-semibold text-cocoa-800">{report.imported === undefined ? "First products to import" : "Sample of products added"}</p>
                   <ul className="mt-2 space-y-1 text-xs text-stone-600">
                     {report.sample.map((item, index) => (
                       <li key={`${item.name}-${index}`}>
@@ -171,9 +177,19 @@ export default function ProductImportExport({ categories }: { categories: AdminC
                   </ul>
                 </div>
               )}
+              {report.updateSample.length > 0 && (
+                <div>
+                  <p className="font-semibold text-cocoa-800">{report.updated === undefined ? "Existing products to update" : "Sample of existing products updated"}</p>
+                  <ul className="mt-2 space-y-1 text-xs text-stone-600">
+                    {report.updateSample.map((item, index) => (
+                      <li key={`${item.name}-${index}`}>{item.name} · item code {item.code} · ₦{item.price.toLocaleString("en-NG")} · {item.stock} in stock</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {report.issues.length > 0 && (
                 <div>
-                  <p className="font-semibold text-cocoa-800">Issues (first 50)</p>
+                  <p className="font-semibold text-cocoa-800">Held, invalid and duplicate rows (first 100)</p>
                   <ul className="mt-2 max-h-44 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-stone-600">
                     {report.issues.map((issue, index) => <li key={`${issue.row}-${index}`}>Row {issue.row}: {issue.message}</li>)}
                   </ul>
