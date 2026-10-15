@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Product } from "@/lib/types";
 import { naira } from "@/lib/format";
 import { categoryName } from "@/lib/categories";
+import { isOutOfStock, startingPrice } from "@/lib/product-availability";
 import { Heart } from "lucide-react";
 import { useWishlist } from "./WishlistProvider";
 
@@ -17,13 +18,7 @@ export default function ProductCard({
 }) {
   const { has, toggle } = useWishlist();
 
-  const from = product.variants.length
-    ? Math.min(
-        ...product.variants.map(
-          (variant) => variant.price
-        )
-      )
-    : product.price;
+  const from = startingPrice(product);
 
   const sizes = Array.from(
     new Set(
@@ -41,15 +36,7 @@ export default function ProductCard({
     )
   );
 
-  const availableStock = product.variants.length
-    ? product.variants.reduce(
-        (total, variant) =>
-          total + variant.stock,
-        0
-      )
-    : product.stock;
-
-  const outOfStock = availableStock <= 0;
+  const outOfStock = isOutOfStock(product);
 
   const radius = square
     ? "rounded-none"
@@ -105,6 +92,11 @@ export default function ProductCard({
         {product.bestseller && (
           <span className="absolute left-3 top-3 rounded-full bg-terracotta-500 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
             Bestseller
+          </span>
+        )}
+        {outOfStock && (
+          <span className="absolute bottom-3 left-3 rounded-full bg-cocoa-800 px-3 py-1 text-xs font-semibold text-white">
+            Out of stock
           </span>
         )}
       </div>

@@ -13,6 +13,7 @@ import {
 import {
   CartItem,
   Order,
+  OrderItem,
   PayMethod,
 } from "@/lib/types";
 import {
@@ -25,6 +26,7 @@ import {
   NEW_CUSTOMER_DISCOUNT_PERCENT,
   roundMoney,
 } from "@/lib/promotions";
+import { resolveAvailableOrderItems, StockUnavailableError } from "@/lib/product-availability";
 
 const ALLOWED_DELIVERY_STATES = [
   "Lagos",
@@ -64,7 +66,7 @@ export async function POST(
 
   const body = await req.json();
 
-  const items = (body.items || []) as CartItem[];
+  const items = Array.isArray(body?.items) ? body.items as CartItem[] : [];
 
   const fulfilment =
     body.fulfilment === "pickup"
@@ -165,40 +167,15 @@ export async function POST(
   }
 
   const catalog = await getProducts();
-
-  const resolved = items.map((item) => {
-    const product = catalog.find(
-      (catalogProduct) =>
-        catalogProduct.id === item.productId
-    );
-
-    if (!product) {
-      throw new Error(
-        `Unknown product ${item.productId}`
-      );
+  let resolved: OrderItem[];
+  try {
+    resolved = resolveAvailableOrderItems(items, catalog);
+  } catch (error) {
+    if (error instanceof StockUnavailableError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
     }
-
-    const variant = product.variants.find(
-      (productVariant) =>
-        productVariant.id === item.variantId
-    );
-
-    const unitPrice = variant
-      ? variant.price
-      : product.price;
-
-    return {
-      productId: product.id,
-      name: product.name,
-      variantName: variant?.name,
-      unitPrice,
-      qty: Math.max(
-        1,
-        Number(item.qty) || 1
-      ),
-      image: product.images[0],
-    };
-  });
+    throw error;
+  }
 
   const subtotal = resolved.reduce(
     (sum, item) =>
