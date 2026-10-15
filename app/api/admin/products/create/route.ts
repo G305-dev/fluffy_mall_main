@@ -88,7 +88,11 @@ export async function POST(req: NextRequest) {
       throw new ProductInputError("Choose a valid unit of measurement.");
     }
     const price = amount(body.price, "Selling price");
-    const purchaseCost = amount(body.purchaseCost, "Purchase cost", true);
+    const purchaseCost = body.purchaseCost === undefined ||
+      body.purchaseCost === null ||
+      (typeof body.purchaseCost === "string" && !body.purchaseCost.trim())
+      ? undefined
+      : amount(body.purchaseCost, "Purchase cost", true);
     const description = text(body.description, "Product description", 5000);
     const short = text(body.short, "Short description", 500);
     const deliveryNote = text(body.deliveryNote, "Delivery note", 1000);
@@ -192,19 +196,21 @@ export async function POST(req: NextRequest) {
       deliveryNote: [DELIVERY_TIMES, deliveryNote].filter(Boolean).join(" "),
     };
 
-    // Cost first, product second: a product is never visible without its cost.
-    // Clean up the cost if inserting the product fails.
+    // Purchase cost is private and optional. Save it separately only when provided.
+    // Clean up that cost if inserting the new product fails.
     try {
-      await saveProductCost(id, purchaseCost);
+      if (purchaseCost !== undefined) await saveProductCost(id, purchaseCost);
       const db = await getDb();
       await db.collection(COLLECTIONS.PRODUCTS).insertOne({
         ...product,
         sortOrder: -Date.now(),
       });
     } catch (error) {
-      await deleteProductCost(id).catch((cleanupError) =>
-        console.error("[product cost cleanup]", cleanupError)
-      );
+      if (purchaseCost !== undefined) {
+        await deleteProductCost(id).catch((cleanupError) =>
+          console.error("[product cost cleanup]", cleanupError)
+        );
+      }
       throw error;
     }
 

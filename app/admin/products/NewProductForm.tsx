@@ -140,8 +140,9 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
       form.barcode.trim().length > 48 || !/^[\x20-\x7e]+$/.test(form.barcode.trim()))) {
       throw new Error("Enter a Code 128 barcode using 1–48 printable English characters.");
     }
-    if (form.purchaseCost.trim() === "" || !Number.isFinite(Number(form.purchaseCost)) || Number(form.purchaseCost) < 0) {
-      throw new Error("Enter the purchase cost (zero is allowed).");
+    if (form.purchaseCost.trim() &&
+      (!Number.isFinite(Number(form.purchaseCost)) || Number(form.purchaseCost) < 0)) {
+      throw new Error("Purchase cost must be zero or more when provided.");
     }
     if (!form.sellingPrice.trim() || !Number.isFinite(Number(form.sellingPrice)) || Number(form.sellingPrice) <= 0) {
       throw new Error("Enter a selling price greater than zero.");
@@ -212,7 +213,7 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
           images: paths,
           hasBarcode: form.hasBarcode,
           barcode: form.hasBarcode ? form.barcode.trim() : "",
-          purchaseCost: Number(form.purchaseCost),
+          purchaseCost: form.purchaseCost.trim() ? Number(form.purchaseCost) : undefined,
           price: Number(form.sellingPrice),
           stock: form.productType === "standard" ? Number(form.stock) : undefined,
           unit: form.unit,
@@ -279,9 +280,9 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
   const inputClass = "mt-1 block w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-cocoa-800 outline-none focus:border-orange-500";
   const pricingFields = (
     <div className="grid gap-4 sm:grid-cols-2">
-      <label className="block text-sm font-medium text-stone-700">Purchase cost (₦) *
-        <input required type="number" min="0" step="0.01" value={form.purchaseCost} onChange={(event) => update("purchaseCost", event.target.value)} className={inputClass} placeholder="0.00" />
-        <span className="mt-1 block text-xs font-normal text-stone-500">Private; shoppers will not see this amount.</span>
+      <label className="block text-sm font-medium text-stone-700">Purchase cost (₦), optional
+        <input type="number" min="0" step="0.01" value={form.purchaseCost} onChange={(event) => update("purchaseCost", event.target.value)} className={inputClass} placeholder="Leave blank if unknown" />
+        <span className="mt-1 block text-xs font-normal text-stone-500">Private; leave blank if unknown. Shoppers will not see this amount.</span>
       </label>
       <label className="block text-sm font-medium text-stone-700">{variable ? "Parent/default selling price (₦) *" : "Selling price (₦) *"}
         <input required type="number" min="0.01" step="0.01" value={form.sellingPrice} onChange={(event) => update("sellingPrice", event.target.value)} className={inputClass} placeholder="0.00" />
