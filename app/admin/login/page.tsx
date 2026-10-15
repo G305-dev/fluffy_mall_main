@@ -15,17 +15,30 @@ function LoginForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    if (!res.ok) {
-      setError("Incorrect password");
-      return;
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setError(
+          typeof data?.error === "string"
+            ? data.error
+            : "Sign-in failed. Please try again."
+        );
+        return;
+      }
+
+      router.push(params.get("next") || "/admin");
+      router.refresh();
+    } catch {
+      setError("Unable to reach the server. Please try again.");
     }
-    router.push(params.get("next") || "/admin");
-    router.refresh();
   }
 
   return (

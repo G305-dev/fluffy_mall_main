@@ -7,10 +7,21 @@ import {
 import { sessionCookieOptions } from "@/lib/cookies";
 
 export async function POST(req: NextRequest) {
-  const { password } = await req.json();
+  if (!ADMIN_PASSWORD) {
+    return NextResponse.json(
+      { error: "Admin sign-in is not configured for this deployment." },
+      { status: 503 }
+    );
+  }
 
-  if (password !== ADMIN_PASSWORD) {
-    return NextResponse.json({ error: "Invalid" }, { status: 401 });
+  const body = await req.json().catch(() => null);
+  const password = body?.password;
+
+  if (typeof password !== "string" || password !== ADMIN_PASSWORD) {
+    return NextResponse.json(
+      { error: "Incorrect password." },
+      { status: 401 }
+    );
   }
 
   const res = NextResponse.json({ ok: true });
