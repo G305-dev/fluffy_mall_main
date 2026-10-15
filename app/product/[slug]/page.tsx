@@ -33,7 +33,7 @@ export default async function ProductPage({
 
   return (
     <div>
-      <ProductView key={`${product.id}:${initialVariantId || ""}`} product={product} initialVariantId={initialVariantId} />
+      <ProductView key={`${product.id}:${initialVariantId || ""}`} product={product} />
       {related.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
           <h2 className="font-display text-2xl text-cocoa-800">You may also like</h2>
