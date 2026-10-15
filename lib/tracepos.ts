@@ -1,0 +1,266 @@
+export type TraceposProduct = {
+  id?: string;
+  xid?: string;
+  name?: string;
+  item_code?: string | null;
+  sku?: string | null;
+  current_stock?: number | string | null;
+  details?: {
+    current_stock?: number | string | null;
+  };
+};
+
+function getTraceposConfig() {
+  const baseUrl =
+    process.env.TRACEPOS_BASE_URL ||
+    "https://app.tracepos.net/api/v1/public";
+
+  const publicKey =
+    process.env.TRACEPOS_PUBLIC_KEY?.trim();
+
+  const secretKey =
+    process.env.TRACEPOS_SECRET_KEY?.trim();
+
+  if (!publicKey || !secretKey) {
+    throw new Error(
+      "Tracepos API keys are not configured."
+    );
+  }
+
+  return {
+    baseUrl: baseUrl.replace(/\/$/, ""),
+    headers: {
+      "X-Tracepos-Public-Key": publicKey,
+      "X-Tracepos-Secret-Key": secretKey,
+      "X-Tracepos-API-Key": secretKey,
+      Accept: "application/json",
+      "User-Agent": "TraceposAPIClient/1.0",
+    },
+  };
+}
+
+function getRequiredTraceposSetting(
+  names: string[],
+  label: string
+) {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+
+    if (value) {
+      return value;
+    }
+  }
+
+  throw new Error(
+    `${label} is not configured.`
+  );
+}
+
+export function getTraceposWebsiteCustomerId() {
+  return getRequiredTraceposSetting(
+    [
+      "TRACEPOS_WEBSITE_CUSTOMER_XID",
+      "TRACEPOS_WEBSITE_CUSTOMER_ID",
+      "TRACEPOS_CUSTOMER_ID",
+    ],
+    "Tracepos website customer XID"
+  );
+}
+
+export function normalizeTraceposCode(
+  value: unknown
+) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase();
+}
+
+function normalizeProductStock(
+  row: TraceposProduct
+): TraceposProduct {
+  const directStock = row.current_stock;
+  const detailStock = row.details?.current_stock;
+
+  const hasDirectStock =
+    directStock !== null &&
+    directStock !== undefined &&
+    String(directStock).trim() !== "";
+
+  return {
+    ...row,
+    current_stock: hasDirectStock
+      ? directStock
+      : detailStock ?? null,
+  };
+}
+
+export async function fetchTraceposProducts(): Promise<
+  TraceposProduct[]
+> {
+  const {
+    baseUrl,
+    headers,
+  } = getTraceposConfig();
+
+  const products: TraceposProduct[] = [];
+  const limit = 100;
+  let page = 1;
+
+  while (page <= 100) {
+    const response = await fetch(
+      `${baseUrl}/products?limit=${limit}&page=${page}`,
+      {
+        headers,
+        cache: "no-store",
+      }
+    );
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      let detail = text.slice(0, 500);
+
+      try {
+        const errorBody = JSON.parse(text);
+
+        detail =
+          errorBody?.message ||
+          errorBody?.error ||
+          detail;
+      } catch {
+        // Tracepos may return HTML for an error.
+      }
+
+      throw new Error(
+        `Tracepos request failed with HTTP ${response.status}: ${detail}`
+      );
+    }
+
+    let payload: any;
+
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      throw new Error(
+        `Tracepos returned invalid JSON. HTTP status: ${response.status}`
+      );
+    }
+
+    const pageData = payload?.data;
+
+    const rows = Array.isArray(pageData)
+      ? pageData
+      : Array.isArray(pageData?.data)
+        ? pageData.data
+        : [];
+
+    const normalizedRows = rows.map(
+      (row: TraceposProduct) =>
+        normalizeProductStock(row)
+    );
+
+    products.push(...normalizedRows);
+
+    const total = Number(
+      pageData?.total || 0
+    );
+
+    const currentPage = Number(
+      pageData?.current_page || page
+    );
+
+    if (
+      rows.length === 0 ||
+      rows.length < limit ||
+      (total > 0 && products.length >= total) ||
+      currentPage !== page
+    ) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return products;
+}
+
+export type TraceposSaleLine = {
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  discount?: number;
+};
+
+export async function createTraceposSale(input: {
+  userId: string;
+  invoiceNumber: string;
+  orderDate: string;
+  items: TraceposSaleLine[];
+  shipping: number;
+  notes: string;
+}) {
+  const {
+    baseUrl,
+    headers,
+  } = getTraceposConfig();
+
+  if (!input.items.length) {
+    throw new Error(
+      "Cannot create a Tracepos sale without products."
+    );
+  }
+
+  const requestBody = {
+    user_id: input.userId,
+    order_date: input.orderDate,
+    invoice_number: input.invoiceNumber,
+    notes: input.notes,
+    shipping: input.shipping,
+    product_items: input.items,
+  };
+
+  const response = await fetch(
+    `${baseUrl}/sales`,
+    {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+      cache: "no-store",
+    }
+  );
+
+  const text = await response.text();
+
+  let payload: any;
+
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Tracepos sales response was not valid JSON. HTTP ${response.status}`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      payload?.message ||
+        payload?.error ||
+        `Tracepos sale failed with HTTP ${response.status}`
+    );
+  }
+
+  if (
+    payload?.status === "error" ||
+    payload?.status === false
+  ) {
+    throw new Error(
+      payload?.message ||
+        "Tracepos rejected the sale."
+    );
+  }
+
+  return payload;
+}

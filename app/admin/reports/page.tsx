@@ -205,7 +205,7 @@ function StockTable({ rows, costs = false }: { rows: StockRow[]; costs?: boolean
         <thead className="bg-stone-50 text-xs text-stone-600">
           <tr>
             <th className="px-4 py-3">Product / option</th><th className="px-4 py-3">Category</th>
-            <th className="px-4 py-3">Item code</th><th className="px-4 py-3 text-right">Stock</th>
+            <th className="px-4 py-3">TracePOS code</th><th className="px-4 py-3 text-right">Stock</th>
             <th className="px-4 py-3">Status</th>
             {costs && <th className="px-4 py-3 text-right">Known cost value</th>}
           </tr>
@@ -300,10 +300,9 @@ export default async function ReportsPage({ searchParams }: {
       category: labelOf(product.category), categorySlug: product.category, code, stock: qty, unit,
       cost, value: cost === undefined ? null : Math.max(0, qty) * cost, image: image || PLACEHOLDER,
     });
-    // Native item codes belong to standard products only; variant sales are paused.
     return product.variants?.length
-      ? product.variants.map((variant) => makeRow(variant.name, variant.id, variant.stock, "", variant.image || product.images?.[0] || PLACEHOLDER))
-      : [makeRow("", "standard", product.stock, product.itemCode || "", product.images?.[0] || PLACEHOLDER)];
+      ? product.variants.map((variant) => makeRow(variant.name, variant.id, variant.stock, variant.traceposItemCode || "", variant.image || product.images?.[0] || PLACEHOLDER))
+      : [makeRow("", "standard", product.stock, product.traceposItemCode || "", product.images?.[0] || PLACEHOLDER)];
   });
   const inStock = stockRows.filter((row) => stockLevel(row.stock) === "healthy").length;
   const low = stockRows.filter((row) => stockLevel(row.stock) === "low").length;
@@ -380,7 +379,7 @@ export default async function ReportsPage({ searchParams }: {
   );
   const inventoryRows = stockRows.filter((row) => !category || row.categorySlug === category);
   const reportStock = tab === "low-stock" ? lowRows.filter((row) => !category || row.categorySlug === category) : inventoryRows;
-  const stockHeader = ["Product", "Option", "Category", "Item code", "Stock", "Unit", "Purchase cost (NGN)", "Known cost value (NGN)"];
+  const stockHeader = ["Product", "Option", "Category", "TracePOS item code", "Stock", "Unit", "Purchase cost (NGN)", "Known cost value (NGN)"];
   const stockExport = (rows: StockRow[]) => rows.map((row) => [row.product, row.option, row.category, row.code, row.stock, row.unit, row.cost === undefined ? "Not recorded" : row.cost, row.value === null ? "Not recorded" : row.value]);
   let exportRows: Array<Array<string | number>>;
   if (tab === "inventory" || tab === "low-stock") exportRows = [stockHeader, ...stockExport(reportStock)];

@@ -14,6 +14,7 @@ import {
   Mail,
   Menu,
   Package,
+  RefreshCw,
   Search,
   Settings,
   ShoppingBag,
@@ -42,6 +43,7 @@ const INVENTORY_SECTIONS: Array<{ label: string; href?: string }> = [
 
 const OTHER_LINKS = [
   { href: "/admin/subscribers", label: "Subscribers", icon: Mail },
+  { href: "/admin/tracepos/check", label: "TracePOS check", icon: RefreshCw },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -51,7 +53,7 @@ const ALL_LINKS = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: Package },
   ...PRIMARY_LINKS.slice(1),
-  { href: "/admin/pos", label: "Cashier / POS", icon: ShoppingBag },
+  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   ...OTHER_LINKS,
 ];
 const storeUrl = process.env.NEXT_PUBLIC_APP_URL || "https://fluffynyummystore.com";
@@ -96,17 +98,23 @@ function NavigationLinks({
     pathname === "/admin/inventory" || pathname.startsWith("/admin/inventory/") ||
     pathname === "/admin/products" || pathname.startsWith("/admin/products/") ||
     pathname === "/admin/categories" || pathname.startsWith("/admin/categories/");
-  const ordersActive = pathname === "/admin/orders" || pathname.startsWith("/admin/orders/") ||
-    pathname === "/admin/pos" || pathname.startsWith("/admin/pos/");
   const [inventoryOpen, setInventoryOpen] = useState(inventoryActive);
+  const ordersActive = pathname === "/admin/orders" || pathname.startsWith("/admin/orders/");
   const [ordersOpen, setOrdersOpen] = useState(ordersActive);
+  const reportsActive = pathname === "/admin/reports" || pathname.startsWith("/admin/reports/");
+  const [reportsOpen, setReportsOpen] = useState(reportsActive);
 
   useEffect(() => {
     if (inventoryActive) setInventoryOpen(true);
   }, [inventoryActive]);
+
   useEffect(() => {
     if (ordersActive) setOrdersOpen(true);
   }, [ordersActive]);
+
+  useEffect(() => {
+    if (reportsActive) setReportsOpen(true);
+  }, [reportsActive]);
 
   const renderLink = ({
     href,
@@ -189,34 +197,90 @@ function NavigationLinks({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setOrdersOpen((open) => !open)}
-        aria-expanded={ordersOpen}
-        aria-controls={`${menuId}-orders`}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${ordersActive ? "text-orange-700" : "text-stone-600"}`}
-      >
-        <ShoppingBag size={18} strokeWidth={1.8} aria-hidden="true" />
-        <span className="flex-1">Orders</span>
-        <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${ordersOpen ? "rotate-180" : ""}`} />
-      </button>
+      <div className={`flex items-center rounded-xl ${ordersActive ? "bg-[#ff8200] text-white shadow-sm" : "text-stone-600"}`}>
+        <Link
+          href="/admin/orders"
+          onClick={onNavigate}
+          aria-current={ordersActive ? "page" : undefined}
+          className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${ordersActive ? "hover:bg-white/10" : "hover:bg-orange-50 hover:text-cocoa-800"}`}
+        >
+          <ShoppingBag size={18} strokeWidth={1.8} aria-hidden="true" />
+          <span>Orders</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setOrdersOpen((open) => !open)}
+          aria-label={ordersOpen ? "Collapse orders menu" : "Expand orders menu"}
+          aria-expanded={ordersOpen}
+          aria-controls={`${menuId}-orders`}
+          className={`mr-1 rounded-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${ordersActive ? "hover:bg-white/10" : "hover:bg-orange-50"}`}
+        >
+          <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${ordersOpen ? "rotate-180" : ""}`} />
+        </button>
+      </div>
       {ordersOpen && (
         <div id={`${menuId}-orders`} className="ml-5 space-y-0.5 border-l border-orange-200 pl-3">
           {[
-            { href: "/admin/orders", label: "Website orders" },
-            { href: "/admin/pos", label: "Cashier / POS" },
-          ].map(({ href, label }) => {
-            const active = pathname === href || pathname.startsWith(`${href}/`);
-            return (
-              <Link key={href} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined}
-                className={`block rounded-lg px-2 py-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${active ? "bg-orange-100 text-orange-800" : "text-stone-600 hover:bg-orange-50"}`}>
-                {label}
-              </Link>
-            );
-          })}
+            { label: "All orders", href: "/admin/orders" },
+            { label: "Pending orders", href: "/admin/orders?status=pending" },
+            { label: "Completed orders", href: "/admin/orders?status=completed" },
+            { label: "Cancelled orders", href: "/admin/orders?status=cancelled" },
+          ].map(({ label, href }) => (
+            <Link
+              key={label}
+              href={href}
+              onClick={onNavigate}
+              className="block rounded-lg px-2 py-2 text-xs font-medium text-stone-600 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            >
+              {label}
+            </Link>
+          ))}
         </div>
       )}
       {renderLink(PRIMARY_LINKS[2])}
+      <div className={`flex items-center rounded-xl ${reportsActive ? "bg-[#ff8200] text-white shadow-sm" : "text-stone-600"}`}>
+        <Link
+          href="/admin/reports"
+          onClick={onNavigate}
+          aria-current={reportsActive ? "page" : undefined}
+          className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${reportsActive ? "hover:bg-white/10" : "hover:bg-orange-50 hover:text-cocoa-800"}`}
+        >
+          <BarChart3 size={18} strokeWidth={1.8} aria-hidden="true" />
+          <span>Reports</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setReportsOpen((open) => !open)}
+          aria-label={reportsOpen ? "Collapse reports menu" : "Expand reports menu"}
+          aria-expanded={reportsOpen}
+          aria-controls={`${menuId}-reports`}
+          className={`mr-1 rounded-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${reportsActive ? "hover:bg-white/10" : "hover:bg-orange-50"}`}
+        >
+          <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${reportsOpen ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+      {reportsOpen && (
+        <div id={`${menuId}-reports`} className="ml-5 space-y-0.5 border-l border-orange-200 pl-3">
+          {[
+            { label: "Overview", href: "/admin/reports" },
+            { label: "Sales report", href: "/admin/reports?tab=sales" },
+            { label: "Inventory report", href: "/admin/reports?tab=inventory" },
+            { label: "Stock movement", href: "/admin/reports?tab=movement" },
+            { label: "Product performance", href: "/admin/reports?tab=performance" },
+            { label: "Low stock report", href: "/admin/reports?tab=low-stock" },
+            { label: "Custom reports", href: "/admin/reports?tab=custom" },
+          ].map(({ label, href }) => (
+            <Link
+              key={label}
+              href={href}
+              onClick={onNavigate}
+              className="block rounded-lg px-2 py-2 text-xs font-medium text-stone-600 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
       <div className="my-5 border-t border-stone-200" />
       <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
         Tools

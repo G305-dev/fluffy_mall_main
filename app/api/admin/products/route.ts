@@ -1,134 +1,193 @@
-import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
-import { getAdminCategories } from "@/lib/admin-categories";
 import {
   getProducts,
   saveProducts,
 } from "@/lib/db";
-import {
-  deleteProductCost,
-  saveProductCost,
-} from "@/lib/product-costs";
+import { getAdminCategories } from "@/lib/admin-categories";
+import { deleteProductCost, saveProductCost } from "@/lib/product-costs";
 import { isProductUnit } from "@/lib/product-units";
-import {
-  COLLECTIONS,
-  getDb,
-} from "@/lib/mongo";
-import { nativePosControl } from "@/lib/native-pos";
+import { COLLECTIONS, getDb } from "@/lib/mongo";
 import type {
   CategorySlug,
   Product,
+  ProductVariant,
 } from "@/lib/types";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+const DELIVERY_TIMES =
+  "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days.";
 
-class ProductInputError extends Error {}
-
-function amount(
-  value: unknown,
-  label: string,
-  allowZero = false
-) {
-  if (
-    (
-      typeof value !== "string" &&
-      typeof value !== "number"
-    ) ||
-    String(value).trim() === ""
-  ) {
-    throw new ProductInputError(
-      `${label} must be an amount.`
-    );
-  }
-
-  const result = Number(value);
-
-  if (
-    !Number.isFinite(result) ||
-    (
-      allowZero
-        ? result < 0
-        : result <= 0
-    ) ||
-    Math.abs(
-      result * 100 -
-        Math.round(result * 100)
-    ) > 0.000001
-  ) {
-    throw new ProductInputError(
-      `${label} must be ${
-        allowZero
-          ? "zero or more"
-          : "greater than zero"
-      }, with up to two decimals.`
-    );
-  }
-
-  return Math.round(result * 100) / 100;
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }
 
-function optionalImages(
+function parseProductImages(
   input: unknown
 ): string[] {
-  if (
-    !Array.isArray(input) ||
-    !input.length ||
-    input.length > 12 ||
-    !input.every(
-      (value) =>
-        typeof value === "string" &&
-        value.trim()
-    )
-  ) {
-    throw new ProductInputError(
-      "Keep at least one product image (maximum twelve)."
+  if (Array.isArray(input)) {
+    const images = input
+      .filter(
+        (value): value is string =>
+          typeof value === "string"
+      )
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (images.length === 0) {
+      throw new Error(
+        "At least one product image is required."
+      );
+    }
+
+    return Array.from(new Set(images));
+  }
+
+  const image = String(input ?? "").trim();
+
+  if (!image) {
+    throw new Error(
+      "At least one product image is required."
     );
   }
 
-  return Array.from(
-    new Set(
-      input.map(
-        (value: string) =>
-          value.trim()
-      )
-    )
-  );
+  return [image];
 }
 
-function refreshProduct(
-  product: Product,
-  oldCategory: CategorySlug
+function parseVariants(
+  input: unknown,
+  productId: string
+): ProductVariant[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  const variants: ProductVariant[] = [];
+  const usedCombinations = new Set<string>();
+
+  for (
+    let index = 0;
+    index < input.length;
+    index++
+  ) {
+    const item = input[index];
+
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+
+    const raw = item as Record<string, unknown>;
+
+    const size = String(
+      raw.size ?? ""
+    ).trim();
+
+    const color = String(
+      raw.color ?? ""
+    ).trim();
+
+    const image = String(
+      raw.image ?? ""
+    ).trim();
+
+    const traceposItemCode =
+      String(
+        raw.traceposItemCode ?? ""
+      ).trim() || undefined;
+
+    const rawPrice = String(
+      raw.price ?? ""
+    ).trim();
+
+    const rawStock = String(
+      raw.stock ?? ""
+    ).trim();
+
+    if (
+      !size &&
+      !color &&
+      !image &&
+      !rawPrice &&
+      !rawStock &&
+      !traceposItemCode
+    ) {
+      continue;
+    }
+
+    if (!size && !color) {
+      throw new Error(
+        `Variant ${index + 1} needs a size or a color.`
+      );
+    }
+
+    if (!image) {
+      throw new Error(
+        `Variant ${index + 1} needs an image.`
+      );
+    }
+
+    const price = Number(raw.price);
+    const stock = Number(raw.stock ?? 0);
+
+    if (
+      !Number.isFinite(price) ||
+      price <= 0
+    ) {
+      throw new Error(
+        `Variant ${index + 1} has an invalid price.`
+      );
+    }
+
+    if (
+      !Number.isFinite(stock) ||
+      stock < 0
+    ) {
+      throw new Error(
+        `Variant ${index + 1} has an invalid stock quantity.`
+      );
+    }
+
+    const combinationKey =
+      `${size.toLowerCase()}|${color.toLowerCase()}`;
+
+    if (
+      usedCombinations.has(combinationKey)
+    ) {
+      throw new Error(
+        `Variant ${
+          index + 1
+        } duplicates another size and color combination.`
+      );
+    }
+
+    usedCombinations.add(combinationKey);
+
+    variants.push({
+      id: `${productId}-variant-${index + 1}`,
+      name: [size, color]
+        .filter(Boolean)
+        .join(" / "),
+      size: size || undefined,
+      color: color || undefined,
+      price,
+      stock,
+      image,
+      traceposItemCode,
+    });
+  }
+
+  return variants;
+}
+
+export async function POST(
+  req: NextRequest
 ) {
-  revalidatePath("/");
-  revalidatePath("/shop");
-  revalidatePath(
-    `/shop/${oldCategory}`
-  );
-  revalidatePath(
-    `/shop/${product.category}`
-  );
-  revalidatePath(
-    `/product/${product.slug}`
-  );
-  revalidatePath(
-    "/admin/products"
-  );
-  revalidatePath(
-    "/admin/inventory"
-  );
-  revalidatePath(
-    "/admin/pos"
-  );
-  revalidatePath(
-    "/sitemap.xml"
-  );
-}
-
-// The admin creates products through /api/admin/products/create.
-// The old POST path would bypass barcode and movement safeguards.
-export async function POST() {
   if (!isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -136,12 +195,156 @@ export async function POST() {
     );
   }
 
+  const body = await req.json();
+
+  const name = String(
+    body.name || ""
+  ).trim();
+
+  if (!name) {
+    return NextResponse.json(
+      {
+        error: "Product name is required.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const price = Number(body.price);
+
+  if (
+    !Number.isFinite(price) ||
+    price <= 0
+  ) {
+    return NextResponse.json(
+      {
+        error: "Enter a valid price.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const category =
+    String(body.category || "") as CategorySlug;
+
+  if (!(await getAdminCategories()).some((item) => item.slug === category)) {
+    return NextResponse.json(
+      {
+        error: "Unknown category.",
+      },
+      { status: 400 }
+    );
+  }
+
+  let images: string[];
+
+  try {
+    images = parseProductImages(
+      body.images !== undefined
+        ? body.images
+        : body.image
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Product images are invalid.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const products = await getProducts();
+
+  const baseSlug =
+    slugify(name) || "product";
+
+  let slug = baseSlug;
+  let counter = 2;
+
+  while (
+    products.some(
+      (product) => product.slug === slug
+    )
+  ) {
+    slug = `${baseSlug}-${counter++}`;
+  }
+
+  const productId = `p-${Date.now().toString(36)}${Math.random()
+    .toString(36)
+    .slice(2, 6)}`;
+
+  let variants: ProductVariant[];
+
+  try {
+    variants = parseVariants(
+      body.variants,
+      productId
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Invalid product variants.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const product: Product = {
+    id: productId,
+    slug,
+    name,
+
+    traceposItemCode:
+      String(
+        body.traceposItemCode ?? ""
+      ).trim() || undefined,
+
+    price,
+    category,
+
+    featured: Boolean(body.featured),
+    bestseller: Boolean(body.bestseller),
+
+    stock: Math.max(
+      0,
+      Number(body.stock) || 0
+    ),
+
+    images,
+
+    short: String(
+      body.short || ""
+    ).trim(),
+
+    description: String(
+      body.description || ""
+    ).trim(),
+
+    variants,
+
+    deliveryNote: [
+      DELIVERY_TIMES,
+      String(
+        body.deliveryNote || ""
+      ).trim(),
+    ]
+      .filter(Boolean)
+      .join(" "),
+  };
+
+  products.unshift(product);
+
+  await saveProducts(products);
+
   return NextResponse.json(
-    {
-      error:
-        "Create products through /api/admin/products/create.",
-    },
-    { status: 405 }
+    { product },
+    { status: 201 }
   );
 }
 
@@ -155,360 +358,193 @@ export async function PATCH(
     );
   }
 
-  try {
-    const input: unknown =
-      await req.json();
+  const body = await req.json();
+  const products = await getProducts();
 
-    if (
-      !input ||
-      typeof input !== "object" ||
-      Array.isArray(input)
-    ) {
-      throw new ProductInputError(
-        "Send product details."
-      );
-    }
+  if (body.unit !== undefined && !isProductUnit(body.unit)) {
+    return NextResponse.json({ error: "Choose a valid unit." }, { status: 400 });
+  }
+  const cost = body.purchaseCost;
+  if (cost !== undefined && (
+    (typeof cost !== "string" && typeof cost !== "number") ||
+    String(cost).trim() === "" || !Number.isFinite(Number(cost)) || Number(cost) < 0
+  )) {
+    return NextResponse.json({ error: "Purchase cost must be zero or more." }, { status: 400 });
+  }
 
-    const body =
-      input as Record<string, unknown>;
+  const index = products.findIndex(
+    (product) => product.id === body.id
+  );
 
-    if (
-      typeof body.id !== "string" ||
-      !body.id.trim()
-    ) {
-      throw new ProductInputError(
-        "Choose a product."
-      );
-    }
+  if (index < 0) {
+    return NextResponse.json(
+      { error: "Not found" },
+      { status: 404 }
+    );
+  }
 
-    if (
-      body.variants !== undefined
-    ) {
-      throw new ProductInputError(
-        "Variant editing is paused; existing options are preserved."
-      );
-    }
+  let variants =
+    products[index].variants;
 
-    const products =
-      await getProducts();
-
-    const index =
-      products.findIndex(
-        (product) =>
-          product.id === body.id
-      );
-
-    if (index < 0) {
-      return NextResponse.json(
-        {
-          error:
-            "Product not found.",
-        },
-        { status: 404 }
-      );
-    }
-
-    const original =
-      products[index];
-
-    const next: Product = {
-      ...original,
-    };
-
-    if (
-      body.name !== undefined
-    ) {
-      if (
-        typeof body.name !==
-          "string" ||
-        !body.name.trim() ||
-        body.name.trim().length >
-          200
-      ) {
-        throw new ProductInputError(
-          "Product name must be 1–200 characters."
-        );
-      }
-
-      next.name =
-        body.name.trim();
-    }
-
-    if (
-      body.price !== undefined
-    ) {
-      next.price = amount(
-        body.price,
-        "Selling price"
-      );
-    }
-
-    if (
-      body.stock !== undefined
-    ) {
-      const stock =
-        Number(
-          body.stock
-        );
-
-      if (
-        (
-          typeof body.stock !==
-            "number" &&
-          typeof body.stock !==
-            "string"
-        ) ||
-        String(
-          body.stock
-        ).trim() === "" ||
-        !Number.isSafeInteger(
-          stock
-        )
-      ) {
-        throw new ProductInputError(
-          "Stock must be a whole number."
-        );
-      }
-
-      if (
-        (
-          original.productType ===
-            "variable" ||
-          original.variants?.length
-        ) &&
-        stock !== original.stock
-      ) {
-        throw new ProductInputError(
-          "Variable-product stock is paused; keep its options unchanged."
-        );
-      }
-
-      next.stock =
-        stock;
-    }
-
-    if (
-      body.category !== undefined
-    ) {
-      if (
-        typeof body.category !==
-          "string" ||
-        !(
-          await getAdminCategories()
-        ).some(
-          (item) =>
-            item.slug ===
-            body.category
-        )
-      ) {
-        throw new ProductInputError(
-          "Choose an existing website category."
-        );
-      }
-
-      next.category =
-        body.category;
-    }
-
-    if (
-      body.unit !== undefined
-    ) {
-      if (
-        !isProductUnit(
-          body.unit
-        )
-      ) {
-        throw new ProductInputError(
-          "Choose a valid unit."
-        );
-      }
-
-      next.unit =
-        body.unit;
-    }
-
-    if (
-      body.images !== undefined
-    ) {
-      next.images =
-        optionalImages(
-          body.images
-        );
-    }
-
-    if (
-      body.featured !== undefined
-    ) {
-      if (
-        typeof body.featured !==
-        "boolean"
-      ) {
-        throw new ProductInputError(
-          "Invalid featured setting."
-        );
-      }
-
-      next.featured =
-        body.featured;
-    }
-
-    if (
-      body.bestseller !== undefined
-    ) {
-      if (
-        typeof body.bestseller !==
-        "boolean"
-      ) {
-        throw new ProductInputError(
-          "Invalid bestseller setting."
-        );
-      }
-
-      next.bestseller =
-        body.bestseller;
-    }
-
-    const cost =
-      body.purchaseCost ===
-      undefined
-        ? undefined
-        : amount(
-            body.purchaseCost,
-            "Purchase cost",
-            true
-          );
-
-    products[index] =
-      next;
-
-    // Batch-1 saveProducts checks current stock and POS mode
-    // in the same transaction. Stale edits cannot rewrite a sale.
+  if (Array.isArray(body.variants)) {
     try {
-      await saveProducts(
-        products
+      variants = parseVariants(
+        body.variants,
+        products[index].id
       );
-    } catch (
-      error
-    ) {
+    } catch (error) {
       return NextResponse.json(
         {
           error:
             error instanceof Error
               ? error.message
-              : "Could not save product. Refresh and retry.",
-        },
-        { status: 409 }
-      );
-    }
-
-    if (
-      body.category !== undefined
-    ) {
-      try {
-        const db =
-          await getDb();
-
-        await db
-          .collection(
-            COLLECTIONS.PRODUCTS
-          )
-          .updateOne(
-            {
-              id:
-                next.id,
-            },
-            {
-              $unset: {
-                subcategory:
-                  "",
-              },
-            }
-          );
-      } catch (
-        error
-      ) {
-        console.error(
-          "[product category cleanup]",
-          next.id,
-          error
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Product saved, but category cleanup failed. Refresh and review before retrying.",
-          },
-          { status: 500 }
-        );
-      }
-    }
-
-    if (
-      cost !== undefined
-    ) {
-      try {
-        await saveProductCost(
-          next.id,
-          cost
-        );
-      } catch (
-        error
-      ) {
-        console.error(
-          "[private product cost]",
-          next.id,
-          error
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Product saved, but private purchase cost was not updated. Reconcile the cost record.",
-          },
-          { status: 500 }
-        );
-      }
-    }
-
-    refreshProduct(
-      next,
-      original.category
-    );
-
-    return NextResponse.json({
-      product: next,
-    });
-  } catch (
-    error
-  ) {
-    if (
-      error instanceof
-        ProductInputError ||
-      error instanceof
-        SyntaxError
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            error.message,
+              : "Invalid product variants.",
         },
         { status: 400 }
       );
     }
-
-    console.error(
-      "[admin product edit]",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Could not update product.",
-      },
-      { status: 500 }
-    );
   }
+
+  let nextCategory: CategorySlug =
+    products[index].category;
+
+  if (body.category !== undefined) {
+    const requestedCategory =
+      String(body.category).trim() as CategorySlug;
+
+    if (!(await getAdminCategories()).some((item) => item.slug === requestedCategory)) {
+      return NextResponse.json(
+        { error: "Unknown category." },
+        { status: 400 }
+      );
+    }
+
+    nextCategory = requestedCategory;
+  }
+
+  if (
+    body.variantItemCodes &&
+    typeof body.variantItemCodes === "object" &&
+    !Array.isArray(body.variantItemCodes)
+  ) {
+    const codes =
+      body.variantItemCodes as Record<
+        string,
+        unknown
+      >;
+
+    variants = variants.map((variant) => {
+      if (!(variant.id in codes)) {
+        return variant;
+      }
+
+      return {
+        ...variant,
+        traceposItemCode:
+          String(
+            codes[variant.id] ?? ""
+          ).trim() || undefined,
+      };
+    });
+  }
+
+  let nextImages =
+    products[index].images || [];
+
+  if (body.images !== undefined) {
+    try {
+      nextImages = parseProductImages(
+        body.images
+      );
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Product images are invalid.",
+        },
+        { status: 400 }
+      );
+    }
+  } else if (
+    typeof body.image === "string" &&
+    body.image.trim()
+  ) {
+    /*
+     * Backward compatibility for old callers that
+     * still send one image.
+     */
+    nextImages = [
+      body.image.trim(),
+      ...nextImages.slice(1),
+    ];
+  }
+
+  products[index] = {
+    ...products[index],
+
+    name:
+      body.name !== undefined
+        ? String(body.name).trim()
+        : products[index].name,
+
+    price: Number(
+      body.price ?? products[index].price
+    ),
+
+    stock: variants.length
+      ? variants.reduce((sum, variant) => sum + variant.stock, 0)
+      : Number(body.stock ?? products[index].stock),
+
+    category: nextCategory,
+    unit: body.unit !== undefined ? body.unit : products[index].unit,
+
+    featured:
+      body.featured !== undefined
+        ? Boolean(body.featured)
+        : products[index].featured,
+
+    bestseller:
+      body.bestseller !== undefined
+        ? Boolean(body.bestseller)
+        : products[index].bestseller,
+
+    traceposItemCode:
+      body.traceposItemCode !== undefined
+        ? String(
+            body.traceposItemCode ?? ""
+          ).trim() || undefined
+        : products[index].traceposItemCode,
+
+    images: nextImages,
+    variants,
+  };
+
+  await saveProducts(products);
+  if (cost !== undefined) await saveProductCost(products[index].id, Number(cost));
+
+  // A legacy product may still have a stored subtype until migration.
+  // Saving an explicit flat category clears it in MongoDB too; $set
+  // alone would leave the old field behind.
+  if (body.category !== undefined) {
+    const db = await getDb();
+
+    await db.collection(COLLECTIONS.PRODUCTS).updateOne(
+      { id: products[index].id },
+      { $unset: { subcategory: "" } }
+    );
+
+    delete (
+      products[index] as Product & {
+        subcategory?: unknown;
+      }
+    ).subcategory;
+  }
+
+  return NextResponse.json({
+    product: products[index],
+  });
 }
 
 export async function DELETE(
@@ -521,132 +557,30 @@ export async function DELETE(
     );
   }
 
-  let id: string;
+  const body = await req.json();
+  const id = String(body.id || "");
 
-  try {
-    const body: unknown =
-      await req.json();
+  const products = await getProducts();
 
-    id = String(
-      (
-        body as {
-          id?: unknown;
-        } | null
-      )?.id || ""
-    ).trim();
-  } catch {
+  const index = products.findIndex(
+    (product) => product.id === id
+  );
+
+  if (index < 0) {
     return NextResponse.json(
-      {
-        error:
-          "Choose a product.",
-      },
-      { status: 400 }
+      { error: "Not found" },
+      { status: 404 }
     );
   }
 
-  if (!id) {
-    return NextResponse.json(
-      {
-        error:
-          "Choose a product.",
-      },
-      { status: 400 }
-    );
-  }
+  const [removed] =
+    products.splice(index, 1);
 
-  try {
-    if (
-      await nativePosControl()
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Deleting products is disabled while POS is active. Preserve sale history.",
-        },
-        { status: 409 }
-      );
-    }
+  await saveProducts(products);
+  await deleteProductCost(removed.id).catch((error) => console.error("[delete product cost]", error));
 
-    const products =
-      await getProducts();
-
-    const index =
-      products.findIndex(
-        (product) =>
-          product.id ===
-          id
-      );
-
-    if (
-      index < 0
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Not found",
-        },
-        { status: 404 }
-      );
-    }
-
-    const [removed] =
-      products.splice(
-        index,
-        1
-      );
-
-    try {
-      await saveProducts(
-        products
-      );
-    } catch (
-      error
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            error instanceof Error
-              ? error.message
-              : "Could not remove product. Refresh and retry.",
-        },
-        { status: 409 }
-      );
-    }
-
-    await deleteProductCost(
-      removed.id
-    ).catch(
-      (error) =>
-        console.error(
-          "[delete product cost]",
-          error
-        )
-    );
-
-    refreshProduct(
-      removed,
-      removed.category
-    );
-
-    return NextResponse.json({
-      ok: true,
-      removed:
-        removed.id,
-    });
-  } catch (
-    error
-  ) {
-    console.error(
-      "[delete product]",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Could not delete product.",
-      },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    ok: true,
+    removed: removed.id,
+  });
 }

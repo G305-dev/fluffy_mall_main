@@ -152,8 +152,8 @@ export default function ProductDetailsDialog({
               <Detail label={options.length ? "Total option stock" : "Stock"}>
                 {stock.toLocaleString("en-NG")} {unit}
               </Detail>
-              <Detail label="Fluffy Mall item code">
-                <span className="break-all font-mono text-xs">{product.itemCode || "Not set"}</span>
+              <Detail label="TracePOS item code">
+                <span className="break-all font-mono text-xs">{product.traceposItemCode || "Not set"}</span>
               </Detail>
               <Detail label="Code 128 barcode"><Barcode value={product.barcode} /></Detail>
               <Detail label="Product ID"><span className="break-all font-mono text-xs">{product.id}</span></Detail>
@@ -197,6 +197,7 @@ export default function ProductDetailsDialog({
                     <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
                       <div><dt className="inline text-stone-500">Price: </dt><dd className="inline font-semibold">{naira(option.price)}</dd></div>
                       <div><dt className="inline text-stone-500">Stock: </dt><dd className="inline font-semibold">{option.stock.toLocaleString("en-NG")} {unit}</dd></div>
+                      <div className="min-w-0 break-all"><dt className="inline text-stone-500">TracePOS: </dt><dd className="inline font-mono">{option.traceposItemCode || "Not set"}</dd></div>
                       <div className="min-w-0 break-all"><dt className="inline text-stone-500">Code 128: </dt><dd className="inline font-mono"><Barcode value={option.barcode} /></dd></div>
                     </dl>
                   </div>

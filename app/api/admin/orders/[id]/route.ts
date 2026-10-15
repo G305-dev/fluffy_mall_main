@@ -1,35 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
-import { getOrder } from "@/lib/db";
-import { COLLECTIONS, getDb } from "@/lib/mongo";
+import { getOrder, saveOrder } from "@/lib/db";
 import type { OrderStatus } from "@/lib/types";
 
-const STATUSES: OrderStatus[] = [
-  "pending_payment", "paid", "processing", "out_for_delivery",
-  "awaiting_pickup", "completed", "cancelled", "refunded",
-];
-
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  if (!isAdminAuthed()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const body = await req.json();
-  const status = body.status as OrderStatus;
-  if (!STATUSES.includes(status)) return NextResponse.json({ error: "Invalid status." }, { status: 400 });
-
-  const existing = await getOrder(params.id);
-  if (!existing) return NextResponse.json({ error: "Order not found." }, { status: 404 });
-
-  if (status === "paid" && existing.payment.status !== "paid") {
-    return NextResponse.json({ error: "Payment must be verified before the order can be marked paid." }, { status: 409 });
+export async function PATCH(
+  req: NextRequest,
+  {
+    params,
+  }: {
+    params: { id: string };
+  }
+) {
+  if (!isAdminAuthed()) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
   }
 
-  const db = await getDb();
-  const result = await db.collection(COLLECTIONS.ORDERS).updateOne(
-    { id: params.id }, { $set: { status, updatedAt: new Date().toISOString() } }
-  );
-  if (!result.matchedCount) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+  const order = await getOrder(params.id);
 
-  // This changes fulfilment status only. It cannot mark a payment paid or
-  // change stock; only verified server-side payment callbacks do that.
-  return NextResponse.json({ order: await getOrder(params.id) });
+  if (!order) {
+    return NextResponse.json(
+      { error: "Not found" },
+      { status: 404 }
+    );
+  }
+
+  const body = await req.json();
+
+  if (body.status) {
+    order.status = body.status as OrderStatus;
+  }
+
+  order.updatedAt = new Date().toISOString();
+
+  await saveOrder(order);
+
+  const latestOrder = await getOrder(order.id);
+
+  return NextResponse.json({
+    order: latestOrder || order,
+  });
 }
