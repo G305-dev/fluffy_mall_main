@@ -17,16 +17,23 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function ProductPage({ params }: { params: { slug: string } }) {
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams?: { variant?: string | string[] };
+}) {
   const product = await getProductBySlug(params.slug);
   if (!product) notFound();
+  const initialVariantId = typeof searchParams?.variant === "string" ? searchParams.variant : undefined;
   const related = (await getProducts())
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 
   return (
     <div>
-      <ProductView product={product} />
+      <ProductView key={`${product.id}:${initialVariantId || ""}`} product={product} initialVariantId={initialVariantId} />
       {related.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
           <h2 className="font-display text-2xl text-cocoa-800">You may also like</h2>

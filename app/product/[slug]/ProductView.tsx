@@ -17,9 +17,11 @@ type ProductSlide = {
   variant?: ProductVariant;
 };
 
-export default function ProductView({ product }: { product: Product }) {
+export default function ProductView({ product, initialVariantId }: { product: Product; initialVariantId?: string }) {
   const { add, items } = useCart();
-  const [slideIndex, setSlideIndex] = useState(0);
+  const initialVariantIndex = product.variants.findIndex((variant) => variant.id === initialVariantId);
+  const initialSlideIndex = initialVariantIndex >= 0 ? product.images.length + initialVariantIndex : 0;
+  const [slideIndex, setSlideIndex] = useState(initialSlideIndex);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -36,10 +38,10 @@ export default function ProductView({ product }: { product: Product }) {
   }, [product.images, product.variants]);
 
   useEffect(() => {
-    setSlideIndex(0);
+    setSlideIndex(initialSlideIndex);
     setQty(1);
     setAdded(false);
-  }, [product.id]);
+  }, [product.id, initialSlideIndex]);
 
   const safeSlideIndex = Math.min(slideIndex, Math.max(0, slides.length - 1));
   const activeSlide = slides[safeSlideIndex];
@@ -189,7 +191,7 @@ export default function ProductView({ product }: { product: Product }) {
                   >
                     <span className="block">{optionLabel}</span>
                     <span className="block text-xs opacity-80">
-                      {naira(variantOption.price)} · {soldOut ? "Out of stock" : `${variantOption.stock} available`}
+                      {naira(variantOption.price)} · {soldOut ? "Out of stock" : "In stock"}
                     </span>
                   </button>
                 );
@@ -201,7 +203,7 @@ export default function ProductView({ product }: { product: Product }) {
                 : selectedOutOfStock
                   ? `${activeVariant?.name} is out of stock. Choose another option.`
                   : activeVariant
-                    ? `${activeVariant.name}: ${activeVariant.stock} available.`
+                    ? `${activeVariant.name}: In stock.`
                     : "Select an option to check availability."}
             </p>
           </div>
