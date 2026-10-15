@@ -10,6 +10,7 @@ import { categoryName } from "@/lib/categories";
 import { naira } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import ProductPhotoForm from "./ProductPhotoForm";
+import ProductDetailsDialog from "./ProductDetailsDialog";
 
 const PAGE_SIZE = 50;
 const PLACEHOLDER = "/images/product-placeholder.svg";
@@ -63,6 +64,7 @@ export default function ProductList({
   const [stockFilter, setStockFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [openRow, setOpenRow] = useState<OpenRow>(null);
+  const [viewedProductId, setViewedProductId] = useState<string | null>(null);
   const [savedPhotos, setSavedPhotos] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
   const [scrollMax, setScrollMax] = useState(0);
@@ -96,6 +98,7 @@ export default function ProductList({
   const firstIndex = (currentPage - 1) * PAGE_SIZE;
   const visible = filtered.slice(firstIndex, firstIndex + PAGE_SIZE);
   const names = new Map(categories.map((item) => [item.slug, item.name]));
+  const viewedProduct = products.find((item) => item.id === viewedProductId);
 
   useEffect(() => {
     const element = tableScroll.current;
@@ -280,7 +283,7 @@ export default function ProductList({
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap gap-1.5">
-                          <Link href={`/product/${product.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">View</Link>
+                          <button type="button" onClick={() => setViewedProductId(product.id)} aria-haspopup="dialog" aria-label={`View details for ${product.name}`} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">View</button>
                           <Link href={`/admin/products/${encodeURIComponent(product.id)}/edit`} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">Edit</Link>
                           <button type="button" onClick={() => toggleRow(product.id, "photo")} aria-expanded={expanded === "photo"} className="rounded-lg border border-orange-200 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50">Photo</button>
                         </div>
@@ -337,6 +340,16 @@ export default function ProductList({
           </nav>
         </div>
       </div>
+      {viewedProduct && (
+        <ProductDetailsDialog
+          key={viewedProduct.id}
+          product={viewedProduct}
+          categoryLabel={names.get(viewedProduct.category) || categoryName(viewedProduct.category)}
+          purchaseCost={costs[viewedProduct.id]}
+          savedMainImage={savedPhotos[viewedProduct.id]}
+          onClose={() => setViewedProductId(null)}
+        />
+      )}
     </section>
   );
 }
