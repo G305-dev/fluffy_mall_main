@@ -303,7 +303,7 @@ export default async function ReportsPage({ searchParams }: {
     // Native item codes belong to standard products only; variant sales are paused.
     return product.variants?.length
       ? product.variants.map((variant) => makeRow(variant.name, variant.id, variant.stock, "", variant.image || product.images?.[0] || PLACEHOLDER))
-      : [makeRow("", "standard", product.stock, product.itemCode || "", product.images?.[0] || PLACEHOLDER)];
+      : [makeRow("", "standard", product.stock, product.traceposItemCode || "", product.images?.[0] || PLACEHOLDER)];
   });
   const inStock = stockRows.filter((row) => stockLevel(row.stock) === "healthy").length;
   const low = stockRows.filter((row) => stockLevel(row.stock) === "low").length;

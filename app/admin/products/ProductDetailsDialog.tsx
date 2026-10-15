@@ -153,7 +153,7 @@ export default function ProductDetailsDialog({
                 {stock.toLocaleString("en-NG")} {unit}
               </Detail>
               <Detail label="Fluffy Mall item code">
-                <span className="break-all font-mono text-xs">{product.itemCode || "Not set"}</span>
+                <span className="break-all font-mono text-xs">{product.traceposItemCode || "Not set"}</span>
               </Detail>
               <Detail label="Code 128 barcode"><Barcode value={product.barcode} /></Detail>
               <Detail label="Product ID"><span className="break-all font-mono text-xs">{product.id}</span></Detail>
