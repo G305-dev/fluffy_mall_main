@@ -61,6 +61,44 @@ function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "product";
 }
 
+// Existing callers may still send size/color; new form sends name/value pairs.
+// The complete set is stored in variant.name so existing storefront, CSV/XLSX
+// export/import and stock-sync code can all display it without a schema change.
+function readOptionAttributes(raw: Record<string, unknown>, optionNumber: number) {
+  if (raw.attributes === undefined) {
+    const size = text(raw.size, `Option ${optionNumber} size`, 60);
+    const color = text(raw.color, `Option ${optionNumber} colour`, 60);
+    if (!size && !color) throw new ProductInputError(`Option ${optionNumber} needs an attribute.`);
+    return {
+      legacy: true,
+      size,
+      color,
+      attributes: [
+        ...(size ? [{ name: "Size", value: size }] : []),
+        ...(color ? [{ name: "Colour", value: color }] : []),
+      ],
+    };
+  }
+
+  if (!Array.isArray(raw.attributes) || raw.attributes.length < 1 || raw.attributes.length > 6) {
+    throw new ProductInputError(`Option ${optionNumber} needs between 1 and 6 attributes.`);
+  }
+  const names = new Set<string>();
+  const attributes = raw.attributes.map((entry, index) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new ProductInputError(`Option ${optionNumber} attribute ${index + 1} is invalid.`);
+    }
+    const attribute = entry as Record<string, unknown>;
+    const name = text(attribute.name, `Option ${optionNumber} attribute name`, 40, true);
+    const value = text(attribute.value, `Option ${optionNumber} attribute value`, 60, true);
+    const key = name.toLowerCase();
+    if (names.has(key)) throw new ProductInputError(`Option ${optionNumber} repeats an attribute name.`);
+    names.add(key);
+    return { name, value };
+  });
+  return { legacy: false, size: "", color: "", attributes };
+}
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthed()) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -140,16 +178,20 @@ export async function POST(req: NextRequest) {
         throw new ProductInputError(`Option ${index + 1} is invalid.`);
       }
       const raw = entry as Record<string, unknown>;
-      const size = text(raw.size, `Option ${index + 1} size`, 60);
-      const color = text(raw.color, `Option ${index + 1} colour`, 60);
-      if (!size && !color) {
-        throw new ProductInputError(`Option ${index + 1} needs a size or colour.`);
-      }
-      const key = `${size.toLowerCase()}|${color.toLowerCase()}`;
+      const { legacy, size, color, attributes } = readOptionAttributes(raw, index + 1);
+      const key = attributes.map((attribute) =>
+        `${attribute.name.toLowerCase()}=${attribute.value.toLowerCase()}`
+      ).sort().join("|");
       if (combinations.has(key)) {
-        throw new ProductInputError(`Option ${index + 1} repeats the same size and colour.`);
+        throw new ProductInputError(`Option ${index + 1} repeats another option's attributes.`);
       }
       combinations.add(key);
+      const optionName = legacy
+        ? [size, color].filter(Boolean).join(" / ")
+        : attributes.map(({ name, value }) => `${name}: ${value}`).join(" · ");
+      if (optionName.length > 120) {
+        throw new ProductInputError(`Option ${index + 1} has too much text. Shorten its attribute values.`);
+      }
       const traceposItemCode = text(raw.traceposItemCode, `Option ${index + 1} TracePOS item code`, 80);
       const normalizedCode = normalizeTraceposCode(traceposItemCode);
       if (normalizedCode && usedTraceposCodes.has(normalizedCode)) {
@@ -163,9 +205,9 @@ export async function POST(req: NextRequest) {
         ? price : amount(raw.price, `Option ${index + 1} selling price`);
       return {
         id: `${id}-variant-${index + 1}`,
-        name: [size, color].filter(Boolean).join(" / "),
-        size: size || undefined,
-        color: color || undefined,
+        name: optionName,
+        size: legacy && size ? size : undefined,
+        color: legacy && color ? color : undefined,
         price: variantPrice,
         stock: quantity(raw.stock, `Option ${index + 1} stock`),
         image: raw.image ? safeImage(raw.image) : imagePaths[0],

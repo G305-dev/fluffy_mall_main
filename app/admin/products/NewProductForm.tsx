@@ -1,19 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import type { AdminCategory } from "@/lib/admin-categories";
 import { PRODUCT_UNITS, type ProductUnit } from "@/lib/product-units";
 import type { Product } from "@/lib/types";
 
+type KnownAttribute = "size" | "colour" | "material" | "capacity" | "style";
+type AttributeKind = KnownAttribute | "other" | "";
+type AttributeDraft = { key: string; kind: AttributeKind; customName: string; value: string };
 type VariantDraft = {
-  size: string;
-  color: string;
+  key: string;
+  attributes: AttributeDraft[];
   price: string;
   stock: string;
   barcode: string;
   traceposItemCode: string;
+  imageFile: File | null;
+  imagePreview: string;
 };
 
 type FormState = {
@@ -34,6 +39,54 @@ type FormState = {
   variants: VariantDraft[];
 };
 
+const ATTRIBUTE_LABELS: Record<KnownAttribute, string> = {
+  size: "Size",
+  colour: "Colour",
+  material: "Material",
+  capacity: "Capacity",
+  style: "Style",
+};
+
+// Suggestions, not restrictions: shoppers may need an uncommon size or colour.
+const ATTRIBUTE_SUGGESTIONS: Record<KnownAttribute, string[]> = {
+  size: ["Small", "Medium", "Large", "XL", "2-Tier", "3-Tier"],
+  colour: ["Black", "White", "Red", "Blue", "Green", "Silver", "Gold"],
+  material: ["Plastic", "Stainless Steel", "Glass", "Wood", "Ceramic"],
+  capacity: ["250 ml", "500 ml", "1 L", "2 L", "5 L"],
+  style: ["Classic", "Modern", "Round", "Square"],
+};
+
+function draftKey() {
+  return Math.random().toString(36).slice(2);
+}
+
+function blankAttribute(): AttributeDraft {
+  return { key: draftKey(), kind: "", customName: "", value: "" };
+}
+
+function blankVariant(): VariantDraft {
+  return {
+    key: draftKey(), attributes: [blankAttribute()],
+    price: "", stock: "", barcode: "", traceposItemCode: "",
+    imageFile: null, imagePreview: "",
+  };
+}
+
+function attributeName(attribute: AttributeDraft) {
+  if (attribute.kind === "other") return attribute.customName.trim();
+  if (!attribute.kind) return "";
+  return ATTRIBUTE_LABELS[attribute.kind];
+}
+
+function valueHint(kind: AttributeKind) {
+  if (kind === "size") return "e.g. Small, Large, 3-Tier";
+  if (kind === "colour") return "e.g. Black, Blue, Rose Gold";
+  if (kind === "material") return "e.g. Glass, Stainless Steel";
+  if (kind === "capacity") return "e.g. 500 ml, 2 L";
+  if (kind === "style") return "e.g. Classic, Round";
+  return "Enter an attribute value";
+}
+
 function blankForm(category: string): FormState {
   return {
     productType: "standard", name: "", category,
@@ -41,10 +94,6 @@ function blankForm(category: string): FormState {
     stock: "", unit: "pcs", description: "", short: "", deliveryNote: "",
     featured: false, bestseller: false, variants: [],
   };
-}
-
-function blankVariant(): VariantDraft {
-  return { size: "", color: "", price: "", stock: "", barcode: "", traceposItemCode: "" };
 }
 
 function Step({ number, title, children }: {
@@ -87,6 +136,7 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState<Product | null>(null);
+  const variantImageUrls = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const next = images.map((file) => URL.createObjectURL(file));
@@ -94,18 +144,105 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
     return () => next.forEach((url) => URL.revokeObjectURL(url));
   }, [images]);
 
+  useEffect(() => {
+    const urls = variantImageUrls.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
+    };
+  }, []);
+
+  function releaseVariantImages() {
+    variantImageUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    variantImageUrls.current.clear();
+  }
+
+  function releaseVariantImage(url: string) {
+    if (url) URL.revokeObjectURL(url);
+    variantImageUrls.current.delete(url);
+  }
+
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((previous) => ({ ...previous, [key]: value }));
   }
 
-  function updateVariant(index: number, key: keyof VariantDraft, value: string) {
+  function updateVariant(index: number, key: "price" | "stock" | "barcode" | "traceposItemCode", value: string) {
     setForm((previous) => ({
       ...previous,
       variants: previous.variants.map((variant, i) => i === index ? { ...variant, [key]: value } : variant),
     }));
   }
 
+  function updateAttribute(variantIndex: number, attributeKey: string, changes: Partial<AttributeDraft>) {
+    setForm((previous) => ({
+      ...previous,
+      variants: previous.variants.map((variant, index) => index !== variantIndex ? variant : {
+        ...variant,
+        attributes: variant.attributes.map((attribute) =>
+          attribute.key === attributeKey ? { ...attribute, ...changes } : attribute
+        ),
+      }),
+    }));
+  }
+
+  function addAttribute(variantIndex: number) {
+    setForm((previous) => ({
+      ...previous,
+      variants: previous.variants.map((variant, index) => index !== variantIndex ? variant : {
+        ...variant, attributes: [...variant.attributes, blankAttribute()],
+      }),
+    }));
+  }
+
+  function removeAttribute(variantIndex: number, attributeKey: string) {
+    setForm((previous) => ({
+      ...previous,
+      variants: previous.variants.map((variant, index) => index !== variantIndex ? variant : {
+        ...variant,
+        attributes: variant.attributes.filter((attribute) => attribute.key !== attributeKey),
+      }),
+    }));
+  }
+
+  function removeVariant(index: number) {
+    releaseVariantImage(form.variants[index]?.imagePreview || "");
+    setForm((previous) => ({
+      ...previous, variants: previous.variants.filter((_, i) => i !== index),
+    }));
+  }
+
+  function chooseVariantImage(index: number, event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setError("Option photos must be JPEG, PNG or WEBP, up to 5 MB.");
+      return;
+    }
+    releaseVariantImage(form.variants[index]?.imagePreview || "");
+    const preview = URL.createObjectURL(file);
+    variantImageUrls.current.add(preview);
+    setForm((previous) => ({
+      ...previous,
+      variants: previous.variants.map((variant, i) =>
+        i === index ? { ...variant, imageFile: file, imagePreview: preview } : variant
+      ),
+    }));
+    setError("");
+  }
+
+  function clearVariantImage(index: number) {
+    releaseVariantImage(form.variants[index]?.imagePreview || "");
+    setForm((previous) => ({
+      ...previous,
+      variants: previous.variants.map((variant, i) =>
+        i === index ? { ...variant, imageFile: null, imagePreview: "" } : variant
+      ),
+    }));
+  }
+
   function reset() {
+    releaseVariantImages();
     setForm(blankForm(categories[0]?.slug || ""));
     setImages([]);
     setError("");
@@ -152,15 +289,33 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
         throw new Error("Enter a whole-number stock quantity of zero or more.");
       }
     } else {
-      if (!form.variants.length) throw new Error("Add at least one option for a variable product.");
-      const seen = new Set<string>();
+      if (!form.variants.length || form.variants.length > 40) {
+        throw new Error("Add between 1 and 40 options for a variable product.");
+      }
+      const combinations = new Set<string>();
       const seenTraceposCodes = new Set<string>();
       form.variants.forEach((variant, index) => {
         const label = `Option ${index + 1}`;
-        if (!variant.size.trim() && !variant.color.trim()) throw new Error(`${label} needs a size or colour.`);
-        const key = `${variant.size.trim().toLowerCase()}|${variant.color.trim().toLowerCase()}`;
-        if (seen.has(key)) throw new Error(`${label} repeats a size/colour combination.`);
-        seen.add(key);
+        if (!variant.attributes.length || variant.attributes.length > 6) {
+          throw new Error(`${label} needs between 1 and 6 attributes.`);
+        }
+        const seenNames = new Set<string>();
+        const parts = variant.attributes.map((attribute) => {
+          const name = attributeName(attribute);
+          const value = attribute.value.trim();
+          if (!name || name.length > 40 || !value || value.length > 60) {
+            throw new Error(`${label} needs an attribute name and value (40/60 characters maximum).`);
+          }
+          const normalizedName = name.toLowerCase();
+          if (seenNames.has(normalizedName)) throw new Error(`${label} repeats an attribute name.`);
+          seenNames.add(normalizedName);
+          return { name, value };
+        });
+        const optionName = parts.map(({ name, value }) => `${name}: ${value}`).join(" · ");
+        if (optionName.length > 120) throw new Error(`${label} has too much text. Shorten the attribute values.`);
+        const combination = parts.map(({ name, value }) => `${name.toLowerCase()}=${value.toLowerCase()}`).sort().join("|");
+        if (combinations.has(combination)) throw new Error(`${label} repeats another option's attributes.`);
+        combinations.add(combination);
         if (variant.price.trim() && (!Number.isFinite(Number(variant.price)) || Number(variant.price) <= 0)) {
           throw new Error(`${label} selling price must be greater than zero.`);
         }
@@ -203,6 +358,12 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
       setBusy(true);
       const paths: string[] = [];
       for (const file of images) paths.push(await uploadPhoto(file));
+      const variantImages: (string | undefined)[] = [];
+      if (form.productType === "variable") {
+        for (const variant of form.variants) {
+          variantImages.push(variant.imageFile ? await uploadPhoto(variant.imageFile) : undefined);
+        }
+      }
       const response = await fetch("/api/admin/products/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -222,9 +383,11 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
           deliveryNote: form.deliveryNote.trim(),
           featured: form.featured,
           bestseller: form.bestseller,
-          variants: form.productType === "variable" ? form.variants.map((variant) => ({
-            size: variant.size.trim(),
-            color: variant.color.trim(),
+          variants: form.productType === "variable" ? form.variants.map((variant, index) => ({
+            attributes: variant.attributes.map((attribute) => ({
+              name: attributeName(attribute), value: attribute.value.trim(),
+            })),
+            image: variantImages[index],
             price: variant.price.trim() ? Number(variant.price) : undefined,
             stock: Number(variant.stock),
             barcode: form.hasBarcode ? variant.barcode.trim() : "",
@@ -238,6 +401,7 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
       }
       setCreated(result.product);
       setImages([]);
+      releaseVariantImages();
       router.refresh();
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "Could not save the product.");
@@ -304,16 +468,14 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
             <label key={type} className={`cursor-pointer rounded-xl border p-4 ${form.productType === type ? "border-orange-400 bg-orange-50" : "border-stone-200"}`}>
               <input type="radio" name="productType" value={type} checked={form.productType === type} onChange={() => update("productType", type)} className="accent-orange-600" />
               <span className="ml-2 font-semibold text-cocoa-800">{type === "standard" ? "Standard product" : "Product with variants"}</span>
-              <span className="mt-1 block text-xs text-stone-500">{type === "standard" ? "One price and one stock quantity." : "Options with their own stock, TracePOS codes and optional price overrides."}</span>
+              <span className="mt-1 block text-xs text-stone-500">{type === "standard" ? "One price and one stock quantity." : "Options with their own attributes, photos, stock and TracePOS codes."}</span>
             </label>
           ))}
         </div>
       </Step>
 
       <Step number={2} title="Product details and photos">
-        {variable && (
-          <p className="mb-4 text-sm text-stone-600">These details belong to the parent product. Option stock, TracePOS codes and prices are entered below.</p>
-        )}
+        {variable && <p className="mb-4 text-sm text-stone-600">These details belong to the parent product. Option attributes, photos, stock and prices are entered below.</p>}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-stone-700">Product name *
             <input required maxLength={200} value={form.name} onChange={(event) => update("name", event.target.value)} className={inputClass} placeholder="Enter product name" />
@@ -364,31 +526,73 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
         <>
           <Step number={4} title="Variant options and stock">
             <div className="space-y-4">
-              <p className="text-sm text-stone-600">Total stock: <strong>{totalStock.toLocaleString("en-NG")}</strong> (sum of option stock). Add a TracePOS item code to link an option to stock sync; without one, that option will not sync automatically. Code 128 barcodes are separate and generated if not provided.</p>
+              <p className="text-sm text-stone-600">Total stock: <strong>{totalStock.toLocaleString("en-NG")}</strong> (sum of option stock). Each option may have several attributes. TracePOS item codes are separate from Code 128 barcodes.</p>
               {form.variants.map((variant, index) => (
-                <fieldset key={index} className="rounded-xl border border-stone-200 bg-stone-50 p-3 sm:p-4">
+                <fieldset key={variant.key} className="rounded-xl border border-stone-200 bg-stone-50 p-3 sm:p-4">
                   <legend className="px-1 text-sm font-semibold text-cocoa-800">Option {index + 1}</legend>
-                  <div className="mb-2 flex justify-end">
-                    <button type="button" onClick={() => update("variants", form.variants.filter((_, i) => i !== index))} className="text-xs font-medium text-red-600 hover:underline">Remove option</button>
+                  <div className="mb-3 flex justify-end">
+                    <button type="button" onClick={() => removeVariant(index)} className="text-xs font-medium text-red-600 hover:underline">Remove option</button>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="block text-xs font-medium text-stone-700">Size
-                      <input value={variant.size} onChange={(event) => updateVariant(index, "size", event.target.value)} maxLength={60} className={inputClass} placeholder="Small / Medium / Large" />
-                    </label>
-                    <label className="block text-xs font-medium text-stone-700">Colour
-                      <input value={variant.color} onChange={(event) => updateVariant(index, "color", event.target.value)} maxLength={60} className={inputClass} placeholder="Red / Blue / Black" />
-                    </label>
-                    <label className="block text-xs font-medium text-stone-700">Number in stock *
-                      <input required type="number" min="0" step="1" value={variant.stock} onChange={(event) => updateVariant(index, "stock", event.target.value)} className={inputClass} placeholder="0" />
-                    </label>
-                    <label className="block text-xs font-medium text-stone-700">TracePOS item code (optional)
-                      <input maxLength={80} value={variant.traceposItemCode} onChange={(event) => updateVariant(index, "traceposItemCode", event.target.value)} className={inputClass} placeholder="Matching TracePOS item code" />
-                    </label>
-                    {form.hasBarcode === true && <label className="block text-xs font-medium text-stone-700 sm:col-span-2">Option Code 128 barcode (optional)
-                      <input maxLength={48} value={variant.barcode} onChange={(event) => updateVariant(index, "barcode", event.target.value)} className={inputClass} placeholder="Leave blank to generate a unique barcode" />
-                    </label>}
+                  <div className="space-y-3">
+                    {variant.attributes.map((attribute) => (
+                      <div key={attribute.key} className="rounded-lg border border-stone-200 bg-white p-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="block text-xs font-medium text-stone-700">Attribute name *
+                            <select required value={attribute.kind} onChange={(event) => updateAttribute(index, attribute.key, { kind: event.target.value as AttributeKind, customName: "", value: "" })} className={inputClass}>
+                              <option value="" disabled>Choose attribute</option>
+                              {Object.entries(ATTRIBUTE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                              <option value="other">Other (name it yourself)</option>
+                            </select>
+                          </label>
+                          {attribute.kind === "other" && (
+                            <label className="block text-xs font-medium text-stone-700">Custom attribute name *
+                              <input required maxLength={40} value={attribute.customName} onChange={(event) => updateAttribute(index, attribute.key, { customName: event.target.value })} className={inputClass} placeholder="e.g. Shape, Pattern" />
+                            </label>
+                          )}
+                          <label className="block text-xs font-medium text-stone-700">Attribute value *
+                            <input required maxLength={60} list={attribute.kind && attribute.kind !== "other" ? `values-${variant.key}-${attribute.key}` : undefined} value={attribute.value} onChange={(event) => updateAttribute(index, attribute.key, { value: event.target.value })} className={inputClass} placeholder={valueHint(attribute.kind)} />
+                            <span className="mt-1 block font-normal text-stone-500">Choose a suggestion or type your own value.</span>
+                            {attribute.kind && attribute.kind !== "other" && (
+                              <datalist id={`values-${variant.key}-${attribute.key}`}>
+                                {ATTRIBUTE_SUGGESTIONS[attribute.kind].map((value) => <option key={value} value={value} />)}
+                              </datalist>
+                            )}
+                          </label>
+                        </div>
+                        {variant.attributes.length > 1 && (
+                          <button type="button" onClick={() => removeAttribute(index, attribute.key)} className="mt-2 text-xs font-medium text-red-600 hover:underline">Remove attribute</button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" disabled={variant.attributes.length >= 6} onClick={() => addAttribute(index)} className="inline-flex items-center gap-1 text-xs font-semibold text-orange-700 disabled:opacity-50"><Plus size={14} /> Add attribute</button>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-xs font-medium text-stone-700">Number in stock *
+                        <input required type="number" min="0" step="1" value={variant.stock} onChange={(event) => updateVariant(index, "stock", event.target.value)} className={inputClass} placeholder="0" />
+                      </label>
+                      <label className="block text-xs font-medium text-stone-700">TracePOS item code (optional)
+                        <input maxLength={80} value={variant.traceposItemCode} onChange={(event) => updateVariant(index, "traceposItemCode", event.target.value)} className={inputClass} placeholder="Matching TracePOS item code" />
+                      </label>
+                      {form.hasBarcode === true && (
+                        <label className="block text-xs font-medium text-stone-700 sm:col-span-2">Option Code 128 barcode (optional)
+                          <input maxLength={48} value={variant.barcode} onChange={(event) => updateVariant(index, "barcode", event.target.value)} className={inputClass} placeholder="Leave blank to generate a unique barcode" />
+                        </label>
+                      )}
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-stone-700">Option photo (optional)
+                          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseVariantImage(index, event)} className={inputClass} />
+                        </label>
+                        {variant.imagePreview ? (
+                          <div className="mt-2 flex items-center gap-3">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={variant.imagePreview} alt={`Option ${index + 1} photo preview`} className="h-20 w-20 rounded-xl object-cover" />
+                            <button type="button" onClick={() => clearVariantImage(index)} className="text-xs font-medium text-red-600 hover:underline">Remove option photo</button>
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-xs text-stone-500">Uses the main product photo if none is uploaded.</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-2 text-xs text-stone-500">Enter at least a size or colour. Product photos are used for this option. The TracePOS item code is not a barcode.</p>
                 </fieldset>
               ))}
               <button type="button" disabled={form.variants.length >= 40} onClick={() => update("variants", [...form.variants, blankVariant()])} className="inline-flex items-center gap-2 rounded-xl border border-orange-300 px-4 py-2 text-sm font-medium text-orange-700 disabled:opacity-50"><Plus size={16} /> Add option</button>
@@ -403,10 +607,13 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
               {form.variants.length === 0 ? (
                 <p className="text-sm text-stone-500">Add an option above to set its price.</p>
               ) : form.variants.map((variant, index) => {
-                const optionName = [variant.size.trim(), variant.color.trim()].filter(Boolean).join(" / ");
+                const label = variant.attributes
+                  .filter((attribute) => attributeName(attribute) && attribute.value.trim())
+                  .map((attribute) => `${attributeName(attribute)}: ${attribute.value.trim()}`)
+                  .join(" · ");
                 return (
-                  <label key={index} className="block text-sm font-medium text-stone-700">
-                    Option {index + 1}{optionName ? ` — ${optionName}` : ""}: selling price override (₦)
+                  <label key={variant.key} className="block text-sm font-medium text-stone-700">
+                    Option {index + 1}{label ? ` — ${label}` : ""}: selling price override (₦)
                     <input type="number" min="0.01" step="0.01" value={variant.price} onChange={(event) => updateVariant(index, "price", event.target.value)} className={inputClass} placeholder="Use parent/default selling price" />
                   </label>
                 );
