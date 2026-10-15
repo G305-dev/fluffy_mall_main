@@ -9,13 +9,13 @@ import type { AdminCategory } from "@/lib/admin-categories";
 import { categoryName } from "@/lib/categories";
 import { naira } from "@/lib/format";
 import type { Product } from "@/lib/types";
-import ProductEditor from "./ProductEditor";
 import ProductPhotoForm from "./ProductPhotoForm";
+import ProductDetailsDialog from "./ProductDetailsDialog";
 
 const PAGE_SIZE = 50;
 const PLACEHOLDER = "/images/product-placeholder.svg";
 type ProductTab = "all" | "standard" | "variable";
-type OpenRow = { id: string; mode: "options" | "edit" | "photo" } | null;
+type OpenRow = { id: string; mode: "options" | "photo" } | null;
 
 function kind(product: Product): "standard" | "variable" {
   return product.productType === "variable" || (product.variants?.length || 0) > 0
@@ -64,6 +64,7 @@ export default function ProductList({
   const [stockFilter, setStockFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [openRow, setOpenRow] = useState<OpenRow>(null);
+  const [viewedProductId, setViewedProductId] = useState<string | null>(null);
   const [savedPhotos, setSavedPhotos] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
   const [scrollMax, setScrollMax] = useState(0);
@@ -81,8 +82,8 @@ export default function ProductList({
       const image = savedPhotos[product.id] || product.images?.[0];
       const available = stockOf(product) > 0;
       const searchText = [
-        product.name, product.itemCode, product.barcode, brandOf(product),
-        ...((product.variants || []).flatMap((option) => [option.name, option.barcode])),
+        product.name, product.traceposItemCode, product.barcode, brandOf(product),
+        ...((product.variants || []).flatMap((option) => [option.name, option.traceposItemCode, option.barcode])),
       ].join(" ").toLowerCase();
       return (tab === "all" || kind(product) === tab) &&
         (!term || searchText.includes(term)) &&
@@ -97,6 +98,7 @@ export default function ProductList({
   const firstIndex = (currentPage - 1) * PAGE_SIZE;
   const visible = filtered.slice(firstIndex, firstIndex + PAGE_SIZE);
   const names = new Map(categories.map((item) => [item.slug, item.name]));
+  const viewedProduct = products.find((item) => item.id === viewedProductId);
 
   useEffect(() => {
     const element = tableScroll.current;
@@ -128,7 +130,7 @@ export default function ProductList({
     if (tableScroll.current) tableScroll.current.scrollTop = 0;
   }
 
-  function toggleRow(id: string, mode: "options" | "edit" | "photo") {
+  function toggleRow(id: string, mode: "options" | "photo") {
     setNotice("");
     setOpenRow((current) => current?.id === id && current.mode === mode ? null : { id, mode });
   }
@@ -219,7 +221,7 @@ export default function ProductList({
             <thead className="sticky top-0 z-10 border-b border-stone-200 bg-[#fafafa] text-xs uppercase tracking-wide text-stone-600">
               <tr>
                 <th scope="col" className="w-[345px] px-4 py-3">Photo / product</th>
-                <th scope="col" className="w-[170px] px-3 py-3">Fluffy Mall item code</th>
+                <th scope="col" className="w-[170px] px-3 py-3">Item code (TracePOS)</th>
                 <th scope="col" className="w-[190px] px-3 py-3">Code 128 barcode</th>
                 <th scope="col" className="w-[135px] px-3 py-3">Type</th>
                 <th scope="col" className="w-[185px] px-3 py-3">Category</th>
@@ -261,7 +263,7 @@ export default function ProductList({
                         </div>
                       </td>
                       <td className="break-all px-3 py-4 font-mono text-xs text-cocoa-800">
-                        {product.itemCode || <span className="text-stone-400">Not set</span>}
+                        {product.traceposItemCode || <span className="text-stone-400">Not set</span>}
                       </td>
                       <td className="px-3 py-4 font-mono text-xs">
                         {product.barcode ? (
@@ -281,8 +283,8 @@ export default function ProductList({
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap gap-1.5">
-                          <Link href={`/product/${product.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">View</Link>
-                          <button type="button" onClick={() => toggleRow(product.id, "edit")} aria-expanded={expanded === "edit"} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">Edit</button>
+                          <button type="button" onClick={() => setViewedProductId(product.id)} aria-haspopup="dialog" aria-label={`View details for ${product.name}`} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">View</button>
+                          <Link href={`/admin/products/${encodeURIComponent(product.id)}/edit`} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">Edit</Link>
                           <button type="button" onClick={() => toggleRow(product.id, "photo")} aria-expanded={expanded === "photo"} className="rounded-lg border border-orange-200 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50">Photo</button>
                         </div>
                       </td>
@@ -292,14 +294,13 @@ export default function ProductList({
                         <td colSpan={10} className="px-4 py-4">
                           {expanded === "photo" ? (
                             <ProductPhotoForm product={product} currentImage={image} onSaved={(path) => savedPhoto(product, path)} onCancel={() => setOpenRow(null)} />
-                          ) : expanded === "edit" ? (
-                            <div className="max-w-xl"><ProductEditor product={product} categories={categories} initialPurchaseCost={cost} mobile /></div>
                           ) : (
                             <div className="flex flex-wrap gap-3" aria-label={`Options for ${product.name}`}>
                               {variants.map((option) => (
                                 <div key={option.id} className="min-w-[240px] rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-600">
                                   <p className="font-semibold text-cocoa-800">{option.name}</p>
                                   <p className="mt-1">{naira(option.price)} · {option.stock} {product.unit || "pcs"}</p>
+                                  {option.traceposItemCode && <p className="mt-1 font-mono">Item code: {option.traceposItemCode}</p>}
                                   {option.barcode && <a href={`/api/admin/barcode?value=${encodeURIComponent(option.barcode)}`} target="_blank" rel="noopener noreferrer" className="mt-1 block break-all font-mono text-orange-700 hover:underline">Code 128: {option.barcode}</a>}
                                 </div>
                               ))}
@@ -339,6 +340,16 @@ export default function ProductList({
           </nav>
         </div>
       </div>
+      {viewedProduct && (
+        <ProductDetailsDialog
+          key={viewedProduct.id}
+          product={viewedProduct}
+          categoryLabel={names.get(viewedProduct.category) || categoryName(viewedProduct.category)}
+          purchaseCost={costs[viewedProduct.id]}
+          savedMainImage={savedPhotos[viewedProduct.id]}
+          onClose={() => setViewedProductId(null)}
+        />
+      )}
     </section>
   );
 }

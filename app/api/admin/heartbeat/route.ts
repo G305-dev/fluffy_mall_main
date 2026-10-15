@@ -3,36 +3,27 @@ import {
   ADMIN_COOKIE,
   ADMIN_SESSION_MAX_AGE,
   isAdminBypassed,
-  newAdminSession,
-  validAdminSession,
 } from "@/lib/auth";
 import { sessionCookieOptions } from "@/lib/cookies";
 
-export const runtime = "nodejs";
-
 export async function POST(req: NextRequest) {
-  if (isAdminBypassed()) {
-    return NextResponse.json({ ok: true });
-  }
+  const hasValidCookie =
+    req.cookies.get(ADMIN_COOKIE)?.value === "ok";
 
-  if (
-    !validAdminSession(
-      req.cookies.get(ADMIN_COOKIE)?.value
-    )
-  ) {
+  if (!hasValidCookie && !isAdminBypassed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }
     );
   }
 
-  const response = NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
 
-  response.cookies.set(
+  res.cookies.set(
     ADMIN_COOKIE,
-    newAdminSession(),
+    "ok",
     sessionCookieOptions(req, ADMIN_SESSION_MAX_AGE)
   );
 
-  return response;
+  return res;
 }
