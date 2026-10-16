@@ -10,6 +10,7 @@ import type { Order, OrderStatus } from "@/lib/types";
 import StatusBadge from "@/components/StatusBadge";
 
 export type StatusFilter = "all" | "pending" | OrderStatus;
+export type ChannelFilter = "all" | "website" | "pos";
 type MethodFilter = "all" | "paystack" | "bank";
 type FulfilmentFilter = "all" | "delivery" | "pickup";
 
@@ -76,14 +77,17 @@ function Items({ order }: { order: Order }) {
 export default function OrdersTable({
   orders,
   initialStatus,
+  initialChannel,
   today,
 }: {
   orders: Order[];
   initialStatus: StatusFilter;
+  initialChannel: ChannelFilter;
   today: string;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>(initialStatus);
+  const [channel, setChannel] = useState<ChannelFilter>(initialChannel);
   const [method, setMethod] = useState<MethodFilter>("all");
   const [fulfilment, setFulfilment] = useState<FulfilmentFilter>("all");
   const [page, setPage] = useState(1);
@@ -105,6 +109,9 @@ export default function OrdersTable({
       ) {
         return false;
       }
+      if (channel !== "all" && (order.channel === "pos" ? "pos" : "website") !== channel) {
+        return false;
+      }
       if (method !== "all" && order.payment.method !== method) return false;
       if (fulfilment !== "all" && order.fulfilment !== fulfilment) return false;
 
@@ -122,7 +129,7 @@ export default function OrdersTable({
 
       return terms.every((term) => text.includes(term));
     });
-  }, [orders, query, status, method, fulfilment]);
+  }, [orders, query, status, channel, method, fulfilment]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -143,6 +150,7 @@ export default function OrdersTable({
   const hasFilters =
     Boolean(query.trim()) ||
     status !== initialStatus ||
+    channel !== "all" ||
     method !== "all" ||
     fulfilment !== "all";
 
@@ -273,6 +281,24 @@ export default function OrdersTable({
               </option>
             ))}
           </optgroup>
+        </select>
+
+        <label className="sr-only" htmlFor="orders-channel">
+          Sales channel
+        </label>
+        <select
+          id="orders-channel"
+          value={channel}
+          onChange={(event) =>
+            changeFilter(() =>
+              setChannel(event.target.value as ChannelFilter)
+            )
+          }
+          className="min-w-0 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm xl:w-40"
+        >
+          <option value="all">All orders</option>
+          <option value="pos">Store sales</option>
+          <option value="website">Website sales</option>
         </select>
 
         <label className="sr-only" htmlFor="orders-payment">

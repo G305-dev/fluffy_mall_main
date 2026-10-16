@@ -239,6 +239,8 @@ function NavigationLinks({
         <div id={`${menuId}-orders`} className="ml-5 space-y-0.5 border-l border-orange-200 pl-3">
           {[
             { label: "All orders", href: "/admin/orders" },
+            { label: "Store sales", href: "/admin/orders?channel=pos" },
+            { label: "Website sales", href: "/admin/orders?channel=website" },
             { label: "Pending orders", href: "/admin/orders?status=pending" },
             { label: "Completed orders", href: "/admin/orders?status=completed" },
             { label: "Cancelled orders", href: "/admin/orders?status=cancelled" },

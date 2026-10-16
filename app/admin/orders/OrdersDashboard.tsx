@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Banknote, CheckCircle2, Clock3, ShoppingBag, XCircle } from "lucide-react";
 import { naira } from "@/lib/format";
 import type { Order } from "@/lib/types";
-import OrdersTable, { type StatusFilter } from "./OrdersTable";
+import OrdersTable, { type ChannelFilter, type StatusFilter } from "./OrdersTable";
 
 type Period = "7" | "30" | "90" | "all" | "custom";
 type Summary = {
@@ -292,17 +292,26 @@ function StatusDistribution({ summary }: { summary: Summary }) {
 export default function OrdersDashboard({
   orders,
   initialStatus,
+  initialChannel,
   nowISO,
 }: {
   orders: Order[];
   initialStatus: StatusFilter;
+  initialChannel: ChannelFilter;
   nowISO: string;
 }) {
   const today = dayKey(nowISO);
   const recentStart = shiftDay(today, -29);
+  const channelOrders = useMemo(
+    () => orders.filter((order) =>
+      initialChannel === "all" ||
+      (order.channel === "pos" ? "pos" : "website") === initialChannel
+    ),
+    [orders, initialChannel]
+  );
   const [period, setPeriod] = useState<Period>(() =>
-    orders.length &&
-    !orders.some((order) => {
+    channelOrders.length &&
+    !channelOrders.some((order) => {
       const day = dayKey(order.createdAt);
       return day >= recentStart && day <= today;
     })
@@ -313,8 +322,8 @@ export default function OrdersDashboard({
   const [to, setTo] = useState(today);
 
   const datedOrders = useMemo(
-    () => orders.map((order) => ({ order, day: dayKey(order.createdAt) })),
-    [orders]
+    () => channelOrders.map((order) => ({ order, day: dayKey(order.createdAt) })),
+    [channelOrders]
   );
   const days = datedOrders.map((item) => item.day).filter(Boolean);
   const start =
@@ -400,7 +409,7 @@ export default function OrdersDashboard({
             Orders
           </h1>
           <p className="mt-1 text-sm text-stone-600">
-            Manage and track customer orders from your website.
+            Manage and track website orders and in-store sales.
           </p>
         </div>
         <div className="flex flex-col gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center">
@@ -496,9 +505,10 @@ export default function OrdersDashboard({
       </p>
 
       <OrdersTable
-        key={`${initialStatus}-${period}-${from}-${to}`}
+        key={`${initialStatus}-${initialChannel}-${period}-${from}-${to}`}
         orders={rangeOrders}
         initialStatus={initialStatus}
+        initialChannel={initialChannel}
         today={today}
       />
     </div>
