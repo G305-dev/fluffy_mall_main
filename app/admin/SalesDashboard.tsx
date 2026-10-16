@@ -101,7 +101,7 @@ export default function SalesDashboard({
           { label: "Top product", value: summary.topProductName, note: `${summary.topProductUnits} sold today` },
         ].map((stat, index) => (
           <article key={stat.label} className="flex min-h-24 items-center gap-3 rounded-xl border border-stone-100 bg-white p-4">
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${index === 2 ? "bg-orange-50 text-orange-600" : "bg-blue-50 text-blue-600"}`}>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600">
               {index === 0 ? <Banknote size={19} /> : index === 3 ? <Package size={19} /> : <History size={19} />}
             </span>
             <span className="min-w-0">
@@ -115,12 +115,12 @@ export default function SalesDashboard({
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(10rem,0.7fr)_minmax(0,2fr)]">
         <nav aria-label="Product categories" className="rounded-xl border border-stone-200 bg-white p-2">
-          <button type="button" onClick={() => setCategory("all")} className={`mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-semibold ${category === "all" ? "bg-blue-600 text-white" : "text-stone-600 hover:bg-stone-50"}`}>
+          <button type="button" onClick={() => setCategory("all")} className={`mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-semibold ${category === "all" ? "bg-orange-600 text-white" : "text-stone-600 hover:bg-stone-50"}`}>
             <Package size={16} aria-hidden="true" /> All products
           </button>
           <div className="flex gap-1 overflow-x-auto xl:block xl:space-y-1 xl:overflow-visible">
             {categories.map((item) => (
-              <button key={item.slug} type="button" onClick={() => setCategory(item.slug)} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-xs xl:w-full ${category === item.slug ? "bg-blue-50 font-semibold text-blue-700" : "text-stone-600 hover:bg-stone-50"}`}>
+              <button key={item.slug} type="button" onClick={() => setCategory(item.slug)} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-xs xl:w-full ${category === item.slug ? "bg-orange-50 font-semibold text-orange-700" : "text-stone-600 hover:bg-stone-50"}`}>
                 <span aria-hidden="true">{item.name.slice(0, 1)}</span>
                 <span className="max-w-40 truncate">{item.name}</span>
               </button>
@@ -139,7 +139,7 @@ export default function SalesDashboard({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search products, barcode or item name"
-                className="w-full rounded-lg border border-stone-200 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-stone-200 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
               />
             </label>
             {query && <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="rounded-lg border border-stone-200 px-2 text-stone-500"><X size={16} /></button>}
@@ -168,16 +168,16 @@ export default function SalesDashboard({
       </div>
 
       <section aria-label="Quick actions" className="grid gap-2 sm:grid-cols-3">
-        <Link href="/admin/pos" className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 hover:border-blue-300">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600"><RotateCcw size={17} aria-hidden="true" /></span>
+        <Link href="/admin/pos" className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 hover:border-orange-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 text-orange-600"><RotateCcw size={17} aria-hidden="true" /></span>
           <span><strong className="block text-xs text-cocoa-800">New sale</strong><span className="text-[10px] text-stone-500">Open the point of sale</span></span>
         </Link>
-        <Link href="/admin/orders" className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 hover:border-blue-300">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600"><History size={17} aria-hidden="true" /></span>
+        <Link href="/admin/orders" className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 hover:border-orange-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 text-orange-600"><History size={17} aria-hidden="true" /></span>
           <span><strong className="block text-xs text-cocoa-800">View sales</strong><span className="text-[10px] text-stone-500">Review orders and transactions</span></span>
         </Link>
-        <button type="button" onClick={() => searchRef.current?.focus()} className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 text-left hover:border-blue-300">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600"><ScanBarcode size={17} aria-hidden="true" /></span>
+        <button type="button" onClick={() => searchRef.current?.focus()} className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 text-left hover:border-orange-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 text-orange-600"><ScanBarcode size={17} aria-hidden="true" /></span>
           <span><strong className="block text-xs text-cocoa-800">Scan barcode</strong><span className="text-[10px] text-stone-500">Focus the product search</span></span>
         </button>
       </section>
