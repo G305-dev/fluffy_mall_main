@@ -1,18 +1,14 @@
 # Import the classified single-product stock report
 
-The uploaded `Untitled spreadsheet - Single (candidate).csv` is **not in Git**: this repository is public, and the report contains live item codes and stock figures. Keep the original file private. No database import happens merely by deploying this code.
+Keep the original stock report private; it contains live product and stock information and is not stored in this repository. Importing only occurs when an administrator previews and applies it.
 
-After deploying the import changes:
+1. Back up the production products collection. In **Admin → Products → Import products**, select the **Single (candidate)** CSV, not the Variant or Needs review sheet.
+2. Click **Preview import** and review the new, updated, duplicate, held, and invalid rows. The server compares rows with the current product catalogue using product names and barcodes. The import cannot be applied while invalid rows remain.
+3. When the preview is correct, click **Apply** once. The server checks the catalogue again before writing. If an import fails or may have partially completed, refresh the preview before retrying.
+4. Review held rows separately. The ladder-size rows must not be created as separate products or silently attached to existing options.
 
-1. Back up the production products collection. In **Admin → Products → Import products**, choose the original **Single (candidate)** CSV (not the Variant or Needs review sheet).
-2. Click **Preview import**. The server compares each row with **current MongoDB products and their options**. Review the `new`, `existing updates`, `duplicates`, `held for review`, and `invalid` counts and the row-by-row issues. If any invalid rows exist, the import button remains disabled.
-3. When the preview is right, click **Apply** once. The server rechecks the live catalogue before writing. Refresh the preview before retrying a failed/partially completed import.
-4. Review the held rows separately. In particular, **all five ladder-size rows are held**, including both conflicting 6-step codes. They are never created as new single products or silently attached to the existing ladder options.
+For a confident existing standard-product match, the report updates its barcode when provided, selling price, and stock. It keeps photos, description, category, and options. New products use the report's name, barcode, price, and exact non-negative quantity, with the existing image placeholder until photos are uploaded. Unknown or ambiguous matches are held for review. Saved admin category names take precedence, and Tray/Trays both use `trays`.
 
-For a confident existing **standard** product match, the report updates only its TracePOS item code, selling price and stock; it keeps its photos, description, category, variants and Code 128 barcode unchanged. New products are standard products with the report's name, item code, selling price and exact non-negative quantity. They use the existing image placeholder until photos are uploaded. Unknown or ambiguous matches are held, never overwritten. Saved admin category names take precedence, and Tray/Trays both use `trays`.
+The importer understands the report's `₦` prices and `PC`/`Pcs` stock suffixes. Negative, fractional, and unrecognized stock quantities are rejected, never clamped. Other classified sheets cannot be imported as singles.
 
-The importer understands the report's `₦` prices and `PC`/`Pcs` stock suffixes. Negative/fractional/unrecognized stocks are **rejected**, never clamped. Other classified sheets cannot be imported as singles. Import item codes link to the existing TracePOS stock/sales integrations; Code 128 barcodes remain independent.
-
-A dry run against the **24 sample products in `data/products.json`**, *not* the live store, found 245 new rows, 6 confident existing-product updates, 11 rows to review (5 ladders and 6 possible duplicates), 0 invalid. The actual production counts may differ. Of the 47 quantity-one rows, 45 would be inserted, one would update an existing product, and one is held for review; no quantity is silently changed.
-
-Checks: `npx tsc --noEmit`, `npm run lint`, and (with Node 22) `node --experimental-strip-types --test tests/product-import-matching.test.mjs`. The full Next.js production build also needs access to Google Fonts and a configured MongoDB connection; it cannot be verified in a network-restricted, credential-free workspace.
+The earlier dry run used the sample products in `data/products.json`, not the live store. Production preview counts may differ. Always use the live preview before applying an import.

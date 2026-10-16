@@ -74,19 +74,6 @@ export default function ProductEditor({
   const [bestseller, setBestseller] =
     useState(Boolean(product.bestseller));
 
-  const [traceposItemCode, setTraceposItemCode] =
-    useState(product.traceposItemCode || "");
-
-  const [variantCodes, setVariantCodes] =
-    useState<Record<string, string>>(() =>
-      Object.fromEntries(
-        product.variants.map((variant) => [
-          variant.id,
-          variant.traceposItemCode || "",
-        ])
-      )
-    );
-
   const [images, setImages] = useState<string[]>(
     product.images || []
   );
@@ -238,9 +225,6 @@ export default function ProductEditor({
             featured,
             bestseller,
             images,
-            variantItemCodes: variantCodes,
-            traceposItemCode:
-              traceposItemCode.trim(),
           }),
         }
       );
@@ -593,59 +577,6 @@ export default function ProductEditor({
     );
   }
 
-  function variantCodeFields(
-    compact = false
-  ) {
-    if (product.variants.length === 0) {
-      return null;
-    }
-
-    return (
-      <div
-        className={
-          compact
-            ? "mt-3 rounded-xl bg-cream-50 p-3"
-            : "mt-2 w-56 max-w-full rounded-xl bg-cream-50 p-2"
-        }
-      >
-        <p className="text-xs font-semibold text-cocoa-800">
-          Variant Tracepos item codes
-        </p>
-
-        <div className="mt-2 grid gap-2">
-          {product.variants.map((variant) => (
-            <label
-              key={variant.id}
-              className="text-xs text-stone-500"
-            >
-              {variant.name}
-
-              <input
-                type="text"
-                value={
-                  variantCodes[variant.id] || ""
-                }
-                onChange={(event) =>
-                  setVariantCodes((current) => ({
-                    ...current,
-                    [variant.id]:
-                      event.target.value,
-                  }))
-                }
-                placeholder="Exact scanner item code"
-                className={
-                  compact
-                    ? "mt-1 w-full rounded-lg border border-cream-300 bg-white px-2 py-1.5 text-sm"
-                    : "mt-1 w-full rounded-lg border border-cream-300 bg-white px-2 py-1 text-xs"
-                }
-              />
-            </label>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   function launchFlags(
     compact = false
   ) {
@@ -737,21 +668,6 @@ export default function ProductEditor({
               />
             </label>
 
-            <label className="mt-2 block text-xs text-stone-500">
-              Parent Tracepos item code
-
-              <input
-                value={traceposItemCode}
-                onChange={(event) =>
-                  setTraceposItemCode(
-                    event.target.value
-                  )
-                }
-                placeholder="Leave empty when variants have separate codes"
-                className="mt-1 w-full rounded-lg border border-cream-300 px-2 py-1.5 text-sm"
-              />
-            </label>
-
             <div className="mt-3 grid gap-2">
               <label className="block text-xs text-stone-500">
                 Category
@@ -799,7 +715,6 @@ export default function ProductEditor({
         )}
 
         {galleryFields(true)}
-        {variantCodeFields(true)}
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <label className="text-xs text-stone-500">
@@ -913,20 +828,8 @@ export default function ProductEditor({
               </p>
             )}
 
-            <input
-              value={traceposItemCode}
-              onChange={(event) =>
-                setTraceposItemCode(
-                  event.target.value
-                )
-              }
-              placeholder="Parent Tracepos code"
-              className="mt-2 w-40 rounded-lg border border-cream-300 px-2 py-1 text-xs"
-            />
-
             {galleryFields(false)}
             {launchFlags(false)}
-            {variantCodeFields(false)}
           </div>
         </div>
       </td>

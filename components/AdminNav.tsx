@@ -14,7 +14,6 @@ import {
   Mail,
   Menu,
   Package,
-  RefreshCw,
   Search,
   Settings,
   ShoppingBag,
@@ -46,7 +45,6 @@ const INVENTORY_SECTIONS: Array<{ label: string; href?: string }> = [
 
 const OTHER_LINKS = [
   { href: "/admin/subscribers", label: "Subscribers", icon: Mail },
-  { href: "/admin/tracepos/check", label: "TracePOS check", icon: RefreshCw },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -428,7 +426,7 @@ export default function AdminNav({ children }: { children: React.ReactNode }) {
                 <input
                   name="q"
                   type="search"
-                  placeholder="Search stock or item code"
+                  placeholder="Search stock or barcode"
                   aria-label="Search inventory"
                   className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-stone-400"
                 />
@@ -469,7 +467,7 @@ export default function AdminNav({ children }: { children: React.ReactNode }) {
               <input
                 name="q"
                 type="search"
-                placeholder="Search stock or item code"
+                placeholder="Search stock or barcode"
                 aria-label="Search inventory"
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-stone-400"
               />

@@ -35,8 +35,8 @@ export function productNameKey(name: string) {
   return words(name).replace(/ /g, "");
 }
 
-export function itemCodeKey(code: unknown) {
-  return String(code ?? "").trim().toUpperCase();
+export function barcodeKey(value: unknown) {
+  return String(value ?? "").trim().toUpperCase();
 }
 
 export function stockReportCategory(label: string, categories: AdminCategory[]): string | null {
@@ -66,7 +66,7 @@ export function stockQuantity(raw: string, explicitUnit = "") {
 }
 
 // The report classified these as singles because it lacks a product-type flag.
-// They are sizes of an existing variable ladder and the two 6-step codes conflict.
+// They are sizes of an existing variable ladder and the two 6-step barcodes conflict.
 export function heldLadderSize(name: string, category: string) {
   return words(category) === "ladders" &&
     /^(?:[3456] steps? ladder|ladder [3456] steps?)$/.test(words(name));
@@ -87,72 +87,70 @@ export type MatchResult =
   | { kind: "update"; product: Product }
   | { kind: "duplicate" | "held"; message: string };
 
-// Checks the live catalogue, *including variant item codes*, before a row is
-// accepted. The returned plan only matches existing STANDARD products by name
-// or code; ambiguous matches and possible duplicates must be reviewed by hand.
+// Match stock-sheet rows to existing standard products by name or barcode.
 export function createProductMatcher(existing: Product[]) {
-  const byCode = new Map<string, CodeOwner[]>();
+  const byBarcode = new Map<string, CodeOwner[]>();
   const byName = new Map<string, Product[]>();
-  const acceptedCodes = new Map<string, string>();
+  const acceptedBarcodes = new Map<string, string>();
   const acceptedNames = new Map<string, string>();
   const acceptedIds = new Set<string>();
 
-  function addCode(code: unknown, owner: CodeOwner) {
-    const key = itemCodeKey(code);
-    if (key) byCode.set(key, [...(byCode.get(key) || []), owner]);
+  function addBarcode(value: unknown, owner: CodeOwner) {
+    const key = barcodeKey(value);
+    if (key) byBarcode.set(key, [...(byBarcode.get(key) || []), owner]);
   }
   for (const product of existing) {
     const name = productNameKey(product.name);
     byName.set(name, [...(byName.get(name) || []), product]);
-    addCode(product.traceposItemCode, { product });
+    addBarcode(product.barcode, { product });
     for (const variant of product.variants || []) {
-      addCode(variant.traceposItemCode, { product, variantName: variant.name });
+      addBarcode(variant.barcode, { product, variantName: variant.name });
     }
   }
 
-  function match(name: string, rawCode: string, price: number, stock: number, updateExisting: boolean): MatchResult {
+  function match(name: string, rawBarcode: string, price: number, stock: number, updateExisting: boolean): MatchResult {
     const nameKey = productNameKey(name);
-    const code = itemCodeKey(rawCode);
-    const priorCodeName = acceptedCodes.get(code);
-    if (code && priorCodeName) {
-      return priorCodeName === nameKey
-        ? { kind: "duplicate", message: `Item code ${code} occurs more than once in this file.` }
-        : { kind: "held", message: `Item code ${code} is assigned to two different names in this file.` };
+    const barcode = barcodeKey(rawBarcode);
+    const priorBarcodeName = acceptedBarcodes.get(barcode);
+    if (barcode && priorBarcodeName) {
+      return priorBarcodeName === nameKey
+        ? { kind: "duplicate", message: `Barcode ${barcode} occurs more than once in this file.` }
+        : { kind: "held", message: `Barcode ${barcode} is assigned to two different names in this file.` };
     }
-    const priorNameCode = acceptedNames.get(nameKey);
-    if (priorNameCode !== undefined) {
-      return priorNameCode === code
+    const priorNameBarcode = acceptedNames.get(nameKey);
+    if (priorNameBarcode !== undefined) {
+      return priorNameBarcode === barcode
         ? { kind: "duplicate", message: `The product ${name} occurs more than once in this file.` }
-        : { kind: "held", message: `The name ${name} occurs with different item codes in this file.` };
+        : { kind: "held", message: `The name ${name} occurs with different barcodes in this file.` };
     }
 
-    const codeOwners = code ? byCode.get(code) || [] : [];
+    const barcodeOwners = barcode ? byBarcode.get(barcode) || [] : [];
     const nameOwners = byName.get(nameKey) || [];
-    if (codeOwners.length > 1 || nameOwners.length > 1) {
-      return { kind: "held", message: "More than one existing product matches this name or item code; review it manually." };
+    if (barcodeOwners.length > 1 || nameOwners.length > 1) {
+      return { kind: "held", message: "More than one existing product matches this name or barcode; review it manually." };
     }
-    if (codeOwners[0]?.variantName) {
-      return { kind: "held", message: `Item code ${code} belongs to an existing product option. No new single product was added.` };
+    if (barcodeOwners[0]?.variantName) {
+      return { kind: "held", message: `Barcode ${barcode} belongs to an existing product option. No new single product was added.` };
     }
-    if (codeOwners[0] && nameOwners[0] && codeOwners[0].product.id !== nameOwners[0].id) {
-      return { kind: "held", message: `Item code ${code} and name ${name} belong to different existing products.` };
+    if (barcodeOwners[0] && nameOwners[0] && barcodeOwners[0].product.id !== nameOwners[0].id) {
+      return { kind: "held", message: `Barcode ${barcode} and name ${name} belong to different existing products.` };
     }
-    const product = codeOwners[0]?.product || nameOwners[0];
+    const product = barcodeOwners[0]?.product || nameOwners[0];
     if (product) {
       if (product.variants?.length || product.productType === "variable") {
         return { kind: "held", message: `${product.name} is already a variable product. Its options were not changed.` };
       }
-      if (codeOwners[0] && productNameKey(product.name) !== nameKey) {
-        return { kind: "held", message: `Item code ${code} already belongs to ${product.name}, not ${name}.` };
+      if (barcodeOwners[0] && productNameKey(product.name) !== nameKey) {
+        return { kind: "held", message: `Barcode ${barcode} already belongs to ${product.name}, not ${name}.` };
       }
-      const oldCode = itemCodeKey(product.traceposItemCode);
-      if (code && oldCode && code !== oldCode) {
-        return { kind: "held", message: `${product.name} already has a different item code (${oldCode}).` };
+      const oldBarcode = barcodeKey(product.barcode);
+      if (barcode && oldBarcode && barcode !== oldBarcode) {
+        return { kind: "held", message: `${product.name} already has a different barcode (${oldBarcode}).` };
       }
       if (acceptedIds.has(product.id)) {
         return { kind: "held", message: `${product.name} was matched by another row in this file.` };
       }
-      if (updateExisting && (product.price !== price || product.stock !== stock || (code && !oldCode))) {
+      if (updateExisting && (product.price !== price || product.stock !== stock || (barcode && !oldBarcode))) {
         return { kind: "update", product };
       }
       return { kind: "duplicate", message: `${product.name} is already on the website; it was not added twice.` };
@@ -167,11 +165,11 @@ export function createProductMatcher(existing: Product[]) {
     return { kind: "new" };
   }
 
-  function accept(name: string, rawCode: string, productId?: string) {
-    const code = itemCodeKey(rawCode);
+  function accept(name: string, rawBarcode: string, productId?: string) {
+    const barcode = barcodeKey(rawBarcode);
     const key = productNameKey(name);
-    if (code) acceptedCodes.set(code, key);
-    acceptedNames.set(key, code);
+    if (barcode) acceptedBarcodes.set(barcode, key);
+    acceptedNames.set(key, barcode);
     if (productId) acceptedIds.add(productId);
   }
 

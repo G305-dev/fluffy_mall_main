@@ -374,7 +374,7 @@ export async function POST(request: Request) {
     let updated = 0;
 
     // Only category data is changed. IDs, slugs, images, prices,
-    // variants, stock and Tracepos mappings remain untouched.
+    // variants and stock remain untouched.
     for (const change of preview.changes) {
       const result = await collection.updateOne(
         {

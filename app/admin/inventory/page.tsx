@@ -62,7 +62,7 @@ export default async function InventoryPage({
     const matchQuery = !query || [
       item.productName,
       item.variantName,
-      item.itemCode,
+      item.barcode,
       item.categoryLabel,
     ].some((value) => value.toLocaleLowerCase().includes(query));
     const level = stockLevel(item.stock);
@@ -119,12 +119,6 @@ export default async function InventoryPage({
           >
             Manage products
           </Link>
-          <Link
-            href="/admin/tracepos/check"
-            className="rounded-xl bg-[#ff8200] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#e87700]"
-          >
-            Check / sync TracePOS
-          </Link>
         </div>
       </div>
 
@@ -145,12 +139,12 @@ export default async function InventoryPage({
 
       <form action="/admin/inventory" method="get" role="search" className="grid gap-3 rounded-2xl border border-stone-100 bg-white p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_minmax(9rem,0.5fr)_minmax(10rem,0.6fr)_auto] lg:items-end">
         <label className="block text-xs font-medium text-stone-600">
-          Product or item code
+          Product or barcode
           <input
             type="search"
             name="q"
             defaultValue={q}
-            placeholder="Search name, code or category"
+            placeholder="Search name, barcode or category"
             className="mt-1 block w-full rounded-xl border border-stone-200 bg-[#fafafa] px-3 py-2.5 text-sm text-cocoa-800 outline-none focus:border-orange-500"
           />
         </label>
@@ -195,7 +189,7 @@ export default async function InventoryPage({
               <thead className="border-y border-stone-100 bg-[#fafafa] text-xs text-stone-500">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-medium sm:px-5">Product / option</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Item code</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Barcode</th>
                   <th scope="col" className="px-4 py-3 font-medium">Category</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">Stock</th>
                   <th scope="col" className="px-4 py-3 font-medium">Status</th>
@@ -214,7 +208,7 @@ export default async function InventoryPage({
                       )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-stone-600">
-                      {item.itemCode || <span className="text-stone-400">Not set</span>}
+                      {item.barcode || <span className="text-stone-400">Not set</span>}
                     </td>
                     <td className="px-4 py-3 text-stone-600">{item.categoryLabel}</td>
                     <td className="px-4 py-3 text-right font-semibold text-cocoa-800">
@@ -247,7 +241,7 @@ export default async function InventoryPage({
       </section>
 
       <p className="text-xs leading-relaxed text-stone-500">
-        This is a read-only view of website stock. Edit products in Products, or use TracePOS check to compare and sync existing item codes. Syncing does not import new TracePOS products.
+        This is a read-only view of website stock. Edit products in Products or use Point of sale to record in-store sales.
       </p>
     </div>
   );

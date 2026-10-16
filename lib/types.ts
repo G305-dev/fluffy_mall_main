@@ -52,8 +52,7 @@ export type ProductVariant = {
   price: number;
   stock: number;
   image: string;
-  traceposItemCode?: string;
-  barcode?: string; // Code 128 label; independent of any POS item code.
+  barcode?: string;
 };
 
 export type Product = {
@@ -71,8 +70,7 @@ export type Product = {
   deliveryNote?: string;
   featured?: boolean;
   bestseller?: boolean;
-  traceposItemCode?: string;
-  barcode?: string; // Code 128 label; independent of any POS item code.
+  barcode?: string;
   productType?: "standard" | "variable";
   unit?: ProductUnit;
 };
@@ -145,12 +143,6 @@ export type Order = {
     paidAt?: string;
   };
   customerNotified?: boolean;
-  traceposSaleStatus?: "processing" | "synced" | "failed";
-  traceposSaleReference?: string;
-  traceposSaleAttemptedAt?: string;
-  traceposSaleSyncedAt?: string;
-  traceposSaleInvoiceNumber?: string;
-  traceposSaleError?: string;
 };
 
 export type StoreSettings = {

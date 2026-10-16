@@ -2,7 +2,7 @@ import { Workbook } from "exceljs";
 import type { Product } from "@/lib/types";
 
 export const PRODUCT_COLUMNS = [
-  "id", "slug", "name", "item_code", "category", "price", "compare_at",
+  "id", "slug", "name", "category", "price", "compare_at",
   "stock", "image_urls", "short", "description", "delivery_note",
   "featured", "bestseller", "variants_json",
   "barcode", "unit", "product_type", "purchase_cost",
@@ -21,7 +21,6 @@ const ALIASES: Record<ProductColumn, string[]> = {
   id: ["id", "product_id"],
   slug: ["slug"],
   name: ["name", "product_name", "item_name", "item_description", "product"],
-  item_code: ["item_code", "tracepos_item_code", "code", "sku", "barcode"],
   category: ["category", "category_name", "category_slug"],
   price: ["price", "selling_price", "sales_price", "retail_price", "unit_price"],
   compare_at: ["compare_at", "compare_at_price"],
@@ -114,17 +113,9 @@ export async function readProductSheet(file: File): Promise<SpreadsheetRow[]> {
   if (rows.length > 1001) throw new Error("Import up to 1,000 products per file.");
 
   const headings = rows[0].map(normalizeHeader);
-  // A plain "barcode" column belongs to this website. Only interpret it as a
-  // legacy POS item code when the rest of the file clearly uses POS headers.
-  const legacyPosSheet = headings.includes("barcode") &&
-    ["item_description", "item_name"].some((heading) => headings.includes(heading)) &&
-    ["selling_price", "sales_price", "retail_price"].some((heading) => headings.includes(heading));
   const columns = {} as Record<ProductColumn, number>;
   for (const column of PRODUCT_COLUMNS) {
-    const aliases = column === "item_code" && !legacyPosSheet
-      ? ALIASES.item_code.filter((alias) => alias !== "barcode")
-      : ALIASES[column];
-    columns[column] = headings.findIndex((heading) => aliases.includes(heading));
+    columns[column] = headings.findIndex((heading) => ALIASES[column].includes(heading));
   }
   if (columns.name < 0 || columns.price < 0) {
     throw new Error("Required columns: name and price. Download the template for all supported columns.");
@@ -153,7 +144,6 @@ function exportFields(product: Product, purchaseCost?: number): string[] {
     product.id,
     product.slug,
     product.name,
-    product.traceposItemCode || "",
     product.category,
     String(product.price),
     product.compareAt ? String(product.compareAt) : "",

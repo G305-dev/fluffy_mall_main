@@ -11,7 +11,7 @@ export type InventoryItem = {
   variantName: string;
   category: string;
   categoryLabel: string;
-  itemCode: string;
+  barcode: string;
   stock: number;
   price: number;
 };
@@ -36,7 +36,7 @@ export function toInventoryItems(products: Product[]): InventoryItem[] {
         ...shared,
         key: `${product.id}:${variant.id || index}`,
         variantName: variant.name || "Option",
-        itemCode: String(variant.traceposItemCode ?? "").trim(),
+        barcode: String(variant.barcode ?? "").trim(),
         stock: nonNegativeNumber(variant.stock),
         price: nonNegativeNumber(variant.price) || nonNegativeNumber(product.price),
       }));
@@ -46,7 +46,7 @@ export function toInventoryItems(products: Product[]): InventoryItem[] {
       ...shared,
       key: product.id,
       variantName: "",
-      itemCode: String(product.traceposItemCode ?? "").trim(),
+      barcode: String(product.barcode ?? "").trim(),
       stock: nonNegativeNumber(product.stock),
       price: nonNegativeNumber(product.price),
     }];
@@ -74,7 +74,7 @@ export function summarizeInventory(items: InventoryItem[]) {
   for (const item of items) {
     summary.units += item.stock;
     summary[stockLevel(item.stock)] += 1;
-    if (item.itemCode) summary.coded += 1;
+    if (item.barcode) summary.coded += 1;
   }
 
   return { ...summary, attention: summary.low + summary.out };

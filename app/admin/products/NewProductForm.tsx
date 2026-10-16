@@ -16,7 +16,6 @@ type VariantDraft = {
   price: string;
   stock: string;
   barcode: string;
-  traceposItemCode: string;
   imageFile: File | null;
   imagePreview: string;
 };
@@ -67,7 +66,7 @@ function blankAttribute(): AttributeDraft {
 function blankVariant(): VariantDraft {
   return {
     key: draftKey(), attributes: [blankAttribute()],
-    price: "", stock: "", barcode: "", traceposItemCode: "",
+    price: "", stock: "", barcode: "",
     imageFile: null, imagePreview: "",
   };
 }
@@ -166,7 +165,7 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
     setForm((previous) => ({ ...previous, [key]: value }));
   }
 
-  function updateVariant(index: number, key: "price" | "stock" | "barcode" | "traceposItemCode", value: string) {
+  function updateVariant(index: number, key: "price" | "stock" | "barcode", value: string) {
     setForm((previous) => ({
       ...previous,
       variants: previous.variants.map((variant, i) => i === index ? { ...variant, [key]: value } : variant),
@@ -293,7 +292,6 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
         throw new Error("Add between 1 and 40 options for a variable product.");
       }
       const combinations = new Set<string>();
-      const seenTraceposCodes = new Set<string>();
       form.variants.forEach((variant, index) => {
         const label = `Option ${index + 1}`;
         if (!variant.attributes.length || variant.attributes.length > 6) {
@@ -322,14 +320,6 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
         if (variant.stock.trim() === "" || !Number.isSafeInteger(Number(variant.stock)) || Number(variant.stock) < 0) {
           throw new Error(`${label} stock must be a whole number of zero or more.`);
         }
-        const code = variant.traceposItemCode.trim().toUpperCase();
-        if (variant.traceposItemCode.trim().length > 80) {
-          throw new Error(`${label} TracePOS item code must be 80 characters or fewer.`);
-        }
-        if (code && seenTraceposCodes.has(code)) {
-          throw new Error(`${label} repeats another option's TracePOS item code.`);
-        }
-        if (code) seenTraceposCodes.add(code);
         if (form.hasBarcode && variant.barcode.trim() &&
           (variant.barcode.trim().length > 48 || !/^[\x20-\x7e]+$/.test(variant.barcode.trim()))) {
           throw new Error(`${label} barcode must use printable English characters, up to 48.`);
@@ -391,7 +381,6 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
             price: variant.price.trim() ? Number(variant.price) : undefined,
             stock: Number(variant.stock),
             barcode: form.hasBarcode ? variant.barcode.trim() : "",
-            traceposItemCode: variant.traceposItemCode.trim(),
           })) : [],
         }),
       });
@@ -468,7 +457,7 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
             <label key={type} className={`cursor-pointer rounded-xl border p-4 ${form.productType === type ? "border-orange-400 bg-orange-50" : "border-stone-200"}`}>
               <input type="radio" name="productType" value={type} checked={form.productType === type} onChange={() => update("productType", type)} className="accent-orange-600" />
               <span className="ml-2 font-semibold text-cocoa-800">{type === "standard" ? "Standard product" : "Product with variants"}</span>
-              <span className="mt-1 block text-xs text-stone-500">{type === "standard" ? "One price and one stock quantity." : "Options with their own attributes, photos, stock and TracePOS codes."}</span>
+              <span className="mt-1 block text-xs text-stone-500">{type === "standard" ? "One price and one stock quantity." : "Options with their own attributes, photos, stock and barcodes."}</span>
             </label>
           ))}
         </div>
@@ -526,7 +515,7 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
         <>
           <Step number={4} title="Variant options and stock">
             <div className="space-y-4">
-              <p className="text-sm text-stone-600">Total stock: <strong>{totalStock.toLocaleString("en-NG")}</strong> (sum of option stock). Each option may have several attributes. TracePOS item codes are separate from Code 128 barcodes.</p>
+              <p className="text-sm text-stone-600">Total stock: <strong>{totalStock.toLocaleString("en-NG")}</strong> (sum of option stock). Each option may have several attributes and its own barcode.</p>
               {form.variants.map((variant, index) => (
                 <fieldset key={variant.key} className="rounded-xl border border-stone-200 bg-stone-50 p-3 sm:p-4">
                   <legend className="px-1 text-sm font-semibold text-cocoa-800">Option {index + 1}</legend>
@@ -568,9 +557,6 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="block text-xs font-medium text-stone-700">Number in stock *
                         <input required type="number" min="0" step="1" value={variant.stock} onChange={(event) => updateVariant(index, "stock", event.target.value)} className={inputClass} placeholder="0" />
-                      </label>
-                      <label className="block text-xs font-medium text-stone-700">TracePOS item code (optional)
-                        <input maxLength={80} value={variant.traceposItemCode} onChange={(event) => updateVariant(index, "traceposItemCode", event.target.value)} className={inputClass} placeholder="Matching TracePOS item code" />
                       </label>
                       {form.hasBarcode === true && (
                         <label className="block text-xs font-medium text-stone-700 sm:col-span-2">Option Code 128 barcode (optional)

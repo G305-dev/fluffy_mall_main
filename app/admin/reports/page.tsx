@@ -21,7 +21,7 @@ type Tab = "overview" | "sales" | "inventory" | "movement" | "performance" | "lo
 type Period = "7" | "30" | "90" | "all" | "custom";
 type StockRow = {
   key: string; productId: string; product: string; option: string; category: string;
-  categorySlug: string; code: string; stock: number; unit: string;
+  categorySlug: string; barcode: string; stock: number; unit: string;
   cost?: number; value: number | null; image: string;
 };
 type SalesRow = { id: string; name: string; category: string; units: number; revenue: number; image: string };
@@ -205,7 +205,7 @@ function StockTable({ rows, costs = false }: { rows: StockRow[]; costs?: boolean
         <thead className="bg-stone-50 text-xs text-stone-600">
           <tr>
             <th className="px-4 py-3">Product / option</th><th className="px-4 py-3">Category</th>
-            <th className="px-4 py-3">Item code</th><th className="px-4 py-3 text-right">Stock</th>
+            <th className="px-4 py-3">Barcode</th><th className="px-4 py-3 text-right">Stock</th>
             <th className="px-4 py-3">Status</th>
             {costs && <th className="px-4 py-3 text-right">Known cost value</th>}
           </tr>
@@ -215,7 +215,7 @@ function StockTable({ rows, costs = false }: { rows: StockRow[]; costs?: boolean
             <tr key={row.key} className="hover:bg-orange-50/40">
               <td className="max-w-52 px-4 py-3"><span className="block truncate font-semibold text-cocoa-800" title={row.product}>{row.product}</span><span className="block truncate text-xs text-stone-500">{row.option}</span></td>
               <td className="px-4 py-3 text-stone-600">{row.category}</td>
-              <td className="break-all px-4 py-3 font-mono text-xs">{row.code || "—"}</td>
+              <td className="break-all px-4 py-3 font-mono text-xs">{row.barcode || "—"}</td>
               <td className="px-4 py-3 text-right font-semibold">{row.stock.toLocaleString("en-NG")} {row.unit}</td>
               <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs ${row.stock <= 0 ? "bg-red-50 text-red-700" : row.stock <= LOW_STOCK_LIMIT ? "bg-orange-50 text-orange-700" : "bg-emerald-50 text-emerald-700"}`}>{row.stock <= 0 ? "Out" : row.stock <= LOW_STOCK_LIMIT ? "Low" : "In stock"}</span></td>
               {costs && <td className="px-4 py-3 text-right">{row.value === null ? "Cost not set" : naira(row.value)}</td>}
@@ -295,15 +295,14 @@ export default async function ReportsPage({ searchParams }: {
   const stockRows: StockRow[] = products.flatMap((product) => {
     const unit = product.unit || "pcs";
     const cost = costs[product.id]; // Zero is a known cost; undefined means not recorded.
-    const makeRow = (option: string, id: string, qty: number, code: string, image: string): StockRow => ({
+    const makeRow = (option: string, id: string, qty: number, barcode: string, image: string): StockRow => ({
       key: `${product.id}:${id}`, productId: product.id, product: product.name, option,
-      category: labelOf(product.category), categorySlug: product.category, code, stock: qty, unit,
+      category: labelOf(product.category), categorySlug: product.category, barcode, stock: qty, unit,
       cost, value: cost === undefined ? null : Math.max(0, qty) * cost, image: image || PLACEHOLDER,
     });
-    // Native item codes belong to standard products only; variant sales are paused.
     return product.variants?.length
-      ? product.variants.map((variant) => makeRow(variant.name, variant.id, variant.stock, "", variant.image || product.images?.[0] || PLACEHOLDER))
-      : [makeRow("", "standard", product.stock, product.traceposItemCode || "", product.images?.[0] || PLACEHOLDER)];
+      ? product.variants.map((variant) => makeRow(variant.name, variant.id, variant.stock, variant.barcode || "", variant.image || product.images?.[0] || PLACEHOLDER))
+      : [makeRow("", "standard", product.stock, product.barcode || "", product.images?.[0] || PLACEHOLDER)];
   });
   const inStock = stockRows.filter((row) => stockLevel(row.stock) === "healthy").length;
   const low = stockRows.filter((row) => stockLevel(row.stock) === "low").length;
@@ -376,12 +375,12 @@ export default async function ReportsPage({ searchParams }: {
   );
   const customStock = stockRows.filter((row) =>
     (!category || row.categorySlug === category) && (!productId || row.productId === productId) &&
-    (!q || `${row.product} ${row.option} ${row.code}`.toLowerCase().includes(q))
+    (!q || `${row.product} ${row.option} ${row.barcode}`.toLowerCase().includes(q))
   );
   const inventoryRows = stockRows.filter((row) => !category || row.categorySlug === category);
   const reportStock = tab === "low-stock" ? lowRows.filter((row) => !category || row.categorySlug === category) : inventoryRows;
-  const stockHeader = ["Product", "Option", "Category", "Item code", "Stock", "Unit", "Purchase cost (NGN)", "Known cost value (NGN)"];
-  const stockExport = (rows: StockRow[]) => rows.map((row) => [row.product, row.option, row.category, row.code, row.stock, row.unit, row.cost === undefined ? "Not recorded" : row.cost, row.value === null ? "Not recorded" : row.value]);
+  const stockHeader = ["Product", "Option", "Category", "Barcode", "Stock", "Unit", "Purchase cost (NGN)", "Known cost value (NGN)"];
+  const stockExport = (rows: StockRow[]) => rows.map((row) => [row.product, row.option, row.category, row.barcode, row.stock, row.unit, row.cost === undefined ? "Not recorded" : row.cost, row.value === null ? "Not recorded" : row.value]);
   let exportRows: Array<Array<string | number>>;
   if (tab === "inventory" || tab === "low-stock") exportRows = [stockHeader, ...stockExport(reportStock)];
   else if (tab === "sales") exportRows = [["Period start", "Orders placed", "Paid revenue (NGN)"], ...buckets.map((bucket) => [bucket.day, bucket.orders, bucket.revenue])];

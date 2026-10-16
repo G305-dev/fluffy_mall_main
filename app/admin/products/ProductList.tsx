@@ -82,8 +82,8 @@ export default function ProductList({
       const image = savedPhotos[product.id] || product.images?.[0];
       const available = stockOf(product) > 0;
       const searchText = [
-        product.name, product.traceposItemCode, product.barcode, brandOf(product),
-        ...((product.variants || []).flatMap((option) => [option.name, option.traceposItemCode, option.barcode])),
+        product.name, product.barcode, brandOf(product),
+        ...((product.variants || []).flatMap((option) => [option.name, option.barcode])),
       ].join(" ").toLowerCase();
       return (tab === "all" || kind(product) === tab) &&
         (!term || searchText.includes(term)) &&
@@ -173,7 +173,7 @@ export default function ProductList({
             type="search"
             value={query}
             onChange={(event) => changeFilter(() => setQuery(event.target.value))}
-            placeholder="Name, item code or Code 128 barcode"
+            placeholder="Product name or barcode"
             className="mt-1 block w-full rounded-xl border border-stone-200 bg-[#fafafa] py-2.5 pl-9 pr-9 text-sm outline-none focus:border-orange-500"
           />
           {query && (
@@ -221,7 +221,6 @@ export default function ProductList({
             <thead className="sticky top-0 z-10 border-b border-stone-200 bg-[#fafafa] text-xs uppercase tracking-wide text-stone-600">
               <tr>
                 <th scope="col" className="w-[345px] px-4 py-3">Photo / product</th>
-                <th scope="col" className="w-[170px] px-3 py-3">Item code (TracePOS)</th>
                 <th scope="col" className="w-[190px] px-3 py-3">Code 128 barcode</th>
                 <th scope="col" className="w-[135px] px-3 py-3">Type</th>
                 <th scope="col" className="w-[185px] px-3 py-3">Category</th>
@@ -262,9 +261,6 @@ export default function ProductList({
                           </div>
                         </div>
                       </td>
-                      <td className="break-all px-3 py-4 font-mono text-xs text-cocoa-800">
-                        {product.traceposItemCode || <span className="text-stone-400">Not set</span>}
-                      </td>
                       <td className="px-3 py-4 font-mono text-xs">
                         {product.barcode ? (
                           <a href={`/api/admin/barcode?value=${encodeURIComponent(product.barcode)}`} target="_blank" rel="noopener noreferrer" title="Open printable Code 128 label" className="inline-block max-w-full break-all rounded-lg bg-stone-100 px-2 py-1.5 text-cocoa-800 hover:bg-orange-100">{product.barcode}</a>
@@ -291,7 +287,7 @@ export default function ProductList({
                     </tr>
                     {expanded && (
                       <tr className="bg-orange-50/40">
-                        <td colSpan={10} className="px-4 py-4">
+                        <td colSpan={9} className="px-4 py-4">
                           {expanded === "photo" ? (
                             <ProductPhotoForm product={product} currentImage={image} onSaved={(path) => savedPhoto(product, path)} onCancel={() => setOpenRow(null)} />
                           ) : (
@@ -300,7 +296,6 @@ export default function ProductList({
                                 <div key={option.id} className="min-w-[240px] rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-600">
                                   <p className="font-semibold text-cocoa-800">{option.name}</p>
                                   <p className="mt-1">{naira(option.price)} · {option.stock} {product.unit || "pcs"}</p>
-                                  {option.traceposItemCode && <p className="mt-1 font-mono">Item code: {option.traceposItemCode}</p>}
                                   {option.barcode && <a href={`/api/admin/barcode?value=${encodeURIComponent(option.barcode)}`} target="_blank" rel="noopener noreferrer" className="mt-1 block break-all font-mono text-orange-700 hover:underline">Code 128: {option.barcode}</a>}
                                 </div>
                               ))}

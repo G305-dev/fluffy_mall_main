@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getOrder, saveOrder } from "@/lib/db";
 import { sendPaymentEmail } from "@/lib/email";
-import { syncPaidOrderToTracepos } from "@/lib/tracepos-sales";
 
 export async function POST(req: NextRequest) {
   const raw = await req.text();
@@ -76,19 +75,6 @@ export async function POST(req: NextRequest) {
       await saveOrder(order);
     }
 
-    const traceposSync =
-      await syncPaidOrderToTracepos(order.id);
-
-    if (traceposSync.status === "failed") {
-      return NextResponse.json(
-        {
-          error:
-            "Payment succeeded but Tracepos sale sync failed.",
-          traceposSync,
-        },
-        { status: 500 }
-      );
-    }
   }
 
   if (

@@ -4,12 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
 import { getAdminCategories } from "@/lib/admin-categories";
 import { getProducts } from "@/lib/db";
-import { code128Text, claimBarcode, existingBarcodes } from "@/lib/product-barcodes";
+import { code128Text, claimBarcode, existingBarcodes, newBarcode } from "@/lib/product-barcodes";
 import { isProductUnit } from "@/lib/product-units";
 import { saveProductCosts } from "@/lib/product-costs";
 import { getDb, COLLECTIONS } from "@/lib/mongo";
 import {
-  createProductMatcher, heldLadderSize, itemCodeKey,
+  barcodeKey, createProductMatcher, heldLadderSize,
   stockQuantity, stockReportCategory,
 } from "@/lib/product-import-matching";
 import { readProductSheet } from "@/lib/product-spreadsheet";
@@ -89,14 +89,13 @@ function readVariants(value: string, productId: string, mainImage: string): Prod
       price: numberField(String(raw.price ?? ""), "Variant price"),
       stock,
       image,
-      traceposItemCode: String(raw.traceposItemCode ?? "").trim() || undefined,
       barcode: raw.barcode ? code128Text(raw.barcode) : undefined,
     };
   });
 }
 
 type Issue = { row: number; message: string };
-type ExistingUpdate = { product: Product; code: string; price: number; stock: number };
+type ExistingUpdate = { product: Product; barcode: string; price: number; stock: number };
 class CatalogChangedError extends Error {}
 
 export async function POST(req: NextRequest) {
@@ -129,18 +128,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not load existing products." }, { status: 500 });
     }
     const matcher = createProductMatcher(existing);
-    const usedCodes = new Set<string>();
     const usedBarcodes = existingBarcodes(existing);
     const usedSlugs = new Set(existing.map((product) => product.slug));
     const purchaseCosts: Record<string, number> = {};
-    for (const product of existing) {
-      const parentCode = itemCodeKey(product.traceposItemCode);
-      if (parentCode) usedCodes.add(parentCode);
-      for (const variant of product.variants || []) {
-        const code = itemCodeKey(variant.traceposItemCode);
-        if (code) usedCodes.add(code);
-      }
-    }
 
     const candidates: Product[] = [];
     const updates: ExistingUpdate[] = [];
@@ -160,15 +150,14 @@ export async function POST(req: NextRequest) {
           held.push({ row: line, message: `${prefix}Possible variant/ladder size held for review; no single product created.` });
           continue;
         }
-        const code = itemCodeKey(fields.item_code);
-        if (source && !code) throw new Error("Every stock-report item needs an Item Code.");
+        const barcode = barcodeKey(fields.barcode);
         const category = stockReportCategory(fields.category || defaultCategory, categories);
         if (!category) throw new Error(`Unknown category ${fields.category || defaultCategory || "(blank)"}. Choose a website category.`);
         const price = numberField(fields.price, "Price");
         const { stock, unit } = stockQuantity(fields.stock, fields.unit);
         if (!isProductUnit(unit)) throw new Error("Choose a valid unit (pcs, kg, g, l, ml, pack, box, set, pair or dozen).");
 
-        const match = matcher.match(name, code, price, stock, Boolean(source));
+        const match = matcher.match(name, barcode, price, stock, Boolean(source));
         if (match.kind === "held") {
           held.push({ row: line, message: prefix + match.message });
           continue;
@@ -178,11 +167,10 @@ export async function POST(req: NextRequest) {
           continue;
         }
         if (match.kind === "update") {
-          // Stock reports update ONLY the matching standard product's code,
+          // Stock reports update ONLY the matching standard product's barcode,
           // price and stock. Existing photos, category and copy stay intact.
-          updates.push({ product: match.product, code: fields.item_code.trim(), price, stock });
-          matcher.accept(name, code, match.product.id);
-          if (code) usedCodes.add(code);
+          updates.push({ product: match.product, barcode: fields.barcode.trim(), price, stock });
+          matcher.accept(name, barcode, match.product.id);
           continue;
         }
 
@@ -192,37 +180,38 @@ export async function POST(req: NextRequest) {
         const bestseller = flag(fields.bestseller);
         const productId = `p-${randomUUID().replace(/-/g, "").slice(0, 20)}`;
         const variants = readVariants(fields.variants_json, productId, images[0]);
-        const barcode = fields.barcode.trim() ? code128Text(fields.barcode) : undefined;
-        const rowBarcodes = [barcode, ...variants.map((variant) => variant.barcode)].filter((value): value is string => Boolean(value));
         const checkedBarcodes = new Set(usedBarcodes);
-        for (const value of rowBarcodes) claimBarcode(value, checkedBarcodes);
+        const productBarcode = fields.barcode.trim()
+          ? claimBarcode(code128Text(fields.barcode), checkedBarcodes)
+          : newBarcode(checkedBarcodes);
+        const barcodedVariants = variants.map((variant) => ({
+          ...variant,
+          barcode: variant.barcode
+            ? claimBarcode(variant.barcode, checkedBarcodes)
+            : newBarcode(checkedBarcodes),
+        }));
+        const rowBarcodes = [productBarcode, ...barcodedVariants.map((variant) => variant.barcode)];
         const productType = fields.product_type.trim().toLowerCase() || (variants.length ? "variable" : "standard");
         if (productType !== "standard" && productType !== "variable") throw new Error("Product type must be standard or variable.");
         if ((productType === "variable") !== (variants.length > 0)) throw new Error("Variable products need options; standard products cannot have options.");
         const purchaseCost = fields.purchase_cost.trim() ? numberField(fields.purchase_cost, "Purchase cost", true) : undefined;
-        const rowCodes = [code, ...variants.map((variant) => itemCodeKey(variant.traceposItemCode))].filter(Boolean);
-        if (new Set(rowCodes).size !== rowCodes.length || rowCodes.some((itemCode) => usedCodes.has(itemCode))) {
-          throw new Error("A product or variant item code is duplicated.");
-        }
         let slug = slugify(fields.slug || name);
         const base = slug;
         let suffix = 2;
         while (usedSlugs.has(slug)) slug = `${base}-${suffix++}`;
         usedSlugs.add(slug);
-        rowCodes.forEach((itemCode) => usedCodes.add(itemCode));
         rowBarcodes.forEach((value) => usedBarcodes.add(value));
-        matcher.accept(name, code);
+        matcher.accept(name, barcode);
         if (purchaseCost !== undefined) purchaseCosts[productId] = purchaseCost;
         candidates.push({
           id: productId,
           slug,
           name,
-          traceposItemCode: fields.item_code.trim() || undefined,
           category: category as CategorySlug,
           price,
           unit,
           productType,
-          barcode,
+          barcode: productBarcode,
           compareAt,
           stock: variants.length ? variants.reduce((sum, variant) => sum + variant.stock, 0) : stock,
           images,
@@ -233,7 +222,7 @@ export async function POST(req: NextRequest) {
             : [DELIVERY_TIMES, fields.delivery_note].filter(Boolean).join(" "),
           featured,
           bestseller,
-          variants,
+          variants: barcodedVariants,
         });
       } catch (error) {
         invalid.push({ row: line, message: prefix + (error instanceof Error ? error.message : "Invalid row.") });
@@ -251,12 +240,12 @@ export async function POST(req: NextRequest) {
       issues: [...invalid, ...held, ...duplicates].slice(0, 100),
       sample: candidates.slice(0, 5).map((product) => ({
         name: product.name,
-        code: product.traceposItemCode || "—",
+        barcode: product.barcode || "—",
         category: product.category,
         price: product.price,
         image: product.images[0] !== PLACEHOLDER,
       })),
-      updateSample: updates.slice(0, 5).map(({ product, code, price, stock }) => ({ name: product.name, code, price, stock })),
+      updateSample: updates.slice(0, 5).map(({ product, barcode, price, stock }) => ({ name: product.name, barcode: barcode || product.barcode || "—", price, stock })),
     };
 
     if (mode === "preview") return NextResponse.json(report);
@@ -274,17 +263,19 @@ export async function POST(req: NextRequest) {
       await saveProductCosts(purchaseCosts);
       const db = await getDb();
       const collection = db.collection(COLLECTIONS.PRODUCTS);
-      for (const { product, code, price, stock } of updates) {
+      for (const { product, barcode, price, stock } of updates) {
         // Optimistic guard: don't overwrite an edit made after the preview.
+        const changes: Record<string, unknown> = { price, stock };
+        if (barcode) changes.barcode = barcode;
         const result = await collection.updateOne(
           {
             id: product.id,
             price: product.price,
             stock: product.stock,
-            traceposItemCode: product.traceposItemCode || { $in: [null, ""] },
+            barcode: product.barcode || { $in: [null, ""] },
             $or: [{ variants: { $size: 0 } }, { variants: { $exists: false } }],
           },
-          { $set: { traceposItemCode: code, price, stock } }
+          { $set: changes }
         );
         if (!result.matchedCount) {
           throw new CatalogChangedError(`Existing product ${product.name} changed while importing. Refresh the preview and retry.`);
@@ -305,7 +296,7 @@ export async function POST(req: NextRequest) {
         updated,
         error: error instanceof CatalogChangedError
           ? `${error.message} ${updated ? "Some earlier rows were updated." : "No new products were inserted."}`
-          : "The import may have partially completed. Refresh Products and preview again before retrying; matching item codes and names are skipped.",
+          : "The import may have partially completed. Refresh Products and preview again before retrying; matching barcodes and names are skipped.",
       }, { status: error instanceof CatalogChangedError ? 409 : 500 });
     }
     revalidatePath("/");

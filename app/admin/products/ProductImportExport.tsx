@@ -16,8 +16,8 @@ type Report = {
   imported?: number;
   updated?: number;
   issues: Array<{ row: number; message: string }>;
-  sample: Array<{ name: string; code: string; category: string; price: number; image: boolean }>;
-  updateSample: Array<{ name: string; code: string; price: number; stock: number }>;
+  sample: Array<{ name: string; barcode: string; category: string; price: number; image: boolean }>;
+  updateSample: Array<{ name: string; barcode: string; price: number; stock: number }>;
   error?: string;
 };
 
@@ -54,7 +54,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
       if (mode === "preview") {
         setReport(data);
       } else {
-        setSuccess(`Added ${data.imported || 0} new products, updated ${data.updated || 0} existing singles, skipped ${data.duplicates} duplicates and held ${data.held} for review. Item codes are linked to TracePOS; Code 128 barcodes were not changed.`);
+        setSuccess(`Added ${data.imported || 0} new products, updated ${data.updated || 0} existing singles, skipped ${data.duplicates} duplicates and held ${data.held} for review. Barcode labels are saved with new products.`);
         setReport({ ...data, importable: 0, updatable: 0 });
         router.refresh();
       }
@@ -103,7 +103,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
                 <FileSpreadsheet size={18} aria-hidden="true" /> Import from a spreadsheet
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-stone-600">
-                CSV or Excel (.xlsx), up to 5 MB / 1,000 rows. The classified Single (candidate) CSV can be uploaded directly: its ₦ prices, PC/Pcs quantities and report categories are understood. Duplicate names/codes are checked against live products and options. Existing standard products with a confident match get their item code, price and stock updated; their photos and descriptions stay unchanged. Ambiguous matches and ladder sizes are held for review. Item codes link to TracePOS, never to Code 128 barcode labels. Products without a photo use an “Image coming soon” placeholder.
+                CSV or Excel (.xlsx), up to 5 MB / 1,000 rows. The classified Single (candidate) CSV can be uploaded directly: its ₦ prices, PC/Pcs quantities and report categories are understood. Duplicate names and barcodes are checked against live products and options. Existing standard products with a confident match get their price and stock updated; their photos and descriptions stay unchanged. Ambiguous matches and ladder sizes are held for review. New products receive a unique barcode when the file does not provide one. Products without a photo use an “Image coming soon” placeholder.
               </p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close import" className="rounded-lg p-2 text-stone-500 hover:bg-stone-100">
@@ -171,7 +171,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
                   <ul className="mt-2 space-y-1 text-xs text-stone-600">
                     {report.sample.map((item, index) => (
                       <li key={`${item.name}-${index}`}>
-                        {item.name} · {item.code} · {item.category} · ₦{item.price.toLocaleString("en-NG")} · {item.image ? "Image URL" : "Placeholder"}
+                        {item.name} · {item.barcode} · {item.category} · ₦{item.price.toLocaleString("en-NG")} · {item.image ? "Image URL" : "Placeholder"}
                       </li>
                     ))}
                   </ul>
@@ -182,7 +182,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
                   <p className="font-semibold text-cocoa-800">{report.updated === undefined ? "Existing products to update" : "Sample of existing products updated"}</p>
                   <ul className="mt-2 space-y-1 text-xs text-stone-600">
                     {report.updateSample.map((item, index) => (
-                      <li key={`${item.name}-${index}`}>{item.name} · item code {item.code} · ₦{item.price.toLocaleString("en-NG")} · {item.stock} in stock</li>
+                      <li key={`${item.name}-${index}`}>{item.name} · barcode {item.barcode} · ₦{item.price.toLocaleString("en-NG")} · {item.stock} in stock</li>
                     ))}
                   </ul>
                 </div>

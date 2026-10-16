@@ -45,3 +45,30 @@ export function newBarcode(used: Set<string>) {
   }
   throw new BarcodeError("Could not generate a unique barcode. Try again.");
 }
+
+export function regenerateInStockBarcodes(products: Product[]) {
+  const used = existingBarcodes(products);
+  let regenerated = 0;
+  let outOfStock = 0;
+
+  const updatedProducts = products.map((product) => {
+    let barcode = product.barcode;
+    if (product.stock > 0) {
+      regenerated += 1;
+      barcode = newBarcode(used);
+    } else {
+      outOfStock += 1;
+    }
+    const variants = (product.variants || []).map((variant) => {
+      if (variant.stock <= 0) {
+        outOfStock += 1;
+        return variant;
+      }
+      regenerated += 1;
+      return { ...variant, barcode: newBarcode(used) };
+    });
+    return { ...product, barcode, variants };
+  });
+
+  return { products: updatedProducts, regenerated, outOfStock };
+}

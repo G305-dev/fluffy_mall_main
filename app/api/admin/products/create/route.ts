@@ -8,7 +8,6 @@ import { getDb, COLLECTIONS } from "@/lib/mongo";
 import { saveProductCost, deleteProductCost } from "@/lib/product-costs";
 import { BarcodeError, claimBarcode, code128Text, existingBarcodes, newBarcode } from "@/lib/product-barcodes";
 import { isProductUnit } from "@/lib/product-units";
-import { normalizeTraceposCode } from "@/lib/tracepos";
 import type { Product, ProductVariant } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -146,15 +145,6 @@ export async function POST(req: NextRequest) {
     const imagePaths = images.length ? Array.from(new Set(images.map(safeImage))) : [PLACEHOLDER];
 
     const products = await getProducts();
-    const usedTraceposCodes = new Set<string>();
-    for (const product of products) {
-      const productCode = normalizeTraceposCode(product.traceposItemCode);
-      if (productCode) usedTraceposCodes.add(productCode);
-      for (const variant of product.variants || []) {
-        const variantCode = normalizeTraceposCode(variant.traceposItemCode);
-        if (variantCode) usedTraceposCodes.add(variantCode);
-      }
-    }
     const usedCodes = existingBarcodes(products);
     const barcode = body.hasBarcode
       ? claimBarcode(code128Text(body.barcode), usedCodes)
@@ -192,12 +182,6 @@ export async function POST(req: NextRequest) {
       if (optionName.length > 120) {
         throw new ProductInputError(`Option ${index + 1} has too much text. Shorten its attribute values.`);
       }
-      const traceposItemCode = text(raw.traceposItemCode, `Option ${index + 1} TracePOS item code`, 80);
-      const normalizedCode = normalizeTraceposCode(traceposItemCode);
-      if (normalizedCode && usedTraceposCodes.has(normalizedCode)) {
-        throw new ProductInputError(`Option ${index + 1} TracePOS item code is already assigned to a product or option.`);
-      }
-      if (normalizedCode) usedTraceposCodes.add(normalizedCode);
       const variantBarcode = body.hasBarcode && raw.barcode
         ? claimBarcode(code128Text(raw.barcode), usedCodes)
         : newBarcode(usedCodes);
@@ -212,7 +196,6 @@ export async function POST(req: NextRequest) {
         stock: quantity(raw.stock, `Option ${index + 1} stock`),
         image: raw.image ? safeImage(raw.image) : imagePaths[0],
         barcode: variantBarcode,
-        traceposItemCode: traceposItemCode || undefined,
       };
     });
 

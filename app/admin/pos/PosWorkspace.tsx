@@ -17,7 +17,6 @@ type SellableItem = {
   name: string;
   variantName?: string;
   barcode?: string;
-  itemCode?: string;
   stock: number;
   price: number;
   image: string;
@@ -40,7 +39,6 @@ function sellableItems(products: Product[]): SellableItem[] {
         name: product.name,
         variantName: variant.name,
         barcode: variant.barcode,
-        itemCode: variant.traceposItemCode,
         stock: variant.stock,
         price: variant.price,
         image: variant.image || product.images?.[0] || PLACEHOLDER,
@@ -52,7 +50,6 @@ function sellableItems(products: Product[]): SellableItem[] {
       productId: product.id,
       name: product.name,
       barcode: product.barcode,
-      itemCode: product.traceposItemCode,
       stock: product.stock,
       price: product.price,
       image: product.images?.[0] || PLACEHOLDER,
@@ -82,7 +79,6 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
         item.name,
         item.variantName,
         item.barcode,
-        item.itemCode,
       ].some((value) => value?.toLocaleLowerCase().includes(term)))
       .slice(0, 12);
   }, [items, term]);
@@ -105,8 +101,7 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
   function searchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const exactMatches = items.filter((item) =>
-      item.stock > 0 && [item.barcode, item.itemCode]
-        .some((code) => code?.trim().toLocaleLowerCase() === term)
+      item.stock > 0 && item.barcode?.trim().toLocaleLowerCase() === term
     );
     if (exactMatches.length === 1) {
       addToCart(exactMatches[0]);
@@ -205,14 +200,14 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
           <h2 className="font-display text-lg text-cocoa-800">Find products</h2>
           <form onSubmit={searchSubmit} role="search" className="mt-3 flex gap-2">
             <label className="relative min-w-0 flex-1">
-              <span className="sr-only">Search products, scan a barcode, or enter an item code</span>
+              <span className="sr-only">Search products or scan a barcode</span>
               <Search aria-hidden="true" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
                 autoFocus
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search name, scan barcode, or item code"
+                placeholder="Search product name or scan barcode"
                 className="w-full rounded-xl border border-stone-200 py-3 pl-10 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
               />
             </label>
@@ -224,7 +219,7 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
           <div className="mt-4 space-y-2">
             {!term ? (
               <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-500">
-                Scan a product barcode or search by its name, barcode, or item code.
+                Scan a product barcode or search by product name or barcode.
               </p>
             ) : results.length === 0 ? (
               <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-500">
@@ -240,7 +235,7 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
                     {item.variantName && <p className="truncate text-xs text-stone-500">{item.variantName}</p>}
                     <p className="mt-1 text-xs text-stone-500">
                       {naira(item.price)} · {item.stock.toLocaleString("en-NG")} {item.unit} in stock
-                      {item.itemCode ? ` · ${item.itemCode}` : ""}
+                      {item.barcode ? ` · ${item.barcode}` : ""}
                     </p>
                   </div>
                   <button

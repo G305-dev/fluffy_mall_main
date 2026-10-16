@@ -96,11 +96,6 @@ function parseVariants(
       raw.image ?? ""
     ).trim();
 
-    const traceposItemCode =
-      String(
-        raw.traceposItemCode ?? ""
-      ).trim() || undefined;
-
     const rawPrice = String(
       raw.price ?? ""
     ).trim();
@@ -114,8 +109,7 @@ function parseVariants(
       !color &&
       !image &&
       !rawPrice &&
-      !rawStock &&
-      !traceposItemCode
+      !rawStock
     ) {
       continue;
     }
@@ -178,7 +172,6 @@ function parseVariants(
       price,
       stock,
       image,
-      traceposItemCode,
     });
   }
 
@@ -300,11 +293,6 @@ export async function POST(
     slug,
     name,
 
-    traceposItemCode:
-      String(
-        body.traceposItemCode ?? ""
-      ).trim() || undefined,
-
     price,
     category,
 
@@ -422,32 +410,6 @@ export async function PATCH(
     nextCategory = requestedCategory;
   }
 
-  if (
-    body.variantItemCodes &&
-    typeof body.variantItemCodes === "object" &&
-    !Array.isArray(body.variantItemCodes)
-  ) {
-    const codes =
-      body.variantItemCodes as Record<
-        string,
-        unknown
-      >;
-
-    variants = variants.map((variant) => {
-      if (!(variant.id in codes)) {
-        return variant;
-      }
-
-      return {
-        ...variant,
-        traceposItemCode:
-          String(
-            codes[variant.id] ?? ""
-          ).trim() || undefined,
-      };
-    });
-  }
-
   let nextImages =
     products[index].images || [];
 
@@ -509,13 +471,6 @@ export async function PATCH(
       body.bestseller !== undefined
         ? Boolean(body.bestseller)
         : products[index].bestseller,
-
-    traceposItemCode:
-      body.traceposItemCode !== undefined
-        ? String(
-            body.traceposItemCode ?? ""
-          ).trim() || undefined
-        : products[index].traceposItemCode,
 
     images: nextImages,
     variants,

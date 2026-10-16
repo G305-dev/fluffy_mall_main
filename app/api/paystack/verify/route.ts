@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrder, saveOrder } from "@/lib/db";
 import { sendPaymentEmail } from "@/lib/email";
-import { syncPaidOrderToTracepos } from "@/lib/tracepos-sales";
 
 export async function POST(req: NextRequest) {
   const secret = process.env.PAYSTACK_SECRET_KEY;
@@ -110,15 +109,11 @@ export async function POST(req: NextRequest) {
       await saveOrder(order);
     }
 
-    const traceposSync =
-      await syncPaidOrderToTracepos(order.id);
-
     const latestOrder = await getOrder(order.id);
 
     return NextResponse.json({
       ok: true,
       order: latestOrder || order,
-      traceposSync,
     });
   }
 

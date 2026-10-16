@@ -299,20 +299,20 @@ export default async function AdminHome() {
         <section className="min-w-0 rounded-2xl border border-stone-100 bg-white p-5 xl:col-span-3">
           <div className="flex items-center gap-2">
             <PackageCheck size={18} className="text-orange-600" aria-hidden="true" />
-            <h3 className="font-semibold text-cocoa-800">TracePOS codes</h3>
+            <h3 className="font-semibold text-cocoa-800">Product barcodes</h3>
           </div>
           <p className="mt-5 text-2xl font-bold text-cocoa-800">
             {totals.coded.toLocaleString("en-NG")}
             <span className="text-sm font-normal text-stone-400"> / {totals.options.toLocaleString("en-NG")}</span>
           </p>
           <p className="mt-2 text-xs leading-relaxed text-stone-500">
-            Options with an item code entered. This is not a live TracePOS match.
+            Sellable products and options with a barcode for in-store checkout.
           </p>
           <Link
-            href="/admin/tracepos/check"
+            href="/admin/products#product-barcodes"
             className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:underline"
           >
-            Check and sync stock <ArrowRight size={15} aria-hidden="true" />
+            View product labels <ArrowRight size={15} aria-hidden="true" />
           </Link>
         </section>
       </div>

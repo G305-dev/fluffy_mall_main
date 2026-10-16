@@ -52,7 +52,7 @@ test("names match punctuation, spacing and organiser/organizer spelling", () => 
   assert.notEqual(productNameKey("2-Tier Fruit Platter"), productNameKey("3-Tier Fruit Platter"));
 });
 
-test("existing single gets an item code, CSV price and stock without a duplicate", () => {
+test("existing single matches its barcode, price and stock without a duplicate", () => {
   const existing = product();
   const matcher = createProductMatcher([existing]);
   const first = matcher.match("Acrylic Cutlery Organizer", "TEST-0001", 10500, 13, true);
@@ -60,18 +60,18 @@ test("existing single gets an item code, CSV price and stock without a duplicate
   assert.equal(first.product?.id, existing.id);
   matcher.accept("Acrylic Cutlery Organizer", "TEST-0001", existing.id);
   assert.equal(matcher.match("Acrylic Cutlery Organizer", "TEST-0001", 10500, 13, true).kind, "duplicate");
-  const rerun = createProductMatcher([product({ traceposItemCode: "TEST-0001", stock: 13 })]);
+  const rerun = createProductMatcher([product({ barcode: "TEST-0001", stock: 13 })]);
   assert.equal(rerun.match("Acrylic Cutlery Organizer", "TEST-0001", 10500, 13, true).kind, "duplicate");
   assert.equal(rerun.match("Acrylic Cutlery Organizer", "TEST-0001", 11000, 1, true).kind, "update");
 });
 
-test("ambiguous codes, conflicting names and variant codes are never treated as new singles", () => {
-  const existing = product({ traceposItemCode: "123" });
+test("ambiguous barcodes, conflicting names and variant barcodes are never treated as new singles", () => {
+  const existing = product({ barcode: "123" });
   assert.equal(createProductMatcher([existing]).match("Other product", "123", 10500, 1, true).kind, "held");
   assert.equal(createProductMatcher([existing]).match("Acrylic Cutlery Organizer", "456", 10500, 1, true).kind, "held");
   const ladder = product({
     id: "ladder", name: "Multipurpose Folding Ladder", productType: "variable",
-    variants: [{ name: "4 steps", traceposItemCode: "777" }],
+    variants: [{ name: "4 steps", barcode: "777" }],
   });
   assert.equal(createProductMatcher([ladder]).match("4 Steps Ladder", "777", 47000, 3, true).kind, "held");
   assert.equal(createProductMatcher([ladder]).match("Multipurpose Folding Ladder", "800", 40000, 1, true).kind, "held");
