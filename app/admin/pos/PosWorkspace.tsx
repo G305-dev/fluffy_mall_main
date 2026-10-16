@@ -1,12 +1,25 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import {
+  Banknote,
+  History,
+  Minus,
+  Package,
+  Plus,
+  RotateCcw,
+  ScanBarcode,
+  Search,
+  ShoppingCart,
+  Trash2,
+  X,
+} from "lucide-react";
 import { naira } from "@/lib/format";
 import { hasVariants } from "@/lib/product-availability";
 import type { Product } from "@/lib/types";
+import { categoryName } from "@/lib/categories";
 
 const PLACEHOLDER = "/images/product-placeholder.svg";
 
@@ -17,6 +30,7 @@ type SellableItem = {
   name: string;
   variantName?: string;
   barcode?: string;
+  category: string;
   stock: number;
   price: number;
   image: string;
@@ -39,6 +53,7 @@ function sellableItems(products: Product[]): SellableItem[] {
         name: product.name,
         variantName: variant.name,
         barcode: variant.barcode,
+        category: product.category,
         stock: variant.stock,
         price: variant.price,
         image: variant.image || product.images?.[0] || PLACEHOLDER,
@@ -50,6 +65,7 @@ function sellableItems(products: Product[]): SellableItem[] {
       productId: product.id,
       name: product.name,
       barcode: product.barcode,
+      category: product.category,
       stock: product.stock,
       price: product.price,
       image: product.images?.[0] || PLACEHOLDER,
@@ -58,10 +74,31 @@ function sellableItems(products: Product[]): SellableItem[] {
   });
 }
 
-export default function PosWorkspace({ products }: { products: Product[] }) {
+type PosSummary = {
+  salesToday: number;
+  transactions: number;
+  averageOrderValue: number;
+  salesChange: number | null;
+  topProductName: string;
+  topProductUnits: number;
+};
+
+export default function PosWorkspace({
+  products,
+  staffName,
+  greeting,
+  summary,
+}: {
+  products: Product[];
+  staffName: string;
+  greeting: string;
+  summary: PosSummary;
+}) {
   const router = useRouter();
+  const searchRef = useRef<HTMLInputElement>(null);
   const items = useMemo(() => sellableItems(products), [products]);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -72,18 +109,32 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
   const [receipt, setReceipt] = useState<{ id: string; total: number } | null>(null);
 
   const term = query.trim().toLocaleLowerCase();
-  const results = useMemo(() => {
-    if (!term) return [];
-    return items
-      .filter((item) => item.stock > 0 && [
-        item.name,
-        item.variantName,
-        item.barcode,
-      ].some((value) => value?.toLocaleLowerCase().includes(term)))
-      .slice(0, 12);
-  }, [items, term]);
+  const categories = useMemo(() => {
+    const used = new Set(items.filter((item) => item.stock > 0).map((item) => item.category));
+    return Array.from(used).map((slug) => ({ slug, name: categoryName(slug) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [items]);
+  const results = useMemo(() => items
+    .filter((item) =>
+      item.stock > 0 &&
+      (category === "all" || item.category === category) &&
+      (!term || [item.name, item.variantName, item.barcode]
+        .some((value) => value?.toLocaleLowerCase().includes(term)))
+    )
+    .slice(0, 24), [items, term, category]);
   const subtotal = cart.reduce((sum, line) => sum + line.item.price * line.qty, 0);
   const availableCount = items.filter((item) => item.stock > 0).length;
+
+  function startNewSale() {
+    if (cart.length && !window.confirm("Clear the current sale and start a new one?")) return;
+    setCart([]);
+    setCustomerName("");
+    setCustomerPhone("");
+    setPaymentReference("");
+    setConfirmedReceived(false);
+    setError("");
+    setReceipt(null);
+  }
 
   function addToCart(item: SellableItem) {
     setError("");
@@ -155,6 +206,7 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
       setPaymentReference("");
       setConfirmedReceived(false);
       setQuery("");
+      setCategory("all");
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "The sale could not be completed.");
@@ -164,19 +216,36 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.19em] text-orange-600">In-store checkout</p>
-          <h1 className="mt-1 font-display text-2xl text-cocoa-800 sm:text-3xl">Point of sale</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Sell from the website catalog. Completed sales update the same product stock.
-          </p>
+          <p className="text-sm font-semibold text-cocoa-800">{greeting}, {staffName}</p>
+          <h1 className="mt-1 text-xs text-stone-500">Scan items or search for products to start a new sale.</h1>
         </div>
         <p className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-stone-600">
           {availableCount.toLocaleString("en-NG")} sellable items
         </p>
       </header>
+
+      <section aria-label="Today's sales" className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+        {[
+          { label: "Sales today", value: naira(summary.salesToday), note: summary.salesChange === null ? "No sales yesterday" : `${summary.salesChange >= 0 ? "+" : ""}${summary.salesChange}% vs yesterday` },
+          { label: "Transactions", value: summary.transactions.toLocaleString("en-NG"), note: "Paid in-store sales today" },
+          { label: "Average order value", value: naira(summary.averageOrderValue), note: "Based on today's sales" },
+          { label: "Top product", value: summary.topProductName, note: `${summary.topProductUnits} sold today` },
+        ].map((stat, index) => (
+          <article key={stat.label} className="flex min-h-24 items-center gap-3 rounded-xl border border-stone-100 bg-white p-4">
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${index === 2 ? "bg-orange-50 text-orange-600" : "bg-blue-50 text-blue-600"}`}>
+              {index === 0 ? <Banknote size={19} /> : index === 3 ? <Package size={19} /> : <History size={19} />}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xs text-stone-500">{stat.label}</span>
+              <strong className="mt-0.5 block truncate text-base text-cocoa-800" title={stat.value}>{stat.value}</strong>
+              <span className="mt-0.5 block truncate text-[10px] text-stone-400">{stat.note}</span>
+            </span>
+          </article>
+        ))}
+      </section>
 
       {receipt && (
         <section role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
@@ -195,64 +264,74 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
         </section>
       )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(20rem,0.9fr)]">
-        <section className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
-          <h2 className="font-display text-lg text-cocoa-800">Find products</h2>
-          <form onSubmit={searchSubmit} role="search" className="mt-3 flex gap-2">
-            <label className="relative min-w-0 flex-1">
-              <span className="sr-only">Search products or scan a barcode</span>
-              <Search aria-hidden="true" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-              <input
-                autoFocus
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search product name or scan barcode"
-                className="w-full rounded-xl border border-stone-200 py-3 pl-10 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-              />
-            </label>
-            <button type="submit" className="rounded-xl bg-cocoa-800 px-4 py-2 text-sm font-semibold text-white hover:bg-cocoa-700">
-              Find
-            </button>
-          </form>
+      <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1.65fr)_minmax(21rem,0.85fr)]">
+        <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white">
+          <div className="grid min-h-[26rem] lg:grid-cols-[minmax(10rem,0.7fr)_minmax(0,2fr)]">
+            <nav aria-label="Product categories" className="border-b border-stone-100 p-2 lg:border-b-0 lg:border-r">
+              <button type="button" onClick={() => setCategory("all")} className={`mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-semibold ${category === "all" ? "bg-blue-600 text-white" : "text-stone-600 hover:bg-stone-50"}`}>
+                <Package size={16} aria-hidden="true" /> All products
+              </button>
+              <div className="flex gap-1 overflow-x-auto lg:block lg:space-y-1 lg:overflow-visible">
+                {categories.map((item) => (
+                  <button key={item.slug} type="button" onClick={() => setCategory(item.slug)} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-xs lg:w-full ${category === item.slug ? "bg-blue-50 font-semibold text-blue-700" : "text-stone-600 hover:bg-stone-50"}`}>
+                    <span aria-hidden="true">{categoryName(item.slug).slice(0, 1)}</span>
+                    <span className="max-w-40 truncate">{item.name}</span>
+                  </button>
+                ))}
+              </div>
+            </nav>
 
-          <div className="mt-4 space-y-2">
-            {!term ? (
-              <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-500">
-                Scan a product barcode or search by product name or barcode.
-              </p>
-            ) : results.length === 0 ? (
-              <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-500">
-                No in-stock products match “{query}”.
-              </p>
-            ) : results.map((item) => {
+            <div className="min-w-0 p-3 sm:p-4">
+              <div className="flex flex-wrap gap-2">
+                <form onSubmit={searchSubmit} role="search" className="flex min-w-[12rem] flex-1 gap-2">
+                  <label className="relative min-w-0 flex-1">
+                    <span className="sr-only">Search products or scan a barcode</span>
+                    <Search aria-hidden="true" size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      ref={searchRef}
+                      autoFocus
+                      type="search"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search products, barcode or item name"
+                      className="w-full rounded-lg border border-stone-200 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </label>
+                  {query && <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="rounded-lg border border-stone-200 px-2 text-stone-500"><X size={16} /></button>}
+                </form>
+                <button type="button" onClick={() => searchRef.current?.focus()} className="inline-flex items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-50">
+                  <ScanBarcode size={16} aria-hidden="true" /> Scan barcode
+                </button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                {results.map((item) => {
               const inCart = cart.find((line) => line.item.key === item.key)?.qty || 0;
               return (
-                <div key={item.key} className="flex min-w-0 items-center gap-3 rounded-xl border border-stone-100 p-3">
-                  <Image src={item.image} alt="" width={52} height={52} className="h-12 w-12 shrink-0 rounded-lg bg-stone-100 object-cover" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-cocoa-800">{item.name}</p>
-                    {item.variantName && <p className="truncate text-xs text-stone-500">{item.variantName}</p>}
-                    <p className="mt-1 text-xs text-stone-500">
-                      {naira(item.price)} · {item.stock.toLocaleString("en-NG")} {item.unit} in stock
-                      {item.barcode ? ` · ${item.barcode}` : ""}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addToCart(item)}
-                    disabled={inCart >= item.stock}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Plus size={15} aria-hidden="true" /> Add
-                  </button>
-                </div>
+                <button key={item.key} type="button" onClick={() => addToCart(item)} disabled={inCart >= item.stock} className="min-w-0 rounded-lg border border-stone-200 p-2 text-left transition-colors hover:border-blue-400 hover:bg-blue-50/40 disabled:opacity-50">
+                  <Image src={item.image} alt="" width={120} height={100} className="h-24 w-full rounded-md bg-stone-100 object-contain" />
+                  <span className="mt-2 block truncate text-[11px] font-medium text-cocoa-800">{item.name}</span>
+                  {item.variantName && <span className="block truncate text-[10px] text-stone-500">{item.variantName}</span>}
+                  <span className="mt-1 block text-xs font-semibold text-cocoa-800">{naira(item.price)}</span>
+                  <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold ${item.stock <= 3 ? "bg-orange-50 text-orange-700" : "bg-emerald-50 text-emerald-700"}`}>
+                    {item.stock <= 3 ? `Low stock · ${item.stock}` : "In stock"}
+                  </span>
+                  <span className="sr-only">{inCart >= item.stock ? "No more stock available" : "Add to current sale"}</span>
+                </button>
               );
-            })}
+                })}
+                {results.length === 0 && (
+                  <p className="col-span-full rounded-lg bg-stone-50 p-6 text-center text-sm text-stone-500">
+                    {term ? `No in-stock products match “${query}”.` : "No in-stock products in this category."}
+                  </p>
+                )}
+              </div>
+              {results.length > 0 && <p className="mt-3 text-center text-[10px] text-stone-400">Select a product to add it to the current sale · showing up to 24 products</p>}
+            </div>
           </div>
         </section>
 
-        <section className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+        <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <ShoppingCart size={18} className="text-orange-600" aria-hidden="true" />
             <h2 className="font-display text-lg text-cocoa-800">Current sale</h2>
@@ -326,6 +405,21 @@ export default function PosWorkspace({ products }: { products: Product[] }) {
           </div>
         </section>
       </div>
+
+      <section aria-label="Quick actions" className="grid gap-2 sm:grid-cols-3">
+        <button type="button" onClick={startNewSale} className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 text-left hover:border-blue-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600"><RotateCcw size={17} aria-hidden="true" /></span>
+          <span><strong className="block text-xs text-cocoa-800">New sale</strong><span className="text-[10px] text-stone-500">Start a fresh transaction</span></span>
+        </button>
+        <a href="/admin/orders" className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 hover:border-blue-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600"><History size={17} aria-hidden="true" /></span>
+          <span><strong className="block text-xs text-cocoa-800">View sales</strong><span className="text-[10px] text-stone-500">Review orders and transactions</span></span>
+        </a>
+        <button type="button" onClick={() => searchRef.current?.focus()} className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 text-left hover:border-blue-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600"><ScanBarcode size={17} aria-hidden="true" /></span>
+          <span><strong className="block text-xs text-cocoa-800">Scan barcode</strong><span className="text-[10px] text-stone-500">Focus the product search</span></span>
+        </button>
+      </section>
     </div>
   );
 }
