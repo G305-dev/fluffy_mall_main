@@ -450,8 +450,8 @@ export default function AdminNav({
   };
 
   return (
-    <div className="min-h-screen bg-[#e9dfd2] lg:p-6">
-      <div className="mx-auto min-h-screen max-w-[1680px] bg-white shadow-soft lg:flex lg:min-h-[calc(100vh-3rem)] lg:overflow-clip lg:rounded-[26px]">
+    <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white lg:flex">
         <aside className="hidden w-60 shrink-0 border-r border-stone-200 bg-[#f8f8f8] lg:block">
           <div className="sticky top-0 flex h-screen flex-col overflow-y-auto p-4 xl:p-5">
             <div className="px-2 pt-2"><Brand /></div>
