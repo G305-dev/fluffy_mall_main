@@ -241,9 +241,6 @@ function NavigationLinks({
             { label: "All orders", href: "/admin/orders" },
             { label: "Store sales", href: "/admin/orders?channel=pos" },
             { label: "Website sales", href: "/admin/orders?channel=website" },
-            { label: "Pending orders", href: "/admin/orders?status=pending" },
-            { label: "Completed orders", href: "/admin/orders?status=completed" },
-            { label: "Cancelled orders", href: "/admin/orders?status=cancelled" },
           ].map(({ label, href }) => (
             <Link
               key={label}
