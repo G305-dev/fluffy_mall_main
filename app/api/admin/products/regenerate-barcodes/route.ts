@@ -45,7 +45,7 @@ export async function POST() {
 
       for (const product of result.products) {
         const set: Record<string, unknown> = {
-          variants: product.variants.map((variant) => {
+          variants: (product.variants || []).map((variant) => {
             const cleanedVariant = { ...variant } as typeof variant & {
               traceposItemCode?: unknown;
             };
@@ -53,7 +53,7 @@ export async function POST() {
             return cleanedVariant;
           }),
         };
-        if (product.stock > 0 && product.barcode) {
+        if (product.barcode) {
           set.barcode = product.barcode;
         }
 

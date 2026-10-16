@@ -24,7 +24,7 @@ export default function ProductBarcodeList({
 
   async function regenerateBarcodes() {
     const confirmed = window.confirm(
-      "This will replace barcodes for every product and option currently in stock, keep barcodes for out-of-stock items, and permanently remove saved external POS item codes and sales-sync details from products and past orders. Continue?"
+      "This will replace barcodes for every product and option currently in stock, keep existing out-of-stock barcodes, create barcodes for any out-of-stock product or option missing one, and permanently remove saved external POS item codes and sales-sync details from products and past orders. Continue?"
     );
     if (!confirmed) return;
 
@@ -44,7 +44,7 @@ export default function ProductBarcodeList({
       } = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not regenerate barcodes.");
       setNotice(
-        `Generated ${result.regenerated ?? 0} new barcodes. Left ${result.outOfStock ?? 0} out-of-stock items unchanged and removed saved external POS sync details from ${result.cleanedOrders ?? 0} past orders.`
+        `Generated or replaced ${result.regenerated ?? 0} barcodes. All ${result.outOfStock ?? 0} out-of-stock products and options have barcodes; any existing out-of-stock barcodes were kept. Removed saved external POS sync details from ${result.cleanedOrders ?? 0} past orders.`
       );
       router.refresh();
     } catch (problem) {
@@ -68,7 +68,7 @@ export default function ProductBarcodeList({
           {busy ? "Updating barcodes…" : "Generate barcodes & clear old POS data"}
         </button>
         <p className="text-xs text-stone-500">
-          Replaces labels only for in-stock products and options. Out-of-stock labels stay unchanged.
+          In-stock barcodes are replaced. Existing out-of-stock barcodes are kept, and any missing ones are created.
         </p>
       </div>
       {notice && <p role="status" className="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-800">{notice}</p>}

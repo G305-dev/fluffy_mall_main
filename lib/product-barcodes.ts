@@ -58,11 +58,17 @@ export function regenerateInStockBarcodes(products: Product[]) {
       barcode = newBarcode(used);
     } else {
       outOfStock += 1;
+      if (!barcode) {
+        regenerated += 1;
+        barcode = newBarcode(used);
+      }
     }
     const variants = (product.variants || []).map((variant) => {
       if (variant.stock <= 0) {
         outOfStock += 1;
-        return variant;
+        if (variant.barcode) return variant;
+        regenerated += 1;
+        return { ...variant, barcode: newBarcode(used) };
       }
       regenerated += 1;
       return { ...variant, barcode: newBarcode(used) };
