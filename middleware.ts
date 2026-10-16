@@ -68,6 +68,7 @@ export async function middleware(req: NextRequest) {
 
   if (session?.kind === "staff") {
     const salesRepresentativePath =
+      pathname === "/admin" ||
       pathname === "/admin/orders" ||
       pathname.startsWith("/admin/orders/") ||
       pathname === "/admin/pos";
@@ -79,7 +80,7 @@ export async function middleware(req: NextRequest) {
       (session.role === "manager" && adminOnlyPath)
     ) {
       const url = req.nextUrl.clone();
-      url.pathname = session.role === "sales_representative" ? "/admin/pos" : "/admin";
+      url.pathname = "/admin";
       url.search = "";
       return NextResponse.redirect(url);
     }

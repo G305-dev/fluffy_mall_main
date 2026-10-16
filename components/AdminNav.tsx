@@ -160,7 +160,7 @@ function NavigationLinks({
       <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
         Workspace
       </p>
-      {role !== "sales_representative" && renderLink(PRIMARY_LINKS[0])}
+      {renderLink(PRIMARY_LINKS[0])}
       {renderLink(POS_LINK)}
 
       {role !== "sales_representative" && (

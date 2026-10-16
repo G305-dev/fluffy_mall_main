@@ -6,19 +6,42 @@ import {
   PackageCheck,
   Warehouse,
 } from "lucide-react";
-import { getProducts } from "@/lib/db";
 import {
   LOW_STOCK_LIMIT,
   stockLevel,
   summarizeInventory,
   toInventoryItems,
 } from "@/lib/admin-inventory";
+import { getAdminSession } from "@/lib/auth";
+import { getOrders, getProducts } from "@/lib/db";
+import { getPosSummary } from "@/lib/admin-pos-summary";
+import SalesDashboard from "./SalesDashboard";
 
 export const dynamic = "force-dynamic";
 
 const chartColors = ["#ff8200", "#ffad5b", "#ffc98d", "#ffe2bd", "#eadfd2"];
 
 export default async function AdminHome() {
+  const staff = await getAdminSession();
+  if (staff?.role === "sales_representative") {
+    const [products, orders] = await Promise.all([getProducts(), getOrders()]);
+    const now = new Date();
+    const hour = Number(new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Lagos",
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).format(now));
+    const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    return (
+      <SalesDashboard
+        products={products}
+        staffName={staff.name}
+        greeting={greeting}
+        summary={getPosSummary(orders, now)}
+      />
+    );
+  }
+
   const products = await getProducts();
   const items = toInventoryItems(products);
   const totals = summarizeInventory(items);
