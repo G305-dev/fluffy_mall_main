@@ -11,7 +11,7 @@ export default async function AdminLayout({
   return (
     <>
       <AdminSessionGuard />
-      <AdminNav role={session?.role}>{children}</AdminNav>
+      <AdminNav role={session?.role} staffName={session?.name} roleLabel={session?.roleLabel}>{children}</AdminNav>
     </>
   );
 }

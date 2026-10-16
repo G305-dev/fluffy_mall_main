@@ -371,7 +371,17 @@ function SidebarFooter() {
   );
 }
 
-export default function AdminNav({ children, role }: { children: React.ReactNode; role?: AdminRole }) {
+export default function AdminNav({
+  children,
+  role,
+  staffName,
+  roleLabel,
+}: {
+  children: React.ReactNode;
+  role?: AdminRole;
+  staffName?: string;
+  roleLabel?: string;
+}) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -505,8 +515,10 @@ export default function AdminNav({ children, role }: { children: React.ReactNode
                   className="h-8 w-8 rounded-lg object-cover"
                 />
                 <span className="hidden text-xs leading-tight text-stone-500 xl:block">
-                  <strong className="block text-sm text-cocoa-800">Store admin</strong>
-                  Staff access
+                  <strong className="block max-w-36 truncate text-sm text-cocoa-800" title={staffName || "Staff"}>
+                    {staffName || "Staff"}
+                  </strong>
+                  {roleLabel || "Staff"}
                 </span>
               </div>
             </div>

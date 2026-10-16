@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getDb, COLLECTIONS } from "@/lib/mongo";
-import { adminAccessForRole, canonicalStaffRole } from "@/lib/admin-staff";
+import { adminAccessForRole, BUILT_IN_STAFF_ROLES, canonicalStaffRole } from "@/lib/admin-staff";
 import {
   ADMIN_COOKIE,
   type AdminAccessLevel,
@@ -25,6 +25,7 @@ export type AdminSession = {
   name: string;
   email: string;
   role: AdminRole;
+  roleLabel: string;
   access: AdminAccessLevel;
 };
 
@@ -34,7 +35,15 @@ export function isAdminBypassed() {
 
 export async function getAdminSession(): Promise<AdminSession | null> {
   if (isAdminBypassed()) {
-    return { kind: "staff", staffId: "preview", name: "Preview admin", email: "", role: "admin", access: "admin" };
+    return {
+      kind: "staff",
+      staffId: "preview",
+      name: "Preview admin",
+      email: "",
+      role: "admin",
+      roleLabel: "Admin",
+      access: "admin",
+    };
   }
 
   const payload: AdminTokenPayload | null = await verifyAdminToken(
@@ -55,12 +64,17 @@ export async function getAdminSession(): Promise<AdminSession | null> {
       { $set: { role, updatedAt: new Date().toISOString() } }
     );
   }
+  const builtInRole = BUILT_IN_STAFF_ROLES.find((item) => item.key === role);
+  const customRole = builtInRole
+    ? null
+    : await db.collection(COLLECTIONS.STAFF_ROLES).findOne({ key: role });
   return {
     kind: "staff",
     staffId: staff.id,
     name: staff.name,
     email: staff.email,
     role,
+    roleLabel: builtInRole?.label || customRole?.label || role,
     access: adminAccessForRole(role),
   };
 }
