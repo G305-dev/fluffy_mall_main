@@ -160,10 +160,10 @@ function NavigationLinks({
       <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
         Workspace
       </p>
-      {role !== "cashier" && renderLink(PRIMARY_LINKS[0])}
+      {role !== "sales_representative" && renderLink(PRIMARY_LINKS[0])}
       {renderLink(POS_LINK)}
 
-      {role !== "cashier" && (
+      {role !== "sales_representative" && (
         <>
       <button
         type="button"
@@ -254,7 +254,7 @@ function NavigationLinks({
           ))}
         </div>
       )}
-      {role !== "cashier" && (
+      {role !== "sales_representative" && (
         <>
       {renderLink(PRIMARY_LINKS[2])}
       <div className={`flex items-center rounded-xl ${reportsActive ? "bg-[#ff8200] text-white shadow-sm" : "text-stone-600"}`}>
@@ -333,7 +333,7 @@ function NavigationLinks({
           )}
         </>
       )}
-      {role !== "cashier" && (
+      {role !== "sales_representative" && (
         <>
           <div className="my-5 border-t border-stone-200" />
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">

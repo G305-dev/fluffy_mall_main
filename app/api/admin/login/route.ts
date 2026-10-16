@@ -5,7 +5,7 @@ import {
   ADMIN_SESSION_MAX_AGE,
   createAdminToken,
 } from "@/lib/auth";
-import { isAdminRole, normalizeStaffEmail, verifyStaffPassword, type StaffMember } from "@/lib/admin-staff";
+import { adminAccessForRole, canonicalStaffRole, normalizeStaffEmail, verifyStaffPassword, type StaffMember } from "@/lib/admin-staff";
 import { sessionCookieOptions } from "@/lib/cookies";
 import { COLLECTIONS, getDb } from "@/lib/mongo";
 
@@ -42,14 +42,21 @@ export async function POST(req: NextRequest) {
   }
 
   const staff = email ? await staffCollection.findOne({ email, active: true }) : null;
-  if (!staff || !isAdminRole(staff.role) || !verifyStaffPassword(password, staff.passwordHash)) {
+  if (!staff || typeof staff.role !== "string" || !verifyStaffPassword(password, staff.passwordHash)) {
     return NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
+  }
+  const role = canonicalStaffRole(staff.role);
+  if (role !== staff.role) {
+    await staffCollection.updateOne(
+      { id: staff.id, role: staff.role },
+      { $set: { role, updatedAt: new Date().toISOString() } }
+    );
   }
 
   const token = await createAdminToken({
     kind: "staff",
     staffId: staff.id,
-    role: staff.role,
+    role: adminAccessForRole(role),
   });
   const response = NextResponse.json({ ok: true });
   response.cookies.set(ADMIN_COOKIE, token, sessionCookieOptions(req, ADMIN_SESSION_MAX_AGE));

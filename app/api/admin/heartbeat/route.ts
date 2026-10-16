@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth";
 import { COLLECTIONS, getDb } from "@/lib/mongo";
 import { sessionCookieOptions } from "@/lib/cookies";
+import { adminAccessForRole } from "@/lib/admin-staff";
 
 export async function POST(req: NextRequest) {
   if (isAdminBypassed()) {
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
   const renewed = await createAdminToken({
     kind: "staff",
     staffId: staff.staffId,
-    role: staff.role,
+    role: adminAccessForRole(staff.role),
   });
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ADMIN_COOKIE, renewed, sessionCookieOptions(req, ADMIN_SESSION_MAX_AGE));

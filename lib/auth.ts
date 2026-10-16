@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { getDb, COLLECTIONS } from "@/lib/mongo";
+import { adminAccessForRole, canonicalStaffRole } from "@/lib/admin-staff";
 import {
   ADMIN_COOKIE,
+  type AdminAccessLevel,
   type AdminRole,
   type AdminTokenPayload,
   verifyAdminToken,
@@ -13,7 +15,7 @@ export {
   createAdminToken,
   verifyAdminToken,
 } from "@/lib/admin-session-token";
-export type { AdminRole, AdminTokenPayload } from "@/lib/admin-session-token";
+export type { AdminAccessLevel, AdminRole, AdminTokenPayload } from "@/lib/admin-session-token";
 
 export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 
@@ -23,6 +25,7 @@ export type AdminSession = {
   name: string;
   email: string;
   role: AdminRole;
+  access: AdminAccessLevel;
 };
 
 export function isAdminBypassed() {
@@ -31,7 +34,7 @@ export function isAdminBypassed() {
 
 export async function getAdminSession(): Promise<AdminSession | null> {
   if (isAdminBypassed()) {
-    return { kind: "staff", staffId: "preview", name: "Preview admin", email: "", role: "admin" };
+    return { kind: "staff", staffId: "preview", name: "Preview admin", email: "", role: "admin", access: "admin" };
   }
 
   const payload: AdminTokenPayload | null = await verifyAdminToken(
@@ -44,19 +47,27 @@ export async function getAdminSession(): Promise<AdminSession | null> {
     id: payload.staffId,
     active: true,
   });
-  if (!staff || !["admin", "manager", "cashier"].includes(staff.role)) return null;
+  if (!staff || typeof staff.role !== "string") return null;
+  const role = canonicalStaffRole(staff.role);
+  if (role === "sales_representative" && staff.role === "cashier") {
+    await db.collection(COLLECTIONS.STAFF).updateOne(
+      { id: staff.id, role: "cashier" },
+      { $set: { role, updatedAt: new Date().toISOString() } }
+    );
+  }
   return {
     kind: "staff",
     staffId: staff.id,
     name: staff.name,
     email: staff.email,
-    role: staff.role,
+    role,
+    access: adminAccessForRole(role),
   };
 }
 
 export async function isAdminAuthed() {
   const session = await getAdminSession();
-  return session?.role === "admin" || session?.role === "manager";
+  return session?.access === "admin" || session?.access === "manager";
 }
 
 export async function isStaffAuthed() {

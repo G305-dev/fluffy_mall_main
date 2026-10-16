@@ -1,13 +1,14 @@
 export const ADMIN_COOKIE = "fny_admin";
 export const ADMIN_SESSION_MAX_AGE = 60 * 30;
 
-export type AdminRole = "admin" | "manager" | "cashier";
+export type AdminRole = string;
+export type AdminAccessLevel = "admin" | "manager" | "sales_representative";
 
 export type AdminTokenPayload = {
   kind: "staff" | "bootstrap";
   exp: number;
   staffId?: string;
-  role?: AdminRole;
+  role?: AdminAccessLevel;
 };
 
 function sessionSecret() {
@@ -79,7 +80,7 @@ export async function verifyAdminToken(token: string | undefined): Promise<Admin
     if (
       payload.kind !== "staff" ||
       typeof payload.staffId !== "string" ||
-      !["admin", "manager", "cashier"].includes(payload.role || "")
+      !["admin", "manager", "sales_representative"].includes(payload.role || "")
     ) {
       return null;
     }

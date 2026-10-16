@@ -229,6 +229,7 @@ Before production launch:
 - [ ] Strong first-admin setup password set
 - [ ] Long random staff session secret set
 - [ ] First Admin account created; shared setup password no longer grants sign-in
+- [ ] Staff account passwords must be at least 7 characters
 - [ ] Customer session secret set to a long random value
 - [ ] `PREVIEW_ADMIN_BYPASS` disabled
 - [ ] Paystack test/live keys verified

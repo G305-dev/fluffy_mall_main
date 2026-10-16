@@ -67,7 +67,7 @@ export async function middleware(req: NextRequest) {
   }
 
   if (session?.kind === "staff") {
-    const cashierPath =
+    const salesRepresentativePath =
       pathname === "/admin/orders" ||
       pathname.startsWith("/admin/orders/") ||
       pathname === "/admin/pos";
@@ -75,11 +75,11 @@ export async function middleware(req: NextRequest) {
       pathname === "/admin/staff" ||
       pathname.startsWith("/admin/staff/");
     if (
-      (session.role === "cashier" && !cashierPath) ||
+      (session.role === "sales_representative" && !salesRepresentativePath) ||
       (session.role === "manager" && adminOnlyPath)
     ) {
       const url = req.nextUrl.clone();
-      url.pathname = session.role === "cashier" ? "/admin/pos" : "/admin";
+      url.pathname = session.role === "sales_representative" ? "/admin/pos" : "/admin";
       url.search = "";
       return NextResponse.redirect(url);
     }

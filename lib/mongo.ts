@@ -70,4 +70,5 @@ export const COLLECTIONS = {
   SETTINGS: "settings",
   SUBSCRIBERS: "subscribers",
   STAFF: "staff",
+  STAFF_ROLES: "staff_roles",
 } as const;

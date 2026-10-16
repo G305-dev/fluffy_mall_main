@@ -52,12 +52,12 @@ export default function SetupAdminForm() {
         </label>
         <label className="block text-sm font-medium text-stone-700">
           New password
-          <input required minLength={12} maxLength={256} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-2.5" />
-          <span className="mt-1 block text-xs text-stone-500">Use at least 12 characters.</span>
+          <input required minLength={7} maxLength={256} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-2.5" />
+          <span className="mt-1 block text-xs text-stone-500">Use at least 7 characters.</span>
         </label>
         <label className="block text-sm font-medium text-stone-700">
           Confirm password
-          <input required minLength={12} maxLength={256} type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-2.5" />
+          <input required minLength={7} maxLength={256} type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-2.5" />
         </label>
         {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <button disabled={saving} className="w-full rounded-xl bg-cocoa-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">

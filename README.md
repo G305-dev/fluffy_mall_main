@@ -171,7 +171,7 @@ Admin areas include:
 - **People manage → Staff members:** create and edit individual accounts, set roles, and disable access.
 - **Settings:** edit store settings and delivery-rule values.
 - **Analytics:** view operational summary data.
-Admin roles are **Admin** (full access and staff management), **Manager** (all existing admin areas), and **Cashier** (Orders and Point of sale). Staff passwords must be at least 12 characters. Admin sessions are signed, cookie-based, and short-lived. Use HTTPS in production and configure a long random `STAFF_SESSION_SECRET`; keep `ADMIN_PASSWORD` secure for first-time account setup.
+Admin roles are **Admin** (full access and staff management), **Manager**, **Accountant**, **CFO**, **Sales representative**, and custom roles. Sales representatives can access Orders and Point of sale only; Manager, Accountant, CFO, and custom roles can use the existing admin areas. Admin is the only role that can manage staff accounts. Staff passwords must be at least 7 characters. Admin sessions are signed, cookie-based, and short-lived. Use HTTPS in production and configure a long random `STAFF_SESSION_SECRET`; keep `ADMIN_PASSWORD` secure for first-time account setup.
 ## Products and variants
 Products are represented by `lib/types.ts` and stored in MongoDB. A product can include:
 - Name, slug, description, category, image(s), price, and base stock.

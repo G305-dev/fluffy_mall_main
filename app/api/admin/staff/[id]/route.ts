@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hashStaffPassword, isAdminRole, normalizeStaffEmail, publicStaffMember, type StaffMember } from "@/lib/admin-staff";
+import {
+  hashStaffPassword,
+  isBuiltInStaffRole,
+  MIN_STAFF_PASSWORD_LENGTH,
+  normalizeStaffEmail,
+  publicStaffMember,
+  type StaffMember,
+  type StaffRoleOption,
+} from "@/lib/admin-staff";
 import { getAdminSession } from "@/lib/auth";
 import { COLLECTIONS, getDb } from "@/lib/mongo";
 
@@ -32,7 +40,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Enter valid staff details." }, { status: 400 });
   }
   const input = body as Record<string, unknown>;
-  if (!validName(input.name) || !validEmail(input.email) || !isAdminRole(input.role) || typeof input.active !== "boolean") {
+  if (!validName(input.name) || !validEmail(input.email) || typeof input.role !== "string" || typeof input.active !== "boolean") {
     return NextResponse.json({ error: "Enter a name, valid email, role, and account status." }, { status: 400 });
   }
   const phone = typeof input.phone === "string" ? input.phone.trim() : "";
@@ -40,11 +48,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Phone number must be 32 characters or fewer." }, { status: 400 });
   }
   if (input.password !== undefined && input.password !== "" &&
-      (typeof input.password !== "string" || input.password.length < 12 || input.password.length > 256)) {
-    return NextResponse.json({ error: "A new password must be at least 12 characters." }, { status: 400 });
+      (typeof input.password !== "string" || input.password.length < MIN_STAFF_PASSWORD_LENGTH || input.password.length > 256)) {
+    return NextResponse.json({ error: `A new password must be at least ${MIN_STAFF_PASSWORD_LENGTH} characters.` }, { status: 400 });
   }
 
   const db = await getDb();
+  const roleIsValid = isBuiltInStaffRole(input.role) ||
+    Boolean(await db.collection<StaffRoleOption>(COLLECTIONS.STAFF_ROLES).findOne({ key: input.role }));
+  if (!roleIsValid) {
+    return NextResponse.json({ error: "Choose a valid staff role." }, { status: 400 });
+  }
   const collection = db.collection<StaffMember>(COLLECTIONS.STAFF);
   await collection.createIndex({ email: 1 }, { unique: true });
   const existing = await collection.findOne({ id: params.id });

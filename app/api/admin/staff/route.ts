@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRole, hashStaffPassword, newStaffId, normalizeStaffEmail, publicStaffMember, type StaffMember } from "@/lib/admin-staff";
+import {
+  BUILT_IN_STAFF_ROLES,
+  hashStaffPassword,
+  isBuiltInStaffRole,
+  MIN_STAFF_PASSWORD_LENGTH,
+  newStaffId,
+  normalizeStaffEmail,
+  publicStaffMember,
+  type StaffMember,
+  type StaffRoleOption,
+} from "@/lib/admin-staff";
 import { getAdminSession } from "@/lib/auth";
 import { COLLECTIONS, getDb } from "@/lib/mongo";
 
@@ -24,7 +34,18 @@ export async function GET() {
     .find({}, { projection: { _id: 0, passwordHash: 0 } })
     .sort({ name: 1 })
     .toArray();
-  return NextResponse.json({ staff });
+  const customRoles = await db.collection<StaffRoleOption>(COLLECTIONS.STAFF_ROLES)
+    .find({}, { projection: { _id: 0, key: 1, label: 1 } })
+    .sort({ label: 1 })
+    .toArray();
+  await db.collection<StaffMember>(COLLECTIONS.STAFF).updateMany(
+    { role: "cashier" },
+    { $set: { role: "sales_representative" } }
+  );
+  const migratedStaff = staff.map((member) => member.role === "cashier"
+    ? { ...member, role: "sales_representative" }
+    : member);
+  return NextResponse.json({ staff: migratedStaff, roles: [...BUILT_IN_STAFF_ROLES, ...customRoles] });
 }
 
 export async function POST(req: NextRequest) {
@@ -43,11 +64,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Enter valid staff details." }, { status: 400 });
   }
   const input = body as Record<string, unknown>;
-  if (!validName(input.name) || !validEmail(input.email) || !isAdminRole(input.role)) {
+  if (!validName(input.name) || !validEmail(input.email) || typeof input.role !== "string") {
     return NextResponse.json({ error: "Enter a name, valid email, and staff role." }, { status: 400 });
   }
-  if (typeof input.password !== "string" || input.password.length < 12 || input.password.length > 256) {
-    return NextResponse.json({ error: "Staff passwords must be at least 12 characters." }, { status: 400 });
+  if (typeof input.password !== "string" || input.password.length < MIN_STAFF_PASSWORD_LENGTH || input.password.length > 256) {
+    return NextResponse.json({ error: `Staff passwords must be at least ${MIN_STAFF_PASSWORD_LENGTH} characters.` }, { status: 400 });
   }
   const phone = typeof input.phone === "string" ? input.phone.trim() : "";
   if (phone.length > 32) {
@@ -67,6 +88,11 @@ export async function POST(req: NextRequest) {
     updatedAt: now,
   };
   const db = await getDb();
+  const roleIsValid = isBuiltInStaffRole(input.role) ||
+    Boolean(await db.collection<StaffRoleOption>(COLLECTIONS.STAFF_ROLES).findOne({ key: input.role }));
+  if (!roleIsValid) {
+    return NextResponse.json({ error: "Choose a valid staff role." }, { status: 400 });
+  }
   const collection = db.collection<StaffMember>(COLLECTIONS.STAFF);
   await collection.createIndex({ email: 1 }, { unique: true });
   try {
