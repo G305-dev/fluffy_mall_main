@@ -181,7 +181,7 @@ function parseVariants(
 export async function POST(
   req: NextRequest
 ) {
-  if (!isAdminAuthed()) {
+  if (!await isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }
@@ -339,7 +339,7 @@ export async function POST(
 export async function PATCH(
   req: NextRequest
 ) {
-  if (!isAdminAuthed()) {
+  if (!await isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }
@@ -505,7 +505,7 @@ export async function PATCH(
 export async function DELETE(
   req: NextRequest
 ) {
-  if (!isAdminAuthed()) {
+  if (!await isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }

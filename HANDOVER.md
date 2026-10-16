@@ -62,6 +62,7 @@ Create `.env.local` locally or configure the same values in the hosting provider
 MONGODB_URI=mongodb+srv://...
 MONGODB_DB=fluffy_mall
 ADMIN_PASSWORD=<unique-admin-password>
+STAFF_SESSION_SECRET=<long-random-secret>
 CUSTOMER_SESSION_SECRET=<long-random-secret>
 NEXT_PUBLIC_APP_URL=https://your-production-domain.example
 ```
@@ -225,7 +226,9 @@ Before production launch:
 - [ ] Production MongoDB database created and backed up
 - [ ] MongoDB network access restricted appropriately
 - [ ] All production environment variables configured
-- [ ] Strong admin password set
+- [ ] Strong first-admin setup password set
+- [ ] Long random staff session secret set
+- [ ] First Admin account created; shared setup password no longer grants sign-in
 - [ ] Customer session secret set to a long random value
 - [ ] `PREVIEW_ADMIN_BYPASS` disabled
 - [ ] Paystack test/live keys verified

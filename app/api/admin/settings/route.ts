@@ -3,7 +3,7 @@ import { isAdminAuthed } from "@/lib/auth";
 import { getSettings, saveSettings } from "@/lib/db";
 
 export async function PUT(req: NextRequest) {
-  if (!isAdminAuthed()) {
+  if (!await isAdminAuthed()) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = await req.json();

@@ -18,7 +18,7 @@ const LEGACY_POS_ORDER_FIELDS = [
 ] as const;
 
 export async function POST() {
-  if (!isAdminAuthed()) {
+  if (!await isAdminAuthed()) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

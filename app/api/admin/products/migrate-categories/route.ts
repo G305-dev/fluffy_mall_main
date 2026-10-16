@@ -298,7 +298,7 @@ async function createPreview() {
 }
 
 export async function GET() {
-  if (!isAdminAuthed()) {
+  if (!await isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }
@@ -323,7 +323,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!isAdminAuthed()) {
+  if (!await isAdminAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }

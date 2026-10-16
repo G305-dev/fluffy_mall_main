@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/auth";
+import { isStaffAuthed } from "@/lib/auth";
 import { getOrder, saveOrder } from "@/lib/db";
 import type { OrderStatus } from "@/lib/types";
 
@@ -11,7 +11,7 @@ export async function PATCH(
     params: { id: string };
   }
 ) {
-  if (!isAdminAuthed()) {
+  if (!await isStaffAuthed()) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }

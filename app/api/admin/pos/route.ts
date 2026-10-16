@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/auth";
+import { isStaffAuthed } from "@/lib/auth";
 import { makeOrderId } from "@/lib/db";
 import { COLLECTIONS, getDb, getMongoClient } from "@/lib/mongo";
 import { resolveAvailableOrderItems, StockUnavailableError } from "@/lib/product-availability";
@@ -16,7 +16,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthed()) {
+  if (!await isStaffAuthed()) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

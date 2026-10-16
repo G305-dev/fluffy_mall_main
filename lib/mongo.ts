@@ -69,4 +69,5 @@ export const COLLECTIONS = {
   CATEGORIES: "categories",
   SETTINGS: "settings",
   SUBSCRIBERS: "subscribers",
+  STAFF: "staff",
 } as const;

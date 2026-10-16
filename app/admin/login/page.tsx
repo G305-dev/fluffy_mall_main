@@ -7,25 +7,35 @@ import { Suspense } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 function LoginForm() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
   const params = useSearchParams();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    if (!res.ok) {
-      setError("Incorrect password");
-      return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || "Email or password is incorrect.");
+      }
+      router.push(result.setupRequired ? "/admin/staff/setup" : params.get("next") || "/admin");
+      router.refresh();
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : "Could not sign in. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    router.push(params.get("next") || "/admin");
-    router.refresh();
   }
 
   return (
@@ -40,11 +50,20 @@ function LoginForm() {
       <p className="text-center text-xs uppercase tracking-[0.25em] text-gold-600">Staff only</p>
       <h1 className="mt-2 text-center font-display text-3xl">Store admin</h1>
       <form onSubmit={submit} className="mt-8 space-y-3">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="username"
+          placeholder="Staff email"
+          className="w-full rounded-2xl border border-cream-300 px-4 py-3"
+        />
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             placeholder="Password"
             className="w-full rounded-2xl border border-cream-300 px-4 py-3 pr-11"
           />
@@ -58,8 +77,8 @@ function LoginForm() {
           </button>
         </div>
         {error && <p className="text-sm text-rose-700">{error}</p>}
-        <button className="w-full rounded-full bg-cocoa-800 py-3 text-sm font-semibold text-cream-50">
-          Sign in
+        <button disabled={submitting} className="w-full rounded-full bg-cocoa-800 py-3 text-sm font-semibold text-cream-50 disabled:opacity-60">
+          {submitting ? "Signing in…" : "Sign in"}
         </button>
       </form>
     </div>

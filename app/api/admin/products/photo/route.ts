@@ -11,7 +11,7 @@ const PLACEHOLDER = "/images/product-placeholder.svg";
 const PRODUCT_BLOB = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/products\/[a-zA-Z0-9_./%()-]+$/i;
 
 export async function PATCH(req: NextRequest) {
-  if (!isAdminAuthed()) {
+  if (!await isAdminAuthed()) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

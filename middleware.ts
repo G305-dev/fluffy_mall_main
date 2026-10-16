@@ -1,9 +1,10 @@
+import { ADMIN_COOKIE, verifyAdminToken } from "@/lib/admin-session-token";
 import { NextRequest, NextResponse } from "next/server";
 
 const ADMIN_HOST =
   process.env.ADMIN_HOST || "admin.fluffynyummystore.com";
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const forwardedHost = req.headers.get("x-forwarded-host") || "";
@@ -34,7 +35,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/admin/login")) {
+  if (pathname === "/admin/login") {
     return NextResponse.next();
   }
 
@@ -43,14 +44,45 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const session = req.cookies.get("fny_admin")?.value;
+  const session = await verifyAdminToken(req.cookies.get(ADMIN_COOKIE)?.value);
+  const isSetupPath =
+    pathname === "/admin/staff/setup" ||
+    pathname === "/api/admin/staff/setup";
+  const hasValidSession =
+    session?.kind === "staff" ||
+    (session?.kind === "bootstrap" && isSetupPath);
 
-  if (session !== "ok") {
+  if (!hasValidSession) {
     const url = req.nextUrl.clone();
     url.pathname = "/admin/login";
     url.searchParams.set("next", pathname);
 
     return NextResponse.redirect(url);
+  }
+
+  if (session?.kind === "bootstrap" && !isSetupPath) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/admin/staff/setup";
+    return NextResponse.redirect(url);
+  }
+
+  if (session?.kind === "staff") {
+    const cashierPath =
+      pathname === "/admin/orders" ||
+      pathname.startsWith("/admin/orders/") ||
+      pathname === "/admin/pos";
+    const adminOnlyPath =
+      pathname === "/admin/staff" ||
+      pathname.startsWith("/admin/staff/");
+    if (
+      (session.role === "cashier" && !cashierPath) ||
+      (session.role === "manager" && adminOnlyPath)
+    ) {
+      const url = req.nextUrl.clone();
+      url.pathname = session.role === "cashier" ? "/admin/pos" : "/admin";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();

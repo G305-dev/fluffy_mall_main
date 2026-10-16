@@ -86,6 +86,7 @@ Create `.env.local` in the project root. Never commit it.
 MONGODB_URI=mongodb+srv://...
 MONGODB_DB=fluffy_mall
 ADMIN_PASSWORD=use-a-long-unique-password
+STAFF_SESSION_SECRET=use-a-long-random-secret
 CUSTOMER_SESSION_SECRET=use-a-long-random-secret
 NEXT_PUBLIC_APP_URL=https://your-domain.example
 ```
@@ -163,13 +164,14 @@ npm run start
 ```
 Set all production environment variables in the hosting provider rather than in the repository. Confirm that the app's public URL, MongoDB network access, Paystack webhook, Resend sender, OAuth callback, and Blob permissions are configured before launch.
 ## Admin dashboard
-Open `/admin` and authenticate with `ADMIN_PASSWORD`.
+Open `/admin`. On first sign-in, use `ADMIN_PASSWORD` once to create the first Admin account with an individual email and password. After setup, sign in with that staff account; the shared password no longer grants access.
 Admin areas include:
 - **Orders:** search orders, review payment/fulfilment details, confirm bank transfers, and update order status.
 - **Products:** edit catalogue data, prices, stock, images, and variants.
+- **People manage → Staff members:** create and edit individual accounts, set roles, and disable access.
 - **Settings:** edit store settings and delivery-rule values.
 - **Analytics:** view operational summary data.
-The admin session is cookie-based and short-lived. Use HTTPS in production and rotate the admin password if it has ever been shared or exposed.
+Admin roles are **Admin** (full access and staff management), **Manager** (all existing admin areas), and **Cashier** (Orders and Point of sale). Staff passwords must be at least 12 characters. Admin sessions are signed, cookie-based, and short-lived. Use HTTPS in production and configure a long random `STAFF_SESSION_SECRET`; keep `ADMIN_PASSWORD` secure for first-time account setup.
 ## Products and variants
 Products are represented by `lib/types.ts` and stored in MongoDB. A product can include:
 - Name, slug, description, category, image(s), price, and base stock.
@@ -221,7 +223,7 @@ Check the hosting provider's Blob configuration and admin authentication. Produc
 Review `lib/delivery.ts`. The current function deliberately returns zero delivery fees and zero pickup discounts despite reading delivery settings. This must be implemented before launch if delivery pricing is required.
 ## Security notes
 - Keep `.env.local`, MongoDB URIs, Paystack secret keys, Resend keys, OAuth secrets, and Blob tokens out of Git.
-- Use long, unique values for `ADMIN_PASSWORD` and `CUSTOMER_SESSION_SECRET`.
+- Use long, unique values for `ADMIN_PASSWORD`, `STAFF_SESSION_SECRET`, and `CUSTOMER_SESSION_SECRET`.
 - Keep `PREVIEW_ADMIN_BYPASS` disabled in production.
 - Use HTTPS and restrict MongoDB network access.
 - Rely on server-side Paystack verification/webhooks, not browser state alone.

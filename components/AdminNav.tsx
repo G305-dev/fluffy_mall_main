@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { AdminRole } from "@/lib/admin-session-token";
 import {
   BarChart3,
   Bell,
@@ -18,6 +19,7 @@ import {
   Settings,
   ShoppingBag,
   ShoppingCart,
+  UsersRound,
   Warehouse,
   X,
 } from "lucide-react";
@@ -91,10 +93,12 @@ function NavigationLinks({
   pathname,
   onNavigate,
   menuId,
+  role,
 }: {
   pathname: string;
   onNavigate?: () => void;
   menuId: string;
+  role?: AdminRole;
 }) {
   const inventoryActive =
     pathname === "/admin/inventory" || pathname.startsWith("/admin/inventory/") ||
@@ -105,6 +109,8 @@ function NavigationLinks({
   const [ordersOpen, setOrdersOpen] = useState(ordersActive);
   const reportsActive = pathname === "/admin/reports" || pathname.startsWith("/admin/reports/");
   const [reportsOpen, setReportsOpen] = useState(reportsActive);
+  const peopleActive = pathname === "/admin/staff" || pathname.startsWith("/admin/staff/");
+  const [peopleOpen, setPeopleOpen] = useState(peopleActive);
 
   useEffect(() => {
     if (inventoryActive) setInventoryOpen(true);
@@ -117,6 +123,10 @@ function NavigationLinks({
   useEffect(() => {
     if (reportsActive) setReportsOpen(true);
   }, [reportsActive]);
+
+  useEffect(() => {
+    if (peopleActive) setPeopleOpen(true);
+  }, [peopleActive]);
 
   const renderLink = ({
     href,
@@ -150,9 +160,11 @@ function NavigationLinks({
       <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
         Workspace
       </p>
-      {renderLink(PRIMARY_LINKS[0])}
+      {role !== "cashier" && renderLink(PRIMARY_LINKS[0])}
       {renderLink(POS_LINK)}
 
+      {role !== "cashier" && (
+        <>
       <button
         type="button"
         onClick={() => setInventoryOpen((open) => !open)}
@@ -199,6 +211,8 @@ function NavigationLinks({
           })}
         </div>
       )}
+        </>
+      )}
 
       <div className={`flex items-center rounded-xl ${ordersActive ? "bg-[#ff8200] text-white shadow-sm" : "text-stone-600"}`}>
         <Link
@@ -240,6 +254,8 @@ function NavigationLinks({
           ))}
         </div>
       )}
+      {role !== "cashier" && (
+        <>
       {renderLink(PRIMARY_LINKS[2])}
       <div className={`flex items-center rounded-xl ${reportsActive ? "bg-[#ff8200] text-white shadow-sm" : "text-stone-600"}`}>
         <Link
@@ -284,11 +300,48 @@ function NavigationLinks({
           ))}
         </div>
       )}
-      <div className="my-5 border-t border-stone-200" />
-      <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
-        Tools
-      </p>
-      {OTHER_LINKS.map(renderLink)}
+        </>
+      )}
+      {role === "admin" && (
+        <>
+          <button
+            type="button"
+            onClick={() => setPeopleOpen((open) => !open)}
+            aria-expanded={peopleOpen}
+            aria-controls={`${menuId}-people`}
+            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+              peopleActive ? "text-orange-700" : "text-stone-600"
+            }`}
+          >
+            <UsersRound size={18} strokeWidth={1.8} aria-hidden="true" />
+            <span className="flex-1">People manage</span>
+            <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${peopleOpen ? "rotate-180" : ""}`} />
+          </button>
+          {peopleOpen && (
+            <div id={`${menuId}-people`} className="ml-5 space-y-0.5 border-l border-orange-200 pl-3">
+              <Link
+                href="/admin/staff"
+                onClick={onNavigate}
+                aria-current={peopleActive ? "page" : undefined}
+                className={`block rounded-lg px-2 py-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                  peopleActive ? "bg-orange-100 text-orange-800" : "text-stone-600 hover:bg-orange-50"
+                }`}
+              >
+                Staff members
+              </Link>
+            </div>
+          )}
+        </>
+      )}
+      {role !== "cashier" && (
+        <>
+          <div className="my-5 border-t border-stone-200" />
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
+            Tools
+          </p>
+          {OTHER_LINKS.map(renderLink)}
+        </>
+      )}
     </nav>
   );
 }
@@ -318,7 +371,7 @@ function SidebarFooter() {
   );
 }
 
-export default function AdminNav({ children }: { children: React.ReactNode }) {
+export default function AdminNav({ children, role }: { children: React.ReactNode; role?: AdminRole }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -393,7 +446,7 @@ export default function AdminNav({ children }: { children: React.ReactNode }) {
         <aside className="hidden w-60 shrink-0 border-r border-stone-200 bg-[#f8f8f8] lg:block">
           <div className="sticky top-0 flex h-screen flex-col overflow-y-auto p-4 xl:p-5">
             <div className="px-2 pt-2"><Brand /></div>
-            <NavigationLinks pathname={pathname} menuId="desktop-inventory-menu" />
+            <NavigationLinks pathname={pathname} menuId="desktop-inventory-menu" role={role} />
             <SidebarFooter />
           </div>
         </aside>
@@ -512,7 +565,7 @@ export default function AdminNav({ children }: { children: React.ReactNode }) {
                 <X size={20} aria-hidden="true" />
               </button>
             </div>
-            <NavigationLinks pathname={pathname} onNavigate={closeMenu} menuId="mobile-inventory-menu" />
+            <NavigationLinks pathname={pathname} onNavigate={closeMenu} menuId="mobile-inventory-menu" role={role} />
             <SidebarFooter />
           </aside>
         </div>

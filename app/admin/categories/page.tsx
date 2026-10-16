@@ -6,7 +6,7 @@ import CategoryManager from "./CategoryManager";
 export const dynamic = "force-dynamic";
 
 export default async function AdminCategoriesPage() {
-  if (!isAdminAuthed()) redirect("/admin/login");
+  if (!await isAdminAuthed()) redirect("/admin/login");
   const categories = await getAdminCategories();
 
   return (
