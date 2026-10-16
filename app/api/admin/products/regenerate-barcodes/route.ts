@@ -44,28 +44,24 @@ export async function POST() {
       updatedProducts = 0;
 
       for (const product of result.products) {
-        const set: Record<string, string> = {};
+        const set: Record<string, unknown> = {
+          variants: product.variants.map((variant) => {
+            const cleanedVariant = { ...variant } as typeof variant & {
+              traceposItemCode?: unknown;
+            };
+            delete cleanedVariant.traceposItemCode;
+            return cleanedVariant;
+          }),
+        };
         if (product.stock > 0 && product.barcode) {
           set.barcode = product.barcode;
-        }
-        product.variants.forEach((variant, index) => {
-          if (variant.stock > 0 && variant.barcode) {
-            set[`variants.${index}.barcode`] = variant.barcode;
-          }
-        });
-
-        const unset: Record<string, string> = {
-          traceposItemCode: "",
-        };
-        if (Array.isArray(product.variants) && product.variants.length > 0) {
-          unset["variants.$[].traceposItemCode"] = "";
         }
 
         const update = await collection.updateOne(
           { id: product.id },
           {
-            ...(Object.keys(set).length ? { $set: set } : {}),
-            $unset: unset,
+            $set: set,
+            $unset: { traceposItemCode: "" },
           },
           { session }
         );
