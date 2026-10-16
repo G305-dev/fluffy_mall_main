@@ -54,14 +54,18 @@ export async function POST() {
           }
         });
 
+        const unset: Record<string, string> = {
+          traceposItemCode: "",
+        };
+        if (Array.isArray(product.variants) && product.variants.length > 0) {
+          unset["variants.$[].traceposItemCode"] = "";
+        }
+
         const update = await collection.updateOne(
           { id: product.id },
           {
             ...(Object.keys(set).length ? { $set: set } : {}),
-            $unset: {
-              traceposItemCode: "",
-              "variants.$[].traceposItemCode": "",
-            },
+            $unset: unset,
           },
           { session }
         );
@@ -83,6 +87,19 @@ export async function POST() {
     });
   } catch (error) {
     console.error("[barcode regeneration and legacy POS data cleanup]", error);
+    const message = error instanceof Error ? error.message : "";
+    if (
+      (error && typeof error === "object" && "code" in error && error.code === 20) ||
+      message.includes("Transaction numbers are only allowed")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Your MongoDB deployment does not support transactions. Use a replica-set MongoDB deployment (MongoDB Atlas supports this), then try again. No changes were saved.",
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: "Could not update barcodes and remove saved external POS data. No partial changes were saved." },
       { status: 500 }
