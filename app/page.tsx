@@ -11,7 +11,6 @@ import {
   BadgePercent,
 } from "lucide-react";
 import HeroSlideshow from "@/components/HeroSlideshow";
-import NewsletterPopup from "@/components/NewsletterPopup";
 
 export default async function HomePage() {
   const [products, categories] = await Promise.all([getProducts(), getAdminCategories()]);
@@ -26,8 +25,6 @@ export default async function HomePage() {
 
   return (
     <div>
-      <NewsletterPopup />
-
       {/* Mobile and tablet hero */}
       <section className="relative min-h-[560px] overflow-hidden sm:min-h-[650px] lg:hidden">
         <HeroSlideshow variant="background" />

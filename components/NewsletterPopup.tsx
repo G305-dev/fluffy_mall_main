@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { X } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 type PopupStatus =
   | "closed"
@@ -20,6 +21,7 @@ const AUTH_CHANGED_EVENT =
   "fny:customer-auth-changed";
 
 export default function NewsletterPopup() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const [status, setStatus] =
@@ -38,6 +40,12 @@ export default function NewsletterPopup() {
     useState("");
 
   useEffect(() => {
+    if (pathname?.startsWith("/admin")) {
+      setOpen(false);
+      setStatus("closed");
+      return;
+    }
+
     let cancelled = false;
 
     let timer:
@@ -142,7 +150,7 @@ export default function NewsletterPopup() {
         handleAuthChange
       );
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) {
@@ -224,7 +232,7 @@ export default function NewsletterPopup() {
     }
   }
 
-  if (!open) {
+  if (!open || pathname?.startsWith("/admin")) {
     return null;
   }
 
