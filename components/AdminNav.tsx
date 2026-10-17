@@ -15,6 +15,7 @@ import {
   Mail,
   Menu,
   Package,
+  PlugZap,
   Search,
   Settings,
   ShoppingBag,
@@ -46,6 +47,7 @@ const INVENTORY_SECTIONS: Array<{ label: string; href?: string }> = [
 ];
 
 const OTHER_LINKS = [
+  { href: "/admin/integrations", label: "Integrations", icon: PlugZap },
   { href: "/admin/subscribers", label: "Subscribers", icon: Mail },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
