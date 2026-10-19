@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, ChevronLeft, ChevronRight, Minus, Plus, Search, X } from "lucide-react";
 import type { AdminCategory } from "@/lib/admin-categories";
@@ -11,6 +10,7 @@ import { naira } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import ProductPhotoForm from "./ProductPhotoForm";
 import ProductDetailsDialog from "./ProductDetailsDialog";
+import NewProductForm from "./NewProductForm";
 
 const PAGE_SIZE = 50;
 const PLACEHOLDER = "/images/product-placeholder.svg";
@@ -65,6 +65,7 @@ export default function ProductList({
   const [page, setPage] = useState(1);
   const [openRow, setOpenRow] = useState<OpenRow>(null);
   const [viewedProductId, setViewedProductId] = useState<string | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [savedPhotos, setSavedPhotos] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
   const [scrollMax, setScrollMax] = useState(0);
@@ -99,6 +100,7 @@ export default function ProductList({
   const visible = filtered.slice(firstIndex, firstIndex + PAGE_SIZE);
   const names = new Map(categories.map((item) => [item.slug, item.name]));
   const viewedProduct = products.find((item) => item.id === viewedProductId);
+  const editingProduct = products.find((item) => item.id === editingProductId);
 
   useEffect(() => {
     const element = tableScroll.current;
@@ -147,6 +149,7 @@ export default function ProductList({
   }
 
   return (
+    <>
     <section aria-label="Product catalogue" className="min-w-0">
       <div aria-label="Product type filters" className="mb-4 flex flex-wrap gap-2 rounded-2xl border border-stone-100 bg-white p-2">
         {(["all", "standard", "variable"] as const).map((item) => (
@@ -280,7 +283,7 @@ export default function ProductList({
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap gap-1.5">
                           <button type="button" onClick={() => setViewedProductId(product.id)} aria-haspopup="dialog" aria-label={`View details for ${product.name}`} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">View</button>
-                          <Link href={`/admin/products/${encodeURIComponent(product.id)}/edit`} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">Edit</Link>
+                          <button type="button" onClick={() => setEditingProductId(product.id)} aria-haspopup="dialog" className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50">Edit</button>
                           <button type="button" onClick={() => toggleRow(product.id, "photo")} aria-expanded={expanded === "photo"} className="rounded-lg border border-orange-200 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50">Photo</button>
                         </div>
                       </td>
@@ -346,5 +349,15 @@ export default function ProductList({
         />
       )}
     </section>
+    {editingProduct && (
+      <NewProductForm
+        key={editingProduct.id}
+        categories={categories}
+        product={editingProduct}
+        initialPurchaseCost={costs[editingProduct.id]}
+        onClose={() => setEditingProductId(null)}
+      />
+    )}
+    </>
   );
 }

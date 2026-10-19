@@ -12,6 +12,8 @@ type AttributeKind = KnownAttribute | "other" | "";
 type AttributeDraft = { key: string; kind: AttributeKind; customName: string; value: string };
 type VariantDraft = {
   key: string;
+  id?: string;
+  legacy?: boolean;
   attributes: AttributeDraft[];
   price: string;
   stock: string;
@@ -95,6 +97,70 @@ function blankForm(category: string): FormState {
   };
 }
 
+function formFromProduct(product: Product, purchaseCost?: number): FormState {
+  const variants = (product.variants || []).map((variant) => {
+    const attributes: AttributeDraft[] = [];
+    if (variant.size) {
+      attributes.push({ ...blankAttribute(), kind: "size", value: variant.size });
+    }
+    if (variant.color) {
+      attributes.push({ ...blankAttribute(), kind: "colour", value: variant.color });
+    }
+    if (!attributes.length) {
+      const namedAttributes = variant.name.split(" · ").flatMap((part) => {
+        const match = part.match(/^([^:]+):\s*(.+)$/);
+        if (!match) return [];
+        const name = match[1].trim();
+        const kind = (Object.keys(ATTRIBUTE_LABELS) as KnownAttribute[])
+          .find((key) => ATTRIBUTE_LABELS[key].toLowerCase() === name.toLowerCase());
+        const attributeKind: AttributeKind = kind || "other";
+        return [{
+          ...blankAttribute(),
+          kind: attributeKind,
+          customName: kind ? "" : name,
+          value: match[2].trim(),
+        }];
+      });
+      attributes.push(...namedAttributes);
+    }
+    if (!attributes.length) {
+      attributes.push({ ...blankAttribute(), kind: "other", customName: "Option", value: variant.name });
+    }
+    return {
+      key: draftKey(),
+      id: variant.id,
+      legacy: Boolean(variant.size || variant.color),
+      attributes,
+      price: String(variant.price),
+      stock: String(variant.stock),
+      barcode: variant.barcode || "",
+      imageFile: null,
+      imagePreview: variant.image || "",
+    };
+  });
+
+  return {
+    productType: product.productType || (variants.length ? "variable" : "standard"),
+    name: product.name,
+    category: product.category,
+    hasBarcode: Boolean(product.barcode || variants.some((variant) => variant.barcode)),
+    barcode: product.barcode || "",
+    purchaseCost: purchaseCost === undefined ? "" : String(purchaseCost),
+    sellingPrice: String(product.price),
+    stock: String(product.stock),
+    unit: product.unit || "pcs",
+    description: product.description || "",
+    short: product.short || "",
+    deliveryNote: (product.deliveryNote || "").replace(
+      "Lagos delivery: 1–2 working days. Nationwide delivery: 3–5 working days.",
+      ""
+    ).trim(),
+    featured: Boolean(product.featured),
+    bestseller: Boolean(product.bestseller),
+    variants,
+  };
+}
+
 function Step({ number, title, children }: {
   number: number;
   title: string;
@@ -126,11 +192,24 @@ function BarcodeLabel({ value, caption }: { value: string; caption: string }) {
   );
 }
 
-export default function NewProductForm({ categories }: { categories: AdminCategory[] }) {
+export default function NewProductForm({
+  categories,
+  product,
+  initialPurchaseCost,
+  onClose,
+}: {
+  categories: AdminCategory[];
+  product?: Product;
+  initialPurchaseCost?: number;
+  onClose?: () => void;
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<FormState>(() => blankForm(categories[0]?.slug || ""));
+  const [open, setOpen] = useState(Boolean(product));
+  const [form, setForm] = useState<FormState>(() =>
+    product ? formFromProduct(product, initialPurchaseCost) : blankForm(categories[0]?.slug || "")
+  );
   const [images, setImages] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>(product?.images || []);
   const [previews, setPreviews] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -244,15 +323,34 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
     releaseVariantImages();
     setForm(blankForm(categories[0]?.slug || ""));
     setImages([]);
+    setExistingImages([]);
     setError("");
     setCreated(null);
   }
+
+  function closeForm() {
+    if (product) {
+      onClose?.();
+      return;
+    }
+    reset();
+    setOpen(false);
+  }
+
+  useEffect(() => {
+    if (!product) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !busy) onClose?.();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [product, busy, onClose]);
 
   function chooseImages(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files || []);
     event.target.value = "";
     if (!files.length) return;
-    if (images.length + files.length > 8) {
+    if (images.length + existingImages.length + files.length > 8) {
       setError("Choose up to eight product photos.");
       return;
     }
@@ -346,25 +444,30 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
     try {
       validate();
       setBusy(true);
-      const paths: string[] = [];
+      const paths: string[] = [...existingImages];
       for (const file of images) paths.push(await uploadPhoto(file));
       const variantImages: (string | undefined)[] = [];
       if (form.productType === "variable") {
         for (const variant of form.variants) {
-          variantImages.push(variant.imageFile ? await uploadPhoto(variant.imageFile) : undefined);
+          variantImages.push(
+            variant.imageFile ? await uploadPhoto(variant.imageFile) : variant.imagePreview || undefined
+          );
         }
       }
       const response = await fetch("/api/admin/products/create", {
-        method: "POST",
+        method: product ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(product ? { id: product.id } : {}),
           productType: form.productType,
           name: form.name.trim(),
           category: form.category,
           images: paths,
           hasBarcode: form.hasBarcode,
           barcode: form.hasBarcode ? form.barcode.trim() : "",
-          purchaseCost: form.purchaseCost.trim() ? Number(form.purchaseCost) : undefined,
+          purchaseCost: form.purchaseCost.trim()
+            ? Number(form.purchaseCost)
+            : product ? null : undefined,
           price: Number(form.sellingPrice),
           stock: form.productType === "standard" ? Number(form.stock) : undefined,
           unit: form.unit,
@@ -374,10 +477,20 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
           featured: form.featured,
           bestseller: form.bestseller,
           variants: form.productType === "variable" ? form.variants.map((variant, index) => ({
-            attributes: variant.attributes.map((attribute) => ({
-              name: attributeName(attribute), value: attribute.value.trim(),
-            })),
-            image: variantImages[index],
+            ...(variant.id ? { id: variant.id } : {}),
+            ...(variant.legacy && variant.attributes.every((attribute) =>
+              attribute.kind === "size" || attribute.kind === "colour"
+            )
+              ? {
+                size: variant.attributes.find((attribute) => attribute.kind === "size")?.value.trim() || "",
+                color: variant.attributes.find((attribute) => attribute.kind === "colour")?.value.trim() || "",
+              }
+              : {
+                attributes: variant.attributes.map((attribute) => ({
+                  name: attributeName(attribute), value: attribute.value.trim(),
+                })),
+              }),
+            image: variantImages[index] ?? (product ? "" : undefined),
             price: variant.price.trim() ? Number(variant.price) : undefined,
             stock: Number(variant.stock),
             barcode: form.hasBarcode ? variant.barcode.trim() : "",
@@ -387,6 +500,11 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
       const result: { product?: Product; error?: string } = await response.json();
       if (!response.ok || !result.product) {
         throw new Error(result.error || "Could not save the product.");
+      }
+      if (product) {
+        router.refresh();
+        onClose?.();
+        return;
       }
       setCreated(result.product);
       setImages([]);
@@ -443,11 +561,11 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
       </label>
     </div>
   );
-  return (
-    <form onSubmit={save} className="mb-6 space-y-4" aria-label="Add new product">
+  const formContent = (
+    <form onSubmit={save} className={product ? "space-y-4" : "mb-6 space-y-4"} aria-label={product ? "Edit product" : "Add new product"}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-2xl text-cocoa-800">Add new product</h2>
-        <button type="button" disabled={busy} onClick={() => { reset(); setOpen(false); }} aria-label="Close new product form" className="rounded-xl border border-stone-200 p-2 text-stone-600 disabled:opacity-50"><X size={18} /></button>
+        <h2 className="font-display text-2xl text-cocoa-800">{product ? "Edit product" : "Add new product"}</h2>
+        <button type="button" disabled={busy} onClick={closeForm} aria-label={product ? "Close edit product form" : "Close new product form"} className="rounded-xl border border-stone-200 p-2 text-stone-600 disabled:opacity-50"><X size={18} /></button>
       </div>
       {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
@@ -480,13 +598,20 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={chooseImages} className={inputClass} />
             </label>
             <p className="mt-1 text-xs text-stone-500">JPEG, PNG or WEBP · up to eight photos, 5 MB each. No photo? The storefront uses an “Image coming soon” placeholder.</p>
-            {previews.length > 0 && (
+            {(existingImages.length > 0 || previews.length > 0) && (
               <ul className="mt-3 flex flex-wrap gap-3">
+                {existingImages.map((src, index) => (
+                  <li key={`${src}-${index}`} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Product photo ${index + 1}`} className="h-20 w-20 rounded-xl object-cover ring-1 ring-stone-200" />
+                    <button type="button" onClick={() => setExistingImages((current) => current.filter((_, i) => i !== index))} aria-label={`Remove photo ${index + 1}`} className="absolute -right-2 -top-2 rounded-full bg-white p-1 text-red-600 shadow"><X size={13} /></button>
+                  </li>
+                ))}
                 {previews.map((src, index) => (
                   <li key={src} className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt={`Product photo ${index + 1} preview`} className="h-20 w-20 rounded-xl object-cover ring-1 ring-stone-200" />
-                    <button type="button" onClick={() => setImages((current) => current.filter((_, i) => i !== index))} aria-label={`Remove photo ${index + 1}`} className="absolute -right-2 -top-2 rounded-full bg-white p-1 text-red-600 shadow"><X size={13} /></button>
+                    <img src={src} alt={`New product photo ${index + 1} preview`} className="h-20 w-20 rounded-xl object-cover ring-1 ring-stone-200" />
+                    <button type="button" onClick={() => setImages((current) => current.filter((_, i) => i !== index))} aria-label={`Remove new photo ${index + 1}`} className="absolute -right-2 -top-2 rounded-full bg-white p-1 text-red-600 shadow"><X size={13} /></button>
                   </li>
                 ))}
               </ul>
@@ -646,8 +771,17 @@ export default function NewProductForm({ categories }: { categories: AdminCatego
         </details>
       </Step>
       <button type="submit" disabled={busy} className="w-full rounded-xl bg-[#ff8200] px-6 py-3 text-sm font-semibold text-white hover:bg-[#e87700] disabled:opacity-50 sm:w-auto">
-        {busy ? "Uploading photos and saving…" : "Save product"}
+        {busy ? "Uploading photos and saving…" : product ? "Save changes" : "Save product"}
       </button>
     </form>
   );
+  return product ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-6" onMouseDown={(event) => {
+      if (event.target === event.currentTarget && !busy) closeForm();
+    }}>
+      <div role="dialog" aria-modal="true" aria-label={`Edit ${product.name}`} className="max-h-full w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:p-6">
+        {formContent}
+      </div>
+    </div>
+  ) : formContent;
 }

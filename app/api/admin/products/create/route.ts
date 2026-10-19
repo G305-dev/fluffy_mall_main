@@ -258,3 +258,178 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not save product. Try again." }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  if (!await isAdminAuthed()) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const input: unknown = await req.json();
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      throw new ProductInputError("Send valid product details.");
+    }
+    const body = input as Record<string, unknown>;
+    const id = text(body.id, "Product ID", 100, true);
+    const productType = body.productType;
+    if (productType !== "standard" && productType !== "variable") {
+      throw new ProductInputError("Select Standard or Variable product.");
+    }
+    const name = text(body.name, "Product name", 200, true);
+    const category = text(body.category, "Category", 80, true);
+    const categories = await getAdminCategories();
+    if (!categories.some((item) => item.slug === category)) {
+      throw new ProductInputError("Choose a category from the list.");
+    }
+    const unit = body.unit;
+    if (!isProductUnit(unit)) throw new ProductInputError("Choose a valid unit of measurement.");
+    const price = amount(body.price, "Selling price");
+    const purchaseCost = body.purchaseCost === null
+      ? null
+      : body.purchaseCost === undefined || (typeof body.purchaseCost === "string" && !body.purchaseCost.trim())
+        ? undefined
+        : amount(body.purchaseCost, "Purchase cost", true);
+    const description = text(body.description, "Product description", 5000);
+    const short = text(body.short, "Short description", 500);
+    const deliveryNote = text(body.deliveryNote, "Delivery note", 1000);
+    if (body.hasBarcode !== true && body.hasBarcode !== false) {
+      throw new ProductInputError("Choose whether the product already has a barcode.");
+    }
+
+    const products = await getProducts();
+    const current = products.find((product) => product.id === id);
+    if (!current) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+    const usedCodes = existingBarcodes(products);
+    if (current.barcode) usedCodes.delete(current.barcode);
+    for (const variant of current.variants || []) {
+      if (variant.barcode) usedCodes.delete(variant.barcode);
+    }
+
+    const barcode = body.hasBarcode
+      ? body.barcode && String(body.barcode).trim()
+        ? claimBarcode(code128Text(body.barcode), usedCodes)
+        : current.barcode || newBarcode(usedCodes)
+      : newBarcode(usedCodes);
+
+    const rawImages = body.images;
+    if (rawImages !== undefined && (!Array.isArray(rawImages) || rawImages.length > 8)) {
+      throw new ProductInputError("Use up to eight product photos.");
+    }
+    const imagePaths = Array.isArray(rawImages)
+      ? Array.from(new Set(rawImages.map(safeImage)))
+      : current.images || [PLACEHOLDER];
+    const images = imagePaths.length ? imagePaths : [PLACEHOLDER];
+
+    const rawVariants = body.variants === undefined ? [] : body.variants;
+    if (!Array.isArray(rawVariants) || rawVariants.length > 40) {
+      throw new ProductInputError("Use up to 40 options for a variable product.");
+    }
+    if (productType === "standard" && rawVariants.length) {
+      throw new ProductInputError("Standard products cannot have variants.");
+    }
+    if (productType === "variable" && !rawVariants.length) {
+      throw new ProductInputError("Add at least one option to a variable product.");
+    }
+
+    const currentVariants = current.variants || [];
+    const previousVariants = new Map(currentVariants.map((variant) => [variant.id, variant]));
+    const combinations = new Set<string>();
+    const variants: ProductVariant[] = rawVariants.map((entry, index) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        throw new ProductInputError(`Option ${index + 1} is invalid.`);
+      }
+      const raw = entry as Record<string, unknown>;
+      const prior = typeof raw.id === "string" ? previousVariants.get(raw.id) : undefined;
+      const { legacy, size, color, attributes } = readOptionAttributes(raw, index + 1);
+      const key = attributes.map((attribute) =>
+        `${attribute.name.toLowerCase()}=${attribute.value.toLowerCase()}`
+      ).sort().join("|");
+      if (combinations.has(key)) {
+        throw new ProductInputError(`Option ${index + 1} repeats another option's attributes.`);
+      }
+      combinations.add(key);
+      const optionName = legacy
+        ? [size, color].filter(Boolean).join(" / ")
+        : attributes.map(({ name, value }) => `${name}: ${value}`).join(" · ");
+      if (optionName.length > 120) {
+        throw new ProductInputError(`Option ${index + 1} has too much text. Shorten its attribute values.`);
+      }
+      const rawBarcode = body.hasBarcode && raw.barcode ? code128Text(raw.barcode) : "";
+      const variantBarcode = rawBarcode
+        ? claimBarcode(rawBarcode, usedCodes)
+        : body.hasBarcode && prior?.barcode
+          ? claimBarcode(prior.barcode, usedCodes)
+          : newBarcode(usedCodes);
+      const variantPrice = raw.price === "" || raw.price === undefined
+        ? price : amount(raw.price, `Option ${index + 1} selling price`);
+      const optionImage = raw.image !== undefined
+        ? raw.image ? safeImage(raw.image) : images[0]
+        : prior?.image || images[0];
+      return {
+        id: prior?.id || `${current.id}-variant-${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+        name: optionName,
+        size: legacy && size ? size : undefined,
+        color: legacy && color ? color : undefined,
+        price: variantPrice,
+        stock: quantity(raw.stock, `Option ${index + 1} stock`),
+        image: optionImage,
+        barcode: variantBarcode,
+      };
+    });
+
+    const stock = productType === "variable"
+      ? variants.reduce((total, variant) => total + variant.stock, 0)
+      : quantity(body.stock, "Total stock");
+    if (!Number.isSafeInteger(stock)) throw new ProductInputError("Total stock is too large.");
+
+    const updated: Product = {
+      ...current,
+      name,
+      category,
+      productType,
+      price,
+      stock,
+      unit,
+      barcode,
+      images,
+      short,
+      description,
+      deliveryNote: [DELIVERY_TIMES, deliveryNote].filter(Boolean).join(" "),
+      featured: body.featured === true,
+      bestseller: body.bestseller === true,
+      variants,
+    };
+    const db = await getDb();
+    const result = await db.collection(COLLECTIONS.PRODUCTS).updateOne(
+      { id: current.id },
+      { $set: updated }
+    );
+    if (!result.matchedCount) {
+      return NextResponse.json({ error: "Product changed while saving. Refresh and try again." }, { status: 409 });
+    }
+    if (purchaseCost === null) await deleteProductCost(id);
+    else if (purchaseCost !== undefined) await saveProductCost(id, purchaseCost);
+
+    revalidatePath("/");
+    revalidatePath("/shop");
+    revalidatePath(`/shop/${current.category}`);
+    revalidatePath(`/shop/${updated.category}`);
+    revalidatePath(`/product/${current.slug}`);
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/inventory");
+    revalidatePath("/sitemap.xml");
+    return NextResponse.json({ product: updated });
+  } catch (error) {
+    if (error instanceof ProductInputError || error instanceof BarcodeError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error instanceof BarcodeError && error.message.includes("already assigned") ? 409 : 400 }
+      );
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Send valid product details." }, { status: 400 });
+    }
+    console.error("[edit product]", error);
+    return NextResponse.json({ error: "Could not save product changes. Try again." }, { status: 500 });
+  }
+}
