@@ -43,7 +43,7 @@ const INVENTORY_SECTIONS: Array<{ label: string; href?: string }> = [
   { label: "Stock transfer" },
   { label: "Stock adjustment" },
   { label: "Price adjustment" },
-  { label: "Print barcode" },
+{ label: "Barcode management", href: "/admin/barcodes" },
 ];
 
 const OTHER_LINKS = [
@@ -55,6 +55,7 @@ const OTHER_LINKS = [
 const ALL_LINKS = [
   PRIMARY_LINKS[0],
   POS_LINK,
+  { href: "/admin/barcodes", label: "Barcode management", icon: Package },
   { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: Package },
@@ -103,7 +104,7 @@ function NavigationLinks({
   role?: AdminRole;
 }) {
   const inventoryActive =
-    pathname === "/admin/inventory" || pathname.startsWith("/admin/inventory/") ||
+   pathname === "/admin/barcodes" || pathname.startsWith("/admin/barcodes/") ||
     pathname === "/admin/products" || pathname.startsWith("/admin/products/") ||
     pathname === "/admin/categories" || pathname.startsWith("/admin/categories/");
   const [inventoryOpen, setInventoryOpen] = useState(inventoryActive);

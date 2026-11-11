@@ -332,7 +332,7 @@ export default async function AdminHome() {
             Sellable products and options with a barcode for in-store checkout.
           </p>
           <Link
-            href="/admin/products#product-barcodes"
+            href="/admin/barcodes"
             className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:underline"
           >
             View product labels <ArrowRight size={15} aria-hidden="true" />
