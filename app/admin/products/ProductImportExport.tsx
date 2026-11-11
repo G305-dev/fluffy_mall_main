@@ -26,6 +26,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
   const [open, setOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [productType, setProductType] = useState<"" | "standard" | "variable">("");
   const [defaultCategory, setDefaultCategory] = useState("");
   const [busy, setBusy] = useState<"preview" | "import" | null>(null);
   const [report, setReport] = useState<Report | null>(null);
@@ -33,6 +34,10 @@ export default function ProductImportExport({ categories }: { categories: AdminC
   const [error, setError] = useState("");
 
   async function send(mode: "preview" | "import") {
+    if (!productType) {
+      setError("Select Standard Products or Variable Products first.");
+      return;
+    }
     if (!file) {
       setError("Choose a CSV or Excel (.xlsx) file first.");
       return;
@@ -43,6 +48,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
     try {
       const form = new FormData();
       form.set("file", file);
+      form.set("productType", productType);
       form.set("defaultCategory", defaultCategory);
       const response = await fetch(`/api/admin/products/import?mode=${mode}`, {
         method: "POST",
@@ -103,7 +109,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
                 <FileSpreadsheet size={18} aria-hidden="true" /> Import from a spreadsheet
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-stone-600">
-                CSV or Excel (.xlsx), up to 5 MB / 1,000 rows. The classified Single (candidate) CSV can be uploaded directly: its ₦ prices, PC/Pcs quantities and report categories are understood. Duplicate names and barcodes are checked against live products and options. Existing standard products with a confident match get their price and stock updated; their photos and descriptions stay unchanged. Ambiguous matches and ladder sizes are held for review. New products receive a unique barcode when the file does not provide one. Products without a photo use an “Image coming soon” placeholder.
+                Select a product type first, then choose a CSV or Excel (.xlsx) file, up to 5 MB / 1,000 rows. Variable products require options in variants_json; standard products cannot contain options. Rows with a conflicting product_type are invalid. The classified Single (candidate) CSV can be uploaded directly: its ₦ prices, PC/Pcs quantities and report categories are understood. Duplicate names and barcodes are checked against live products and options. Existing standard products with a confident match get their price and stock updated; their photos and descriptions stay unchanged. Ambiguous matches and ladder sizes are held for review. New products receive a unique barcode when the file does not provide one. Products without a photo use an “Image coming soon” placeholder.
               </p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close import" className="rounded-lg p-2 text-stone-500 hover:bg-stone-100">
@@ -118,9 +124,24 @@ export default function ProductImportExport({ categories }: { categories: AdminC
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="block text-xs font-medium text-stone-600">
+              Product type (required)
+              <select value={productType} disabled={!!busy}
+                onChange={(event) => {
+                  setProductType(event.target.value as "" | "standard" | "variable");
+                  setFile(null); setReport(null); setSuccess(""); setError("");
+                }}
+                className="mt-1 block w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm">
+                <option value="">Select product type</option>
+                <option value="standard">Standard Products</option>
+                <option value="variable">Variable Products</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-stone-600">
               Product file
               <input
                 type="file"
+                key={productType}
+                disabled={!productType || !!busy}
                 accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 onChange={(event) => {
                   setFile(event.target.files?.[0] || null);
@@ -135,6 +156,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
               Default category (only for rows without a category)
               <select
                 value={defaultCategory}
+                disabled={!!busy}
                 onChange={(event) => { setDefaultCategory(event.target.value); setReport(null); }}
                 className="mt-1 block w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm"
               >
@@ -147,10 +169,10 @@ export default function ProductImportExport({ categories }: { categories: AdminC
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => send("preview")} disabled={!file || !!busy} className="rounded-xl border border-orange-300 px-4 py-2.5 text-sm font-semibold text-orange-700 disabled:opacity-50">
+            <button type="button" onClick={() => send("preview")} disabled={!productType || !file || !!busy} className="rounded-xl border border-orange-300 px-4 py-2.5 text-sm font-semibold text-orange-700 disabled:opacity-50">
               {busy === "preview" ? "Checking..." : "Preview import"}
             </button>
-            <button type="button" onClick={() => send("import")} disabled={!report || (!report.importable && !report.updatable) || !!report.invalid || !!busy} className="rounded-xl bg-[#ff8200] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+            <button type="button" onClick={() => send("import")} disabled={!productType || !report || (!report.importable && !report.updatable) || !!report.invalid || !!busy} className="rounded-xl bg-[#ff8200] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
               {busy === "import" ? "Importing..." : `Apply ${report?.importable || 0} new + ${report?.updatable || 0} updates`}
             </button>
           </div>

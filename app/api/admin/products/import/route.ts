@@ -108,6 +108,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Select preview or import mode." }, { status: 400 });
     }
     const form = await req.formData();
+    const selectedType = form.get("productType");
+    if (selectedType !== "standard" && selectedType !== "variable") {
+      return NextResponse.json({ error: "Select Standard Products or Variable Products before importing." }, { status: 400 });
+    }
     const file = form.get("file");
     if (!(file instanceof File) || !file.size || file.size > MAX_BYTES) {
       return NextResponse.json({ error: "Choose a non-empty CSV or XLSX file under 5 MB." }, { status: 400 });
@@ -120,6 +124,9 @@ export async function POST(req: NextRequest) {
 
     const sheet = await readProductSheet(file);
     const stockReport = sheet.every((row) => Boolean(row.stockReport));
+    if (selectedType === "variable" && sheet.some((row) => Boolean(row.stockReport))) {
+      return NextResponse.json({ error: "Classified single-candidate reports can only be imported as Standard Products." }, { status: 400 });
+    }
     let existing: Product[];
     try {
       existing = await getProducts();
@@ -150,6 +157,16 @@ export async function POST(req: NextRequest) {
           held.push({ row: line, message: `${prefix}Possible variant/ladder size held for review; no single product created.` });
           continue;
         }
+        const declaredType = fields.product_type.trim().toLowerCase();
+        if (declaredType && declaredType !== selectedType) {
+          throw new Error(`Row product type must match selected ${selectedType} type.`);
+        }
+        const productId = `p-${randomUUID().replace(/-/g, "").slice(0, 20)}`;
+        const images = readImages(fields.image_urls);
+        const variants = readVariants(fields.variants_json, productId, images[0]);
+        if ((selectedType === "variable") !== (variants.length > 0)) {
+          throw new Error("Variable products need options in variants_json; standard products cannot have options.");
+        }
         const barcode = barcodeKey(fields.barcode);
         const category = stockReportCategory(fields.category || defaultCategory, categories);
         if (!category) throw new Error(`Unknown category ${fields.category || defaultCategory || "(blank)"}. Choose a website category.`);
@@ -175,11 +192,8 @@ export async function POST(req: NextRequest) {
         }
 
         const compareAt = fields.compare_at ? numberField(fields.compare_at, "Compare-at price") : undefined;
-        const images = readImages(fields.image_urls);
         const featured = flag(fields.featured);
         const bestseller = flag(fields.bestseller);
-        const productId = `p-${randomUUID().replace(/-/g, "").slice(0, 20)}`;
-        const variants = readVariants(fields.variants_json, productId, images[0]);
         const checkedBarcodes = new Set(usedBarcodes);
         const productBarcode = fields.barcode.trim()
           ? claimBarcode(code128Text(fields.barcode), checkedBarcodes)
@@ -191,9 +205,7 @@ export async function POST(req: NextRequest) {
             : newBarcode(checkedBarcodes),
         }));
         const rowBarcodes = [productBarcode, ...barcodedVariants.map((variant) => variant.barcode)];
-        const productType = fields.product_type.trim().toLowerCase() || (variants.length ? "variable" : "standard");
-        if (productType !== "standard" && productType !== "variable") throw new Error("Product type must be standard or variable.");
-        if ((productType === "variable") !== (variants.length > 0)) throw new Error("Variable products need options; standard products cannot have options.");
+        const productType = selectedType;
         const purchaseCost = fields.purchase_cost.trim() ? numberField(fields.purchase_cost, "Purchase cost", true) : undefined;
         let slug = slugify(fields.slug || name);
         const base = slug;
