@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
 import type { Product } from "@/lib/types";
 import { naira } from "@/lib/format";
 import { categoryName } from "@/lib/categories";
 import { isOutOfStock, startingPrice } from "@/lib/product-availability";
-import { ChevronDown, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 import { useWishlist } from "./WishlistProvider";
 
 export default function ProductCard({
@@ -18,22 +17,9 @@ export default function ProductCard({
   square?: boolean;
 }) {
   const { has, toggle } = useWishlist();
-  const selectorRef = useRef<HTMLDivElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const showVariants = menuOpen || hovered;
   const from = startingPrice(product);
   const outOfStock = isOutOfStock(product);
   const radius = square ? "rounded-none" : "rounded-2xl sm:rounded-3xl";
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function closeOnOutsideTap(event: PointerEvent) {
-      if (!selectorRef.current?.contains(event.target as Node)) setMenuOpen(false);
-    }
-    document.addEventListener("pointerdown", closeOnOutsideTap);
-    return () => document.removeEventListener("pointerdown", closeOnOutsideTap);
-  }, [menuOpen]);
 
   return (
     <article
@@ -105,58 +91,6 @@ export default function ProductCard({
         </div>
       </Link>
 
-      {product.variants.length > 0 && (
-        <div
-          ref={selectorRef}
-          className="relative z-10 shrink-0 px-3 pb-3 sm:px-4 sm:pb-4"
-          onPointerEnter={(event) => {
-            if (event.pointerType === "mouse") setHovered(true);
-          }}
-          onPointerLeave={(event) => {
-            if (event.pointerType === "mouse") {
-              setHovered(false);
-              setMenuOpen(false);
-            }
-          }}
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setMenuOpen(false);
-              setHovered(false);
-              event.currentTarget.querySelector("button")?.focus();
-            }
-          }}
-        >
-          <button
-            type="button"
-            aria-expanded={showVariants}
-            aria-controls={showVariants ? `variants-${product.id}` : undefined}
-            onClick={() => setMenuOpen((open) => !open)}
-            className="flex w-full items-center justify-between gap-1 rounded-full border border-cream-300 bg-cream-50 px-3 py-2 text-left text-xs font-semibold text-cocoa-800 hover:border-terracotta-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-terracotta-500"
-          >
-            Select other variants
-            <ChevronDown size={15} aria-hidden="true" />
-          </button>
-          {showVariants && (
-            <div id={`variants-${product.id}`} className="absolute bottom-full left-3 right-3 z-20 max-h-44 overflow-y-auto rounded-xl bg-white p-1 shadow-card ring-1 ring-cream-300 sm:left-4 sm:right-4">
-              {product.variants.map((variant) => (
-                <Link
-                  key={variant.id}
-                  href={`/product/${product.slug}?variant=${encodeURIComponent(variant.id)}`}
-                  className="block rounded-lg px-3 py-2 hover:bg-cream-100 focus-visible:bg-cream-100"
-                >
-                  <span className="block break-words text-xs font-semibold text-cocoa-800">{variant.name}</span>
-                  <span className={`block text-xs ${variant.stock > 0 ? "text-cocoa-700" : "text-red-700"}`}>
-                    {naira(variant.price)} · {variant.stock > 0 ? "In stock" : "Out of stock"}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </article>
   );
 }
