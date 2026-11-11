@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Boxes,
-  Info,
   Package,
 } from "lucide-react";
 import { LOW_STOCK_LIMIT } from "@/lib/admin-inventory";
@@ -92,7 +92,35 @@ function ProductTypePanel({
   kind: "standard" | "variable";
   stats: ProductTypeStats | null;
 }) {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+  const [message, setMessage] = useState("");
   const copy = PANEL_COPY[kind];
+
+  async function clearProducts() {
+    const phrase = kind === "standard" ? "DELETE STANDARD" : "DELETE VARIABLE";
+    const confirmation = window.prompt(
+      `This permanently deletes ALL ${kind} products from the catalogue, including their variants. It cannot be undone. Orders are not deleted. Type ${phrase} to confirm.`
+    );
+    if (confirmation !== phrase) return;
+    setDeleting(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/products/clear-by-type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, confirmation }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not clear products.");
+      setMessage(`Deleted ${result.deleted} ${kind} product(s).`);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not clear products.");
+    } finally {
+      setDeleting(false);
+    }
+  }
   const Icon = kind === "standard" ? Package : Boxes;
   const attention = stats ? stats.low + stats.out : 0;
 
@@ -165,15 +193,13 @@ function ProductTypePanel({
         </Link>
       </div>
 
-      <div className="mt-5 flex items-start gap-2 rounded-2xl bg-cream-100 px-4 py-3 text-xs text-cocoa-800">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>
-          <strong>No editable settings live in this tab yet.</strong> The project’s settings
-          (<code>StoreSettings</code> in <code>lib/types.ts</code>, seeded from <code>data/settings.json</code>)
-          contain only store, delivery, pickup and bank-account fields — there are no product-specific settings to
-          edit here, so none were invented. Product behaviour is enforced in code and in the product editor, not in
-          Settings.
-        </p>
+      <div className="mt-5">
+        <button type="button" onClick={clearProducts} disabled={deleting}
+          className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50">
+          {deleting ? "Deleting…" : "Clear out all products"}
+        </button>
+        <p className="mt-2 text-xs text-red-700">Permanently deletes all {kind} products. A typed confirmation is required.</p>
+        {message && <p role="status" className="mt-2 text-sm text-cocoa-800">{message}</p>}
       </div>
     </section>
   );
