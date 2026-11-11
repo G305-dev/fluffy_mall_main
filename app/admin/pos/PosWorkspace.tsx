@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   Minus,
@@ -17,6 +17,9 @@ import { naira } from "@/lib/format";
 import { hasVariants } from "@/lib/product-availability";
 import type { Product } from "@/lib/types";
 import { categoryName } from "@/lib/categories";
+
+const PENDING_SALE_KEY = "fluffy_pos_pending_sale_v1";
+type PendingSale = { key: string; body: string };
 
 const PLACEHOLDER = "/images/product-placeholder.svg";
 
@@ -92,6 +95,16 @@ export default function PosWorkspace({
   const [confirmedReceived, setConfirmedReceived] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [pendingSale, setPendingSale] = useState<PendingSale | null>(null);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PENDING_SALE_KEY);
+      if (raw) {
+        const pending = JSON.parse(raw) as PendingSale;
+        if (typeof pending.key === "string" && typeof pending.body === "string") setPendingSale(pending);
+      }
+    } catch { setError("Could not read a pending sale. Check orders before starting another sale."); }
+  }, []);
   const [receipt, setReceipt] = useState<{ id: string; total: number } | null>(null);
 
   const term = query.trim().toLocaleLowerCase();
@@ -143,50 +156,65 @@ export default function PosWorkspace({
     }));
   }
 
-  async function completeSale() {
+  async function submitPending(pending: PendingSale) {
     setSubmitting(true);
     setError("");
     try {
       const response = await fetch("/api/admin/pos", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: cart.map(({ item, qty }) => ({
-            productId: item.productId,
-            variantId: item.variantId,
-            qty,
-          })),
-          customerName,
-          customerPhone,
-          paymentReference,
-          confirmedReceived,
-        }),
+        headers: { "Content-Type": "application/json", "Idempotency-Key": pending.key },
+        body: pending.body,
       });
       const data: unknown = await response.json();
       if (!response.ok || !data || typeof data !== "object" || !("order" in data)) {
         const message = data && typeof data === "object" && "error" in data && typeof data.error === "string"
-          ? data.error
-          : "The sale could not be completed. Please try again.";
+          ? data.error : "The sale could not be confirmed.";
         throw new Error(message);
       }
-
       const order = data.order;
       if (!order || typeof order !== "object" || !("id" in order) || !("total" in order)) {
         throw new Error("The server returned an invalid sale confirmation.");
       }
+      sessionStorage.removeItem(PENDING_SALE_KEY);
+      setPendingSale(null);
       setReceipt({ id: String(order.id), total: Number(order.total) });
-      setCart([]);
-      setCustomerName("");
-      setCustomerPhone("");
-      setPaymentReference("");
-      setConfirmedReceived(false);
-      setQuery("");
-      setCategory("all");
+      setCart([]); setCustomerName(""); setCustomerPhone(""); setPaymentReference("");
+      setConfirmedReceived(false); setQuery(""); setCategory("all");
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "The sale could not be completed.");
+      setError((submitError instanceof Error ? submitError.message : "The sale could not be confirmed.") + " Check Orders or retry the pending sale before starting another.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function completeSale() {
+    if (pendingSale || submitting) return;
+    try {
+      const saved = sessionStorage.getItem(PENDING_SALE_KEY);
+      if (saved) {
+        const pending = JSON.parse(saved) as PendingSale;
+        setPendingSale(pending);
+        setError("A previous sale is awaiting confirmation. Retry it or check Orders first.");
+        return;
+      }
+    } catch {
+      setError("Could not check pending sales in this browser. Sale was not sent.");
+      return;
+    }
+    const pending: PendingSale = {
+      key: crypto.randomUUID(),
+      body: JSON.stringify({
+        items: cart.map(({ item, qty }) => ({ productId: item.productId, variantId: item.variantId, qty })),
+        customerName, customerPhone, paymentReference, confirmedReceived,
+      }),
+    };
+    try {
+      sessionStorage.setItem(PENDING_SALE_KEY, JSON.stringify(pending));
+      setPendingSale(pending);
+      void submitPending(pending);
+    } catch {
+      setError("Could not save the pending sale in this browser. Sale was not sent.");
     }
   }
 
@@ -203,6 +231,19 @@ export default function PosWorkspace({
         </p>
       </header>
 
+      {pendingSale && (
+        <div role="status" className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-cocoa-800">
+          <p>A sale is awaiting confirmation. Retry the same request, or check Orders before clearing it. Do not start a new sale until you know the outcome.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" disabled={submitting} onClick={() => void submitPending(pendingSale)} className="rounded-lg bg-orange-600 px-3 py-2 text-white disabled:opacity-50">Retry pending sale</button>
+            <button type="button" disabled={submitting} onClick={() => {
+              if (window.confirm("Have you checked Orders and confirmed the outcome? Clearing this pending request can allow a duplicate sale if it already completed.")) {
+                sessionStorage.removeItem(PENDING_SALE_KEY); setPendingSale(null); setError("");
+              }
+            }} className="rounded-lg border border-orange-300 px-3 py-2 disabled:opacity-50">Clear pending sale</button>
+          </div>
+        </div>
+      )}
       {receipt && (
         <section role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
           <div>
@@ -350,7 +391,7 @@ export default function PosWorkspace({
             <button
               type="button"
               onClick={completeSale}
-              disabled={!cart.length || !confirmedReceived || submitting}
+              disabled={!cart.length || !confirmedReceived || submitting || !!pendingSale}
               className="w-full rounded-xl bg-[#ff8200] px-4 py-3 text-sm font-bold text-white hover:bg-[#e87700] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? "Completing sale…" : "Confirm transfer & complete sale"}

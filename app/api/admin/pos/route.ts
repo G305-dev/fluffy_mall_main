@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { isStaffAuthed } from "@/lib/auth";
 import { makeOrderId } from "@/lib/db";
@@ -69,14 +70,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Customer details or payment reference are too long." }, { status: 400 });
   }
 
+  const requestKey = req.headers.get("idempotency-key")?.trim() || "";
+  if (!/^[a-f0-9-]{36}$/i.test(requestKey)) {
+    return NextResponse.json({ error: "A valid sale idempotency key is required." }, { status: 400 });
+  }
+  const normalizedItems = Array.from(selections.values()).sort((a, b) =>
+    JSON.stringify([a.productId, a.variantId || ""]).localeCompare(JSON.stringify([b.productId, b.variantId || ""]))
+  );
+  const fingerprint = createHash("sha256").update(JSON.stringify({
+    items: normalizedItems, customerName, customerPhone, paymentReference, confirmedReceived: true,
+  })).digest("hex");
+
   const client = await getMongoClient();
   const db = await getDb();
   const session = client.startSession();
   const orderId = makeOrderId();
   let createdOrder: Order | undefined;
+  let replayed = false;
+  const requests = db.collection<{ _id: string; fingerprint: string; order?: Order }>("pos_idempotency");
 
   try {
     await session.withTransaction(async () => {
+      const previous = await requests.findOne({ _id: requestKey }, { session });
+      if (previous) {
+        if (previous.fingerprint !== fingerprint) throw new Error("IDEMPOTENCY_MISMATCH");
+        if (!previous.order) throw new Error("IDEMPOTENCY_PENDING");
+        createdOrder = previous.order;
+        replayed = true;
+        return;
+      }
+      // The unique MongoDB _id protects concurrent submissions without a migration.
+      await requests.insertOne({ _id: requestKey, fingerprint }, { session });
       const productCollection = db.collection(COLLECTIONS.PRODUCTS);
       const productDocs = await productCollection
         .find(
@@ -148,9 +172,23 @@ export async function POST(req: NextRequest) {
       };
 
       await db.collection(COLLECTIONS.ORDERS).insertOne(order, { session });
+      await requests.updateOne({ _id: requestKey }, { $set: { order } }, { session });
       createdOrder = order;
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "IDEMPOTENCY_MISMATCH") {
+      return NextResponse.json({ error: "This sale key was already used for different details. Check the previous sale before proceeding." }, { status: 409 });
+    }
+    if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      const previous = await requests.findOne({ _id: requestKey });
+      if (previous?.fingerprint === fingerprint && previous.order) {
+        return NextResponse.json({ order: previous.order, replayed: true }, { status: 200 });
+      }
+      if (previous && previous.fingerprint !== fingerprint) {
+        return NextResponse.json({ error: "This sale key was already used for different details." }, { status: 409 });
+      }
+      return NextResponse.json({ error: "The sale may still be processing. Retry the same sale." }, { status: 409 });
+    }
     if (error instanceof StockUnavailableError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
@@ -163,5 +201,5 @@ export async function POST(req: NextRequest) {
     throw new Error("POS sale transaction completed without creating an order.");
   }
 
-  return NextResponse.json({ order: createdOrder }, { status: 201 });
+  return NextResponse.json({ order: createdOrder, replayed }, { status: replayed ? 200 : 201 });
 }
