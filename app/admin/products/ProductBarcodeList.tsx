@@ -7,18 +7,20 @@ import type { Product } from "@/lib/types";
 export default function ProductBarcodeList({
   products,
   costs,
+  defaultOpen = false,
 }: {
   products: Product[];
   costs: Record<string, number>;
+  defaultOpen?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const coded = products.filter((product) => product.barcode || product.variants.some((variant) => variant.barcode));
-  const visible = coded.filter((product) =>
-    `${product.name} ${product.barcode || ""} ${product.variants.map((variant) => variant.barcode || "").join(" ")}`
+  const coded = products.filter((product) => product.barcode || (product.variants || []).some((variant) => variant.barcode));
+  const visible = products.filter((product) =>
+    `${product.name} ${product.barcode || ""} ${(product.variants || []).map((variant) => `${variant.name} ${variant.barcode || ""}`).join(" ")}`
       .toLowerCase().includes(query.trim().toLowerCase())
   );
 
@@ -55,9 +57,9 @@ export default function ProductBarcodeList({
   }
 
   return (
-    <details id="product-barcodes" className="mb-6 rounded-2xl border border-stone-100 bg-white p-4 sm:p-5">
-      <summary className="cursor-pointer font-semibold text-cocoa-800">Code 128 product labels ({coded.length})</summary>
-      <p className="mt-2 text-xs text-stone-500">Purchase costs shown here are private. Open a label to print it.</p>
+    <details id="product-barcodes" open={defaultOpen || undefined} className="mb-6 rounded-2xl border border-stone-100 bg-white p-4 sm:p-5">
+      <summary className="cursor-pointer font-semibold text-cocoa-800">Barcode management ({products.length} products; {coded.length} with barcodes)</summary>
+      <p className="mt-2 text-xs text-stone-500">Purchase costs shown here are private. Open a Code 128 label, then use your browser’s print command.</p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -84,10 +86,14 @@ export default function ProductBarcodeList({
               {product.stock} {product.unit || "pcs"} in stock
               {costs[product.id] !== undefined && ` · Purchase cost ₦${costs[product.id].toLocaleString("en-NG")}`}
             </p>
+            {!product.barcode && <p className="mt-2 text-xs text-stone-500">Product barcode: not available</p>}
+            {(product.variants || []).filter((variant) => !variant.barcode).map((variant, index) => (
+              <p key={variant.id || index} className="mt-1 text-xs text-stone-500">{variant.name}: barcode not available</p>
+            ))}
             <div className="mt-2 flex flex-wrap gap-3">
               {[
                 ...(product.barcode ? [{ name: "Product", value: product.barcode }] : []),
-                ...product.variants.filter((variant) => variant.barcode).map((variant) => ({ name: variant.name, value: variant.barcode! })),
+                ...(product.variants || []).filter((variant) => variant.barcode).map((variant) => ({ name: variant.name, value: variant.barcode! })),
               ].map(({ name, value }) => {
                 const href = `/api/admin/barcode?value=${encodeURIComponent(value)}`;
                 return (
@@ -102,7 +108,7 @@ export default function ProductBarcodeList({
             </div>
           </div>
         ))}
-        {!visible.length && <p className="py-5 text-sm text-stone-500">No matching product labels.</p>}
+        {!visible.length && <p className="py-5 text-sm text-stone-500">No matching products.</p>}
       </div>
     </details>
   );
