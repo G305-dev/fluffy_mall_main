@@ -4,8 +4,6 @@ import { getProductCosts } from "@/lib/product-costs";
 import NewProductForm from "./NewProductForm";
 import ProductList from "./ProductList";
 import ProductImportExport from "./ProductImportExport";
-import ProductBarcodeList from "./ProductBarcodeList";
-import CategoryMigrationButton from "./CategoryMigrationButton";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +25,6 @@ export default async function AdminProductsPage() {
       <div className="mt-6">
         <NewProductForm categories={categories} />
         <ProductImportExport categories={categories} />
-        <ProductBarcodeList products={products} costs={costs} />
-        <CategoryMigrationButton />
       </div>
 
       <ProductList products={products} categories={categories} costs={costs} />

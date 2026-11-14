@@ -7,7 +7,10 @@ import { usePathname } from "next/navigation";
 import type { AdminRole } from "@/lib/admin-session-token";
 import {
   BarChart3,
-  Bell,
+  Moon,
+  Sun,
+  PanelLeftClose,
+  PanelLeftOpen,
   ChevronDown,
   ExternalLink,
   LayoutDashboard,
@@ -386,6 +389,42 @@ export default function AdminNav({
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [dark, setDark] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      setDark(localStorage.getItem("admin-theme") === "dark");
+      setSidebarCollapsed(localStorage.getItem("admin-sidebar-collapsed") === "true");
+    } catch { /* Storage may be disabled. */ }
+  }, []);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    function close(event: MouseEvent) {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountOpen(false);
+    }
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
+  }, [accountOpen]);
+
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    try { localStorage.setItem("admin-theme", next ? "dark" : "light"); } catch { /* Storage may be disabled. */ }
+  }
+
+  function toggleSidebar() {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    try { localStorage.setItem("admin-sidebar-collapsed", String(next)); } catch { /* Storage may be disabled. */ }
+  }
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLElement>(null);
@@ -453,9 +492,9 @@ export default function AdminNav({
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={`admin-shell min-h-screen bg-white ${dark ? "admin-dark" : ""}`}>
       <div className="min-h-screen bg-white lg:flex">
-        <aside className="hidden w-60 shrink-0 border-r border-stone-200 bg-[#f8f8f8] lg:block">
+        <aside id="admin-desktop-navigation" className={`hidden w-60 shrink-0 border-r border-stone-200 bg-[#f8f8f8] ${sidebarCollapsed ? "lg:hidden" : "lg:block"}`}>
           <div className="sticky top-0 flex h-screen flex-col overflow-y-auto p-4 xl:p-5">
             <div className="px-2 pt-2"><Brand /></div>
             <NavigationLinks pathname={pathname} menuId="desktop-inventory-menu" role={role} />
@@ -476,6 +515,10 @@ export default function AdminNav({
                 className="rounded-xl border border-stone-200 p-2 text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 lg:hidden"
               >
                 <Menu size={20} aria-hidden="true" />
+              </button>
+
+              <button type="button" onClick={toggleSidebar} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-controls="admin-desktop-navigation" aria-expanded={!sidebarCollapsed} className="hidden rounded-xl border border-stone-200 p-2 text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 lg:block">
+                {sidebarCollapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
               </button>
 
               <span className="min-w-0 flex-1 truncate text-lg font-semibold text-cocoa-800 sm:text-xl lg:flex-none">
@@ -500,28 +543,20 @@ export default function AdminNav({
                 </button>
               </form>
 
-              <Link
-                href="/admin/inventory?status=attention"
-                aria-label="See items needing restock"
-                className="rounded-xl border border-stone-200 p-2 text-stone-600 hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-              >
-                <Bell size={19} aria-hidden="true" />
-              </Link>
+              <button type="button" onClick={toggleTheme} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Switch to light mode" : "Switch to dark mode"} className="rounded-xl border border-stone-200 p-2 text-stone-600 hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500">
+                {dark ? <Sun size={19} aria-hidden="true" /> : <Moon size={19} aria-hidden="true" />}
+              </button>
 
-              <div className="flex items-center gap-2 border-l border-stone-200 pl-3">
-                <Image
-                  src="/images/fm logo.png"
-                  alt=""
-                  width={34}
-                  height={34}
-                  className="h-8 w-8 rounded-lg object-cover"
-                />
-                <span className="hidden text-xs leading-tight text-stone-500 xl:block">
-                  <strong className="block max-w-36 truncate text-sm text-cocoa-800" title={staffName || "Staff"}>
-                    {staffName || "Staff"}
-                  </strong>
-                  {roleLabel || "Staff"}
-                </span>
+              <div className="relative border-l border-stone-200 pl-3" ref={accountRef}>
+                <button type="button" onClick={() => setAccountOpen((open) => !open)} aria-expanded={accountOpen} aria-controls="admin-account-menu" aria-label={`Account menu for ${staffName || "Staff"}`} className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500">
+                  <Image src="/images/fm logo.png" alt="" width={34} height={34} className="h-8 w-8 rounded-lg object-cover" />
+                  <span className="hidden text-left text-xs leading-tight text-stone-500 xl:block"><strong className="block max-w-36 truncate text-sm text-cocoa-800" title={staffName || "Staff"}>{staffName || "Staff"}</strong>{roleLabel || "Staff"}</span>
+                  <ChevronDown size={15} aria-hidden="true" />
+                </button>
+                {accountOpen && <div id="admin-account-menu" className="absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-stone-200 bg-white p-1 shadow-lg">
+                  {role !== "sales_representative" && <Link href="/admin/settings" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-stone-700 hover:bg-orange-50"><Settings size={16} aria-hidden="true" /> Settings</Link>}
+                  <form action="/api/admin/logout" method="post"><button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-stone-700 hover:bg-orange-50"><LogOut size={16} aria-hidden="true" /> Log out</button></form>
+                </div>}
               </div>
             </div>
 

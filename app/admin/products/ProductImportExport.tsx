@@ -25,6 +25,7 @@ export default function ProductImportExport({ categories }: { categories: AdminC
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportType, setExportType] = useState<"all" | "variable" | "standard">("all");
   const [file, setFile] = useState<File | null>(null);
   const [productType, setProductType] = useState<"" | "standard" | "variable">("");
   const [defaultCategory, setDefaultCategory] = useState("");
@@ -94,8 +95,15 @@ export default function ProductImportExport({ categories }: { categories: AdminC
           </button>
           {exportOpen && (
             <div className="absolute left-0 top-full z-30 mt-1 min-w-[180px] overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg">
-              <a href="/api/admin/products/export?format=csv" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">Download CSV</a>
-              <a href="/api/admin/products/export?format=xlsx" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">Download Excel (.xlsx)</a>
+              <label className="block px-3 py-2 text-xs font-medium text-stone-600">Products to export
+                <select value={exportType} onChange={(event) => setExportType(event.target.value as typeof exportType)} className="mt-1 block w-full rounded-lg border border-stone-200 bg-white p-2 text-sm">
+                  <option value="all">All products</option>
+                  <option value="variable">Variable products</option>
+                  <option value="standard">Standard products</option>
+                </select>
+              </label>
+              <a href={`/api/admin/products/export?format=csv&type=${exportType}`} className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">Download CSV</a>
+              <a href={`/api/admin/products/export?format=xlsx&type=${exportType}`} className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">Download Excel (.xlsx)</a>
             </div>
           )}
         </div>

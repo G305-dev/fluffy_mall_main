@@ -1,3 +1,4 @@
+import "./admin-theme.css";
 import AdminNav from "@/components/AdminNav";
 import AdminSessionGuard from "@/components/AdminSessionGuard";
 import { getAdminSession } from "@/lib/auth";
