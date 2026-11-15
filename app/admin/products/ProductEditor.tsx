@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import PasteImageBox from "./PasteImageBox";
 import type { AdminCategory } from "@/lib/admin-categories";
 import { PRODUCT_UNITS, type ProductUnit } from "@/lib/product-units";
 import type {
@@ -258,10 +259,11 @@ export default function ProductEditor({
 
     event.target.value = "";
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
+    await changeImageFile(file);
+  }
 
+  async function changeImageFile(file: File) {
     setError(null);
     setBusy(true);
 
@@ -294,11 +296,11 @@ export default function ProductEditor({
     );
 
     event.target.value = "";
+    await addGalleryFiles(files);
+  }
 
-    if (files.length === 0) {
-      return;
-    }
-
+  async function addGalleryFiles(files: File[]) {
+    if (files.length === 0) return;
     setError(null);
     setBusy(true);
 
@@ -511,6 +513,8 @@ export default function ProductEditor({
           className="hidden"
         />
 
+        <PasteImageBox label="Paste a new main image (uploads and saves immediately)" disabled={busy} onImages={(files) => void changeImageFile(files[0])} onError={setError} />
+        <PasteImageBox label="Paste a gallery image (uploads and saves immediately)" disabled={busy} onImages={(files) => void addGalleryFiles(files)} onError={setError} />
         <p className="mt-1 text-xs text-stone-500">
           The first image is the main image shown
           on product cards.

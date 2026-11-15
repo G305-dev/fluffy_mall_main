@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import PasteImageBox from "./PasteImageBox";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import type { AdminCategory } from "@/lib/admin-categories";
@@ -293,7 +294,11 @@ export default function NewProductForm({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    setVariantImage(index, file);
+  }
+
+  function setVariantImage(index: number, file: File) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || !file.size || file.size > 5 * 1024 * 1024) {
       setError("Option photos must be JPEG, PNG or WEBP, up to 5 MB.");
       return;
     }
@@ -349,6 +354,10 @@ export default function NewProductForm({
   function chooseImages(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files || []);
     event.target.value = "";
+    addImages(files);
+  }
+
+  function addImages(files: File[]) {
     if (!files.length) return;
     if (images.length + existingImages.length + files.length > 8) {
       setError("Choose up to eight product photos.");
@@ -597,6 +606,7 @@ export default function NewProductForm({
             <label className="block text-sm font-medium text-stone-700">Product photos (optional)
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={chooseImages} className={inputClass} />
             </label>
+            <PasteImageBox label="Paste product photo" disabled={busy} onImages={addImages} onError={setError} />
             <p className="mt-1 text-xs text-stone-500">JPEG, PNG or WEBP · up to eight photos, 5 MB each. No photo? The storefront uses an “Image coming soon” placeholder.</p>
             {(existingImages.length > 0 || previews.length > 0) && (
               <ul className="mt-3 flex flex-wrap gap-3">
@@ -692,6 +702,7 @@ export default function NewProductForm({
                         <label className="block text-xs font-medium text-stone-700">Option photo (optional)
                           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseVariantImage(index, event)} className={inputClass} />
                         </label>
+                        <PasteImageBox label={`Paste photo for option ${index + 1}`} disabled={busy} onImages={(files) => setVariantImage(index, files[0])} onError={setError} />
                         {variant.imagePreview ? (
                           <div className="mt-2 flex items-center gap-3">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
